@@ -58,6 +58,10 @@ Subroutine potcoul
 ! solve the complex Poisson's equation
       Call zpotcoul (nrmt, nrmtmax, spnrmax, spr, 1, gc, jlgr, ylmg, &
       &              sfacg, spzn, zrhomt, zrhoir, zvclmt, zvclir, zrho0)
+      if (input%groundstate%pseudocharge) then
+       Call pscharge (nrmt, nrmtmax, spnrmax, spr, 1, gc, jlgr, ylmg, &
+       &              sfacg, spzn, zrhomt, zrhoir)
+      endif
 ! convert complex muffin-tin potential to real spherical harmonic expansion
       Do is = 1, nspecies
          Do ia = 1, natoms (is)

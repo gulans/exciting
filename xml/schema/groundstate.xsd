@@ -3124,6 +3124,13 @@
               self-consistent procedure used to solve the Kohn-Sham equations. </xs:documentation>
             </xs:annotation>
           </xs:attribute-->
+      <xs:attribute ex:importance="expert" ex:unit="" name="pseudocharge" type="xs:boolean" default="false">
+        <xs:annotation>
+          <xs:documentation>
+            If <pre>"true"</pre>, smooth pseudocharge is printed to PSEUDOCHARGE.OUT after each self-consistence iteration.   
+          </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
 
           <xs:attribute ex:importance="expert" ex:unit="" name="outputlevel" default="normal">
             <xs:annotation>
