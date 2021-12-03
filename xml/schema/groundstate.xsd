@@ -2975,6 +2975,18 @@
                 </xs:restriction>
               </xs:simpleType>
             </xs:attribute>
+            <xs:attribute ex:importance="expert" ex:unit="" name="CoreLS" default="none">
+              <xs:annotation>
+                <xs:documentation>Chooses to calculate ground state with Lippman Schwinger iteration method
+                </xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="ls"/>
+                  <xs:enumeration value="none"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>	   
       <xs:attribute ex:importance="expert" ex:unit="" name="energyref" type="fortrandouble"
         default="0.0d0">
         <xs:annotation>
