@@ -49,7 +49,7 @@ nr=nrmt(is)
 call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rfshtvr, lmmaxvr, dxdg2, lmmaxvr, 0.d0, &
  rfmt1, lmmaxvr)
 ! compute grad dxdg2
-call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rfmt1, grfmt)
+call gradrfmt1(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rfmt1, grfmt,is)
 ! (grad dxdg2).(grad rho) in spherical coordinates
 rfmt1(:, 1:nr)=0.d0
 do i=1, 3
@@ -65,7 +65,7 @@ vx(:, 1:nr)=vx(:, 1:nr)-2.d0*(rfmt1(:, 1:nr)+dxdg2(:, 1:nr)*g2rho(:, 1:nr))
 call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rfshtvr, lmmaxvr, dcdg2, lmmaxvr, 0.d0, &
  rfmt1, lmmaxvr)
 ! compute grad dcdg2
-call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rfmt1, grfmt)
+call gradrfmt1(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rfmt1, grfmt,is)
 ! (grad dcdg2).(grad rho) in spherical coordinates
 rfmt1(:, 1:nr)=0.d0
 do i=1, 3

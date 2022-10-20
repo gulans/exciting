@@ -43,7 +43,7 @@ call grad2rfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, rhomt(:, :, ia
 call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rbshtvr, lmmaxvr, rfmt, lmmaxvr, 0.d0, &
  g2rho, lmmaxvr)
 ! compute grad rho and (grad rho)^2 in spherical coordinates
-call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rhomt(:, :, ias), grfmt)
+call gradrfmt1(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rhomt(:, :, ias), grfmt,is)
 grho2(:, 1:nr)=0.d0
 do i=1, 3
   call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rbshtvr, lmmaxvr, grfmt(:, :, i), &

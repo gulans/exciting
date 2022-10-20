@@ -16,6 +16,7 @@ Subroutine mossbauer
       Use modmain
       Use Fox_wxml
       use constants, only: fourpi, pi
+      use modinteg
 ! !DESCRIPTION:
 !   Computes the contact charge density and contact magnetic hyperfine field for
 !   each atom and outputs the data to the file {\tt MOSSBAUER.OUT}. The nuclear
@@ -86,8 +87,13 @@ Subroutine mossbauer
             Do ir = 1, nr
                fr (ir) = (fourpi*spr(ir, is)**2) * fr (ir)
             End Do
+#ifdef integlib
+            Call integ_v_atom ( nr, is, fr, t1)
+#else
             Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-            rho0 = gr (nr) / vn
+            t1=gr (nr)
+#endif
+            rho0 = t1 / vn
             Write (50,*)
             Write (50, '("Species : ", I4, " (", A, "), atom : ", I4)') &
            & is, trim &
@@ -117,8 +123,13 @@ Subroutine mossbauer
                   End If
                   fr (ir) = t1 * y00 * fourpi * spr (ir, is) ** 2
                End Do
+#ifdef integlib
+               Call integ_v_atom ( nr, is, fr, t1)
+#else
                Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-               b = gr (nr) / vn
+               t1=gr (nr)
+#endif
+               b = t1 / vn
                Write (50, '(" contact magnetic hyperfine field (mu_B) :&
               & ", G18.10)') b
                Call xml_AddAttribute (xf, "contactMagHyperfineField", b)

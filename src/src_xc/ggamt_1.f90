@@ -40,8 +40,8 @@ allocate(rfmt(lmmaxvr, nrmtmax))
 ias=idxas(ia, is)
 nr=nrmt(is)
 ! |grad rho|
-call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr,&
-& nrmtmax, rhomt(:, :, ias), grfmt)
+call gradrfmt1(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr,&
+& nrmtmax, rhomt(:, :, ias), grfmt, is)
 do i=1, 3
   call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rbshtvr, lmmaxvr, grfmt(:, :, i), &
    lmmaxvr, 0.d0, gvrho(:, :, i), lmmaxvr)
@@ -55,7 +55,7 @@ call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rbshtvr, lmmaxvr, rfmt, lmmaxvr
 call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rfshtvr, lmmaxvr,&
 & grho, lmmaxvr, 0.d0, &
  rfmt, lmmaxvr)
-call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rfmt, grfmt)
+call gradrfmt1(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, rfmt, grfmt,is)
 g3rho(:, 1:nr)=0.d0
 do i=1, 3
   call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rbshtvr, lmmaxvr, grfmt(:, :, i), &

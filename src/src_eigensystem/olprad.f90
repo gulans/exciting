@@ -13,6 +13,7 @@
 Subroutine olprad
 ! !USES:
       Use modmain
+      use modinteg
 ! !DESCRIPTION:
 !   Calculates the radial overlap integrals of the APW and local-orbital basis
 !   functions. In other words, for spin $\sigma$ and atom $j$ of species $i$, it
@@ -71,8 +72,13 @@ Subroutine olprad
                       t2=apwfr(ir, 2, io1, l, ias)*apwfr(ir, 2, io2, l, ias)
                       fr (ir) = a*(0.5d0*t2*rm**2 + 0.5d0*angular*t1*rm**2/spr(ir,is)**2)*r2 (ir)
                     End Do
+#ifdef integlib
+                    Call integ_v_mt(nr, is, fr, t2)
+#else
                     Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                    h1aa (io1, io2, l, ias) = gr(nr)
+                    t2=gr(nr)
+#endif
+                    h1aa (io1, io2, l, ias) = t2
 !                    if (io1.eq.io2) then
 !                      h1aa (io1, io2, l, ias) = 1d0+gr(nr) 
 !                    else
@@ -94,8 +100,13 @@ Subroutine olprad
                    Do ir = 1, nr
                      fr (ir) = apwfr (ir, 1, io, l, ias) * lofr (ir, 1, ilo, ias) * r2 (ir)
                    End Do
+#ifdef integlib
+                  Call integ_v_mt(nr, is, fr, t2)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  oalo (io, ilo, ias) = gr (nr) 
+                  t2=gr(nr)
+#endif
+                  oalo (io, ilo, ias) = t2 
 !                 else
                   if (input%groundstate%ValenceRelativity.eq.'iora*') then
                    angular=dble(l*(l+1))
@@ -105,8 +116,13 @@ Subroutine olprad
                      t2=apwfr(ir, 2, io, l, ias)*lofr(ir, 2, ilo, ias)
                      fr (ir) = (a*(0.5d0*t2*rm**2 + 0.5d0*angular*t1*rm**2/spr(ir,is)**2))*r2 (ir)
                    End Do
+#ifdef integlib
+                   Call integ_v_mt(nr, is, fr, t2)
+#else
                    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                   h1loa (io, ilo, ias) = gr (nr)
+                   t2=gr(nr)
+#endif
+                   h1loa (io, ilo, ias) = t2
                  endif
                End Do
             End Do
@@ -121,8 +137,13 @@ Subroutine olprad
                       Do ir = 1, nr
                         fr (ir) = lofr (ir, 1, ilo1, ias) * lofr (ir, 1, ilo2, ias) * r2 (ir)
                       End Do
+#ifdef integlib
+                      Call integ_v_mt(nr, is, fr, t2)
+#else
                       Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                      ololo (ilo1, ilo2, ias) = gr (nr)
+                      t2=gr(nr)
+#endif
+                      ololo (ilo1, ilo2, ias) = t2 
                     if (input%groundstate%ValenceRelativity.eq.'iora*') then
                       angular=dble(l*(l+1))
                       Do ir = 1, nr
@@ -131,8 +152,13 @@ Subroutine olprad
                         t2=lofr(ir, 2, ilo1, ias)*lofr(ir, 2, ilo2, ias)
                         fr (ir) = (a*(0.5d0*t2*rm**2 + 0.5d0*angular*t1*rm**2/spr(ir,is)**2))*r2 (ir)
                       End Do
+#ifdef integlib
+                      Call integ_v_mt(nr, is, fr, t2)
+#else
                       Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                      h1lolo (ilo1, ilo2, ias) = gr (nr)
+                      t2=gr(nr)
+#endif
+                      h1lolo (ilo1, ilo2, ias) = t2 
                     endif
                   End If
                End Do

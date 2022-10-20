@@ -81,9 +81,9 @@ Subroutine gwf2val (ik, evecfv, evecsv, gw2fmt, gw2fir)
                   End If
 ! compute the gradient of the wavefunction
                   Do ispn = 1, nspinor
-                     Call gradzfmt (input%groundstate%lmaxvr, nrmt(is), &
+                     Call gradzfmt1 (input%groundstate%lmaxvr, nrmt(is), &
                     & spr(:, is), lmmaxvr, nrmtmax, wfmt2(:, :, ispn), &
-                    & gzfmt)
+                    & gzfmt,is)
 ! convert gradient from spherical harmonics to spherical coordinates
                      Do i = 1, 3
                         Do ir = 1, nrmt (is)

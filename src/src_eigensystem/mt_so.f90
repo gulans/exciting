@@ -12,6 +12,7 @@ Subroutine mt_so (pot,basis_alpha,basis_beta,mt_list,rel_level)
 ! !USES:
       Use modinput
       Use modmain
+      use modinteg
 ! !DESCRIPTION:
 ! Calculates matrix elements of spin-orbit hamiltonian (and eventually non-collinear magnetic field).
 !
@@ -92,10 +93,16 @@ if (.true.) then
               End Do
             endif
 !else
-            fr(1:nr)=pot (1, :, ias)
-            Call fderiv (1, nr, spr(:, is), fr, gr, cf)
+!            fr(1:nr)=pot (1, :, ias)
+!            Call fderiv (1, nr, spr(:, is), fr, gr, cf)
             fr(1:nr)=rmtable (1:nr)
+#ifdef integlib
+            call deriv_f_mt(nr, is, fr, gr)
+#else
             Call fderiv (1, nr, spr(:, is), fr, gr, cf)
+#endif
+
+
             Do ir = 1, nr
               rmtable2(ir)=gr(ir)/spr(ir,is)
             enddo
@@ -118,22 +125,37 @@ if (InterstitialSO) then
                     t2=basis_beta%apwfr(ir, 2, io2, l1, ias)-dble(l1)/spr(ir,is)*basis_beta%apwfr(ir, 1, io2, l1, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2 
                   End Do
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,io1,io2)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,io1,io2)=t1
 
                   Do ir = 1, nr
                     t1=basis_alpha%apwfr(ir, 2, io1, l1, ias)+dble(l1+1)/spr(ir,is)*basis_alpha%apwfr(ir, 1, io1, l1, ias)
                     t2=basis_beta%apwfr(ir, 2, io2, l1, ias)+dble(l1+1)/spr(ir,is)*basis_beta%apwfr(ir, 1, io2, l1, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(2,io1,io2)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(2,io1,io2)=t1
 else
                   Do ir = 1, nr
                     fr(ir)=basis_alpha%apwfr(ir, 1, io1, l1, ias)*basis_beta%apwfr(ir, 1, io2, l1, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,io1,io2)=gr(nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,io1,io2)=t1
 endif
                 End Do
               End Do
@@ -185,22 +207,38 @@ if (InterstitialSO) then
                     t2=basis_beta%lofr(ir, 2, ilo, ias)-dble(l1)/spr(ir,is)*basis_beta%lofr(ir, 1, ilo, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,io,1)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,io,1)=t1
 
                   Do ir = 1, nr
                     t1=basis_alpha%apwfr(ir, 2, io, l1, ias)+dble(l1+1)/spr(ir,is)*basis_alpha%apwfr(ir, 1, io, l1, ias)
                     t2=basis_beta%lofr(ir, 2, ilo, ias)+dble(l1+1)/spr(ir,is)*basis_beta%lofr(ir, 1, ilo, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(2,io,1)=gr (nr)
+                  t1=gr(nr)
+#endif
+
+                  radint(2,io,1)=t1
 else
                   Do ir = 1, nr
                     fr(ir)=basis_alpha%apwfr(ir, 1, io, l1, ias)*basis_beta%lofr(ir, 1, ilo, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,io,1)=gr(nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,io,1)=t1
 endif
                 End Do
 
@@ -240,22 +278,39 @@ if (InterstitialSO) then
                     t2=basis_beta%apwfr(ir, 2, io, l1, ias)-dble(l1)/spr(ir,is)*basis_beta%apwfr(ir, 1, io, l1, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,io,1)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,io,1)=t1
 
                   Do ir = 1, nr
                     t1=basis_alpha%lofr(ir, 2, ilo, ias)+dble(l1+1)/spr(ir,is)*basis_alpha%lofr(ir, 1, ilo, ias)
                     t2=basis_beta%apwfr(ir, 2, io, l1, ias)+dble(l1+1)/spr(ir,is)*basis_beta%apwfr(ir, 1, io, l1, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(2,io,1)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(2,io,1)=t1
 else                
                   Do ir = 1, nr
                     fr(ir)=basis_alpha%lofr(ir, 1, ilo, ias)*basis_beta%apwfr(ir, 1, io, l1, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,io,1)=gr(nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,io,1)=t1
 endif
                 End Do
 
@@ -319,21 +374,38 @@ if (InterstitialSO) then
                     t2=basis_beta%lofr (ir, 2, ilo2, ias)-dble(l1)/spr(ir,is)*basis_beta%lofr (ir, 1, ilo2, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(1,1,1)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(1,1,1)=t1
                   Do ir = 1, nr
                     t1=basis_alpha%lofr(ir, 2, ilo1, ias)+dble(l1+1)/spr(ir,is)*basis_alpha%lofr(ir, 1, ilo1, ias)
                     t2=basis_beta%lofr (ir, 2, ilo2, ias)+dble(l1+1)/spr(ir,is)*basis_beta%lofr (ir, 1, ilo2, ias)
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
+
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint(2,1,1)=gr (nr)
+                  t1=gr(nr)
+#endif
+                  radint(2,1,1)=t1
 else
                   Do ir = 1, nr
                     fr(ir)=basis_alpha%lofr(ir, 1, ilo1, ias)*basis_beta%lofr (ir, 1, ilo2, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
+
+#ifdef integlib
+                  Call integ_v_mt ( nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  radint2=gr(nr)
+                  t1=gr(nr)
+#endif
+                  radint2=t1
 endif
 
                   do m1=-l1,l1

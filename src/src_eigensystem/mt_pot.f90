@@ -15,6 +15,7 @@ Subroutine mt_pot(pot,basis,mt_h)
 ! !USES:
       Use modinput
       Use modmain
+      use modinteg
 ! !DESCRIPTION:
 !   Calculates the potential energy contribution to the muffin-tin Hamiltonian.
 !
@@ -142,8 +143,13 @@ Subroutine mt_pot(pot,basis,mt_h)
                             t1=apwfr(ir,1,io1,l1,ias)*apwfr(ir,1,io2,l3,ias)*r2(ir)
                             fr (ir) = t1 * pot (lm2, ir, ias)
                           End Do
+#ifdef integlib
+                            Call integ_v_mt(nr, is, fr, t2)
+#else
                             Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                            haaintegrals (lm2, io2, l3, io1, l1)=gr (nr)
+                            t2=gr(nr)
+#endif
+                            haaintegrals (lm2, io2, l3, io1, l1)= t2
                         End Do
 #ifdef USEOMP
 !$OMP END DO NOWAIT
@@ -177,8 +183,13 @@ Subroutine mt_pot(pot,basis,mt_h)
                          t1 = lofr (ir, 1, ilo, ias) * apwfr (ir, 1, io, l3, ias) * r2 (ir)
                          fr (ir) = t1 * pot (lm2, ir, ias)
                        End Do
+#ifdef integlib
+                       Call integ_v_mt(nr, is, fr, t2)
+#else
                        Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                       halointegrals (lm2, io, l3, ilo) = gr (nr)  
+                       t2=gr(nr)
+#endif
+                       halointegrals (lm2, io, l3, ilo) = t2  
                      End Do
 #ifdef USEOMP
 !$OMP END DO NOWAIT
@@ -208,8 +219,13 @@ Subroutine mt_pot(pot,basis,mt_h)
                       t1 = lofr (ir, 1, ilo1, ias) * lofr (ir, 1, ilo2, ias) * r2 (ir)
                       fr (ir) = t1 * pot (lm2, ir, ias)
                     End Do
+#ifdef integlib
+                    Call integ_v_mt(nr, is, fr, t2)
+#else
                     Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                    hlolointegrals (lm2, ilo1, ilo2) = gr (nr)
+                    t2=gr(nr)
+#endif
+                    hlolointegrals (lm2, ilo1, ilo2) = t2
                   End Do
 #ifdef USEOMP
 !$OMP END DO

@@ -14,6 +14,7 @@ Subroutine genlofr
 ! !USES:
       Use modinput
       Use modmain
+      use modinteg
 ! !DESCRIPTION:
 !   Generates the local-orbital radial functions. This is done by integrating
 !   the scalar relativistic Schr\"{o}dinger equation (or its energy deriatives)
@@ -167,8 +168,13 @@ Subroutine genlofr
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io2) ** 2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt(nr, is, fr, t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  t1 = 1.d0 / Sqrt (Abs(gr(nr)))
+                  t1=gr(nr)
+#endif
+                  t1 = 1.d0 / Sqrt (Abs(t1))
                   p0 (1:nr, io2) = t1 * p0 (1:nr, io2)
                   p1 (1:nr, io2) = t1 * p1 (1:nr, io2)
                   q0 (1:nr, io2) = t1 * q0 (1:nr, io2)
@@ -216,8 +222,13 @@ Subroutine genlofr
                Do ir = 1, nr
                  fr (ir) = p0s (ir) ** 2
                End Do
+#ifdef integlib
+               Call integ_v_mt(nr, is, fr, t1)
+#else
                Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-               t1 = 1.d0 / Sqrt (Abs(gr(nr)))
+               t1=gr(nr)
+#endif
+               t1 = 1.d0 / Sqrt (Abs(t1))
                p0s (1:nr) = t1 * p0s (1:nr)
                p1s (1:nr) = t1 * p1s (1:nr)
                q0s (1:nr) = t1 * q0s (1:nr)

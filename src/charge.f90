@@ -15,6 +15,7 @@ Subroutine charge
       Use modinput
       Use modmain
       use constants, only: fourpi
+      use modinteg
 ! !DESCRIPTION:
 !   Computes the muffin-tin, interstitial and total charges by integrating the
 !   density.
@@ -26,7 +27,7 @@ Subroutine charge
       Implicit None
 ! local variables
       Integer :: is, ia, ias, ir
-      Real (8) :: sum, t1
+      Real (8) :: sum, t1,t2
 ! automatic arrays
       Real (8) :: fr (nrmtmax), gr (nrmtmax), cf (3, nrmtmax)
       character(1024) :: message
@@ -38,8 +39,13 @@ Subroutine charge
             Do ir = 1, nrmt (is)
                fr (ir) = rhomt (1, ir, ias) * spr (ir, is) ** 2
             End Do
+#ifdef integlib
+            Call integ_v_mt(nrmt(is), is, fr, t2)
+#else
             Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
-            chgmt (ias) = fourpi * y00 * gr (nrmt(is))
+            t2= gr (nrmt(is))
+#endif
+            chgmt (ias) = fourpi * y00 * t2
             chgmttot = chgmttot + chgmt (ias)
          End Do
       End Do

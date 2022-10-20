@@ -10,6 +10,7 @@ Subroutine gendmat (tspndg, tlmdg, lmin, lmax, is, ia, ngp, apwalm, &
 & evecfv, evecsv, ld, dmat)
       Use modinput
       Use modmain
+      use modinteg
       Implicit None
 ! arguments
       Logical, Intent (In) :: tspndg
@@ -112,12 +113,17 @@ Subroutine gendmat (tspndg, tlmdg, lmin, lmax, is, ia, ngp, apwalm, &
                            fr1 (irc) = dble (zt1) * t1
                            fr2 (irc) = aimag (zt1) * t1
                         End Do
-                        Call fderiv (-1, nrcmt(is), rcmt(:, is), fr1, &
+#ifdef integlib
+                       call integ_v_mt(nrcmt(is),is,fr1,t1)
+                       call integ_v_mt(nrcmt(is),is,fr2,t2)
+#else
+                       Call fderiv (-1, nrcmt(is), rcmt(:, is), fr1, &
                        & gr, cf)
                         t1 = gr (nrcmt(is))
                         Call fderiv (-1, nrcmt(is), rcmt(:, is), fr2, &
                        & gr, cf)
                         t2 = gr (nrcmt(is))
+#endif
                         dmat (lm1, lm2, ispn, jspn, j) = cmplx (t1, t2, &
                        & 8)
 10                      Continue

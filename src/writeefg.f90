@@ -77,12 +77,12 @@ Subroutine writeefg
                rfmt (2:lmmaxvr, ir) = vclmt (2:lmmaxvr, ir, ias)
             End Do
 ! compute the gradient of the Coulomb potential
-            Call gradrfmt (input%groundstate%lmaxvr, nrmt(is), spr(:, &
-           & is), lmmaxvr, nrmtmax, rfmt, grfmt1)
+            Call gradrfmt1 (input%groundstate%lmaxvr, nrmt(is), spr(:, &
+           & is), lmmaxvr, nrmtmax, rfmt, grfmt1,is)
             Do i = 1, 3
 ! compute the gradient of the gradient
-               Call gradrfmt (input%groundstate%lmaxvr, nrmt(is), &
-              & spr(:, is), lmmaxvr, nrmtmax, grfmt1(:, :, i), grfmt2)
+               Call gradrfmt1 (input%groundstate%lmaxvr, nrmt(is), &
+              & spr(:, is), lmmaxvr, nrmtmax, grfmt1(:, :, i), grfmt2,is)
                Do j = 1, 3
                   efg (i, j) = grfmt2 (1, 1, j) * y00
                End Do

@@ -79,10 +79,10 @@ Subroutine allatoms(verbosity)
 #endif
       Do is = 1, nspecies
          Allocate (rwf(spnrmax, 2, spnstmax))
-         Call atom (input%groundstate%ptnucl, spzn(is), spnst(is), &
+         Call atom1 (input%groundstate%ptnucl, spzn(is), spnst(is), &
         & spn(:, is), spl(:, is), spk(:, is), spocc(:, is), xctypearray, &
         & xcgrad_, spnr(is), spr(:, is), &
-        & speval(:, is), sprho(:, is), spvr(:, is), rwf,nrmt(is),dirac_eq)
+        & speval(:, is), sprho(:, is), spvr(:, is), rwf,nrmt(is),dirac_eq,is)
          Deallocate (rwf)
          if (associated(input%groundstate%dfthalf)) then
 !          Here, we check if the user has defined the DFT-1/2 correction for this species

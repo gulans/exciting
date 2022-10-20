@@ -21,6 +21,7 @@ Subroutine init0
 #ifdef XS
       Use modxs
 #endif
+      use modinteg
 ! !DESCRIPTION:
 !   Performs basic consistency checks as well as allocating and initialising
 !   global variables not dependent on the $k$-point set.
@@ -330,6 +331,40 @@ Subroutine init0
 ! set up atomic and muffin-tin radial meshes
       Call genrmesh
 !
+
+
+!-----------------------!
+! initialize modinteg   !
+!-----------------------!
+#ifdef integlib
+
+  d_order=9
+  i_order=9
+  integrate_0_r1=.true.
+
+  if (allocated(fintw_mt)) then
+  call dealoc_icoef()
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+
+  else
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+  endif
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 !--------------------------------------!
 !     charges and number of states     !
 !--------------------------------------!

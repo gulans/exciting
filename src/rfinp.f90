@@ -48,8 +48,8 @@ Function rfinp (lrstp, rfmt1, rfmt2, rfir1, rfir2)
       Integer :: is, ia, ias, ir
       Real (8) :: sum
 ! external functions
-      Real (8) :: rfmtinp
-      External rfmtinp
+      Real (8) :: rfmtinp1
+      External rfmtinp1
       sum = 0.d0
 ! interstitial contribution
       Do ir = 1, ngrtot
@@ -60,9 +60,9 @@ Function rfinp (lrstp, rfmt1, rfmt2, rfir1, rfir2)
       Do is = 1, nspecies
          Do ia = 1, natoms (is)
             ias = idxas (ia, is)
-            sum = sum + rfmtinp (lrstp, input%groundstate%lmaxvr, &
+            sum = sum + rfmtinp1 (lrstp, input%groundstate%lmaxvr, &
            & nrmt(is), spr(:, is), lmmaxvr, rfmt1(:, :, ias), rfmt2(:, &
-           & :, ias))
+           & :, ias),is)
          End Do
       End Do
       rfinp = sum

@@ -120,7 +120,7 @@ Subroutine rhoinit
          auxgrid(mtgridsize+1:auxgridsize)=spr(nrmt(is)+1:lastpoint, is)
 
 ! Calculating derivatives from splines in order to obtain parameters of a*r**2+c.
-         Call fderiv (1, spnr(is), spr(:, is), sprho (:, is), gr, cf)
+         Call fderiv1 (1, spnr(is), spr(:, is), sprho (:, is), gr, cf)
          rhoder=cf(1,nrmt(is))
          rhoder2=cf(2,nrmt(is))*2d0
 ! pick .false. if you need extra smoothness 
@@ -202,7 +202,7 @@ endif
              Call sbessel (0, x, jlgr01)
              fr (ir) = auxrho(ir) * jlgr01 * auxgrid(ir) ** 2
            enddo
-           Call fderiv (-1, auxgridsize, auxgrid, fr, gr, cf)
+           Call fderiv1 (-1, auxgridsize, auxgrid, fr, gr, cf)
            swc(ig)=gr(auxgridsize)
          enddo
 ! Density is expanded in the auxilliary basis.

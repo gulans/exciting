@@ -14,6 +14,7 @@ Subroutine genapwfr
 ! !USES:
       Use modinput
       Use modmain
+      use modinteg
 ! !DESCRIPTION:
 !   Generates the APW radial functions. This is done by integrating the scalar
 !   relativistic Schr\"{o}dinger equation (or its energy deriatives) at the
@@ -33,7 +34,7 @@ Subroutine genapwfr
 ! local variables
       Integer :: is, ia, ias, nr, ir
       Integer :: nn, l, io1, io2
-      Real (8) :: t1
+      Real (8) :: t1,t2
 ! automatic arrays
       Real (8) :: vr (nrmtmax), fr (nrmtmax), gr (nrmtmax), cf (3, &
      & nrmtmax)
@@ -57,8 +58,13 @@ Subroutine genapwfr
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io1) ** 2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt(nr, is, fr, t2)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  t1 = 1.d0 / Sqrt (Abs(gr(nr)))
+                  t2=gr(nr)
+#endif
+                  t1 = 1.d0 / Sqrt (Abs(t2))
                   p1s (io1) = t1 * p1 (nr, io1)
                   p0 (1:nr, io1) = t1 * p0 (1:nr, io1)
                   p1 (1:nr, io1) = t1 * p1 (1:nr, io1)
@@ -69,8 +75,12 @@ Subroutine genapwfr
                      Do ir = 1, nr
                         fr (ir) = p0 (ir, io1) * p0 (ir, io2)
                      End Do
+#ifdef integlib
+                     Call integ_v_mt(nr, is, fr, t1)
+#else
                      Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                      t1 = gr (nr)
+#endif
                      p1s (io1) = p1s (io1) - t1 * p1s (io2)
                      p0 (1:nr, io1) = p0 (1:nr, io1) - t1 * p0 (1:nr,io2)
                      p1 (1:nr, io1) = p1 (1:nr, io1) - t1 * p1 (1:nr,io2)
@@ -81,8 +91,13 @@ Subroutine genapwfr
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io1) ** 2
                   End Do
+#ifdef integlib
+                  Call integ_v_mt(nr, is, fr, t1)
+                  t1 = Abs(t1)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1 = Abs (gr(nr))
+#endif
                   If (t1 .Lt. 1.d-20) Then
                      Write (*,*)
                      Write (*, '("Error(genapwfr): degenerate APW radia&

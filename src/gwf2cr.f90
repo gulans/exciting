@@ -37,8 +37,8 @@ Subroutine gwf2cr (gwf2mt)
                         zfmt (lm, ir) = rwfcr (ir, 1, ist, ias) / spr &
                        & (ir, is)
                      End Do
-                     Call gradzfmt (input%groundstate%lmaxvr, nrmt(is), &
-                    & spr(:, is), lmmaxvr, nrmtmax, zfmt, gzfmt)
+                     Call gradzfmt1 (input%groundstate%lmaxvr, nrmt(is), &
+                    & spr(:, is), lmmaxvr, nrmtmax, zfmt, gzfmt,is)
                      Do i = 1, 3
                         Do ir = 1, nrmt (is)
                            Call zgemv ('N', lmmaxvr, lmmaxvr, zone, &

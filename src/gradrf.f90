@@ -25,8 +25,8 @@ Subroutine gradrf (rfmt, rfir, grfmt, grfir)
       Do is = 1, nspecies
          Do ia = 1, natoms (is)
             ias = idxas (ia, is)
-            Call gradrfmt (input%groundstate%lmaxvr, nrmt(is), spr(:, &
-           & is), lmmaxvr, nrmtmax, rfmt(:, :, ias), grfmt1)
+            Call gradrfmt1 (input%groundstate%lmaxvr, nrmt(is), spr(:, &
+           & is), lmmaxvr, nrmtmax, rfmt(:, :, ias), grfmt1,is)
             Do i = 1, 3
                grfmt (:, 1:nrmt(is), ias, i) = grfmt1 (:, 1:nrmt(is), &
               & i)

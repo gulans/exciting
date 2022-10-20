@@ -10,6 +10,7 @@ Subroutine chgdist(rhomtref,rhoirref)
   ! !USES:
   use modmain
   use constants, only: y00, fourpi
+  use modinteg
 ! !DESCRIPTION:
 !   Calculated the charge distance between two charge densities of the current
 !   and of the last iteration according to
@@ -30,7 +31,7 @@ Subroutine chgdist(rhomtref,rhoirref)
       real(8), intent(in) :: rhoirref(ngrtot)
 ! local variables
       Integer :: is, ia, ias, ir
-      real(8) :: sum, chgdstmt, chgdstir
+      real(8) :: sum, chgdstmt, chgdstir, t2
 ! automatic arrays
       real(8) :: fr (nrmtmax), gr (nrmtmax), hr1(lmmaxvr), hr2(lmmaxvr)
       real(8) :: cf (3, nrmtmax), sht00(lmmaxvr)
@@ -53,8 +54,13 @@ Subroutine chgdist(rhomtref,rhoirref)
                sht00(:)=rfshtvr(1,:)
                fr(ir)=ddot(lmmaxvr,hr2,1,sht00,1) * spr (ir, is) ** 2
             End Do
+#ifdef integlib
+            Call integ_v_mt(nrmt(is), is, fr, t2)
+#else
             Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
-            chgdstmt = chgdstmt + fourpi * y00 * gr (nrmt(is))
+            t2=gr (nrmt(is))
+#endif
+            chgdstmt = chgdstmt + fourpi * y00 *t2
          End Do
       End Do
 ! find the interstitial charge

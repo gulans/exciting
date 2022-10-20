@@ -126,8 +126,8 @@ Subroutine elfplot
          Do ia = 1, natoms (is)
             ias = idxas (ia, is)
 ! compute the gradient of the density
-            Call gradrfmt (input%groundstate%lmaxvr, nrmt(is), spr(:, &
-           & is), lmmaxvr, nrmtmax, rhomt(:, :, ias), grfmt)
+            Call gradrfmt1 (input%groundstate%lmaxvr, nrmt(is), spr(:, &
+           & is), lmmaxvr, nrmtmax, rhomt(:, :, ias), grfmt,is)
             Do ir = 1, nrmt (is)
 ! convert rho from spherical harmonics to spherical coordinates
                Call dgemv ('N', lmmaxvr, lmmaxvr, 1.d0, rbshtvr, &

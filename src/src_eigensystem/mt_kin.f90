@@ -15,6 +15,7 @@ Subroutine mt_kin(pot,basis,mt_h)
 ! !USES:
       Use modinput
       Use modmain
+      use modinteg
 ! !DESCRIPTION:
 !  Calculates the potential energy contribution to the muffin-tin Hamiltonian. 
 !
@@ -29,7 +30,7 @@ Subroutine mt_kin(pot,basis,mt_h)
       Integer :: is, ia, ias, nr, ir, if1,if3,inonz,ireset1,ireset3
       Integer :: l1, l2, l3, m2, lm2, m1, m3, lm1, lm3
       Integer :: ilo, ilo1, ilo2, io, io1, io2, maxnlo
-      Real (8) :: t1,t2,angular
+      Real (8) :: t1,t2,angular,t3
       Real (8), allocatable :: haaintegrals(:,:,:,:,:),halointegrals(:,:,:,:),hlolointegrals(:,:,:)
       Real (8) :: rmtable(nrmtmax),r2inv(nrmtmax)
       complex(8) :: zsum
@@ -123,8 +124,13 @@ Subroutine mt_kin(pot,basis,mt_h)
                     t2=basis%apwfr(ir, 2, io1, l1, ias)*basis%apwfr(ir, 2, io2, l1, ias)
                     fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir) )*r2 (ir)
                   End Do
+#ifdef integlib
+                  Call integ_v_mt(nr, is, fr, t3)
+#else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                  haaintegrals (1, io2, l1, io1, l1)= gr (nr) / y00
+                  t3=gr (nr)
+#endif
+                  haaintegrals (1, io2, l1, io1, l1)= t3 / y00
                 End Do
               End Do
             End Do
@@ -142,8 +148,13 @@ Subroutine mt_kin(pot,basis,mt_h)
                        t2=basis%apwfr(ir, 2, io, l1, ias)*basis%lofr(ir, 2, ilo, ias)
                        fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir))*r2 (ir)
                     End Do
+#ifdef integlib
+                    Call integ_v_mt(nr, is, fr, t3)
+#else
                     Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                    halointegrals (1, io, l3, ilo) = gr (nr) / y00
+                    t3=gr (nr)
+#endif
+                    halointegrals (1, io, l3, ilo) = t3 / y00
                   End Do
                 End If
               End Do
@@ -163,8 +174,13 @@ Subroutine mt_kin(pot,basis,mt_h)
                      t2=basis%lofr(ir, 2, ilo1, ias)*basis%lofr(ir, 2, ilo2, ias)
                      fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir))*r2 (ir)
                    End Do
+#ifdef integlib
+                   Call integ_v_mt(nr, is, fr, t3)
+#else
                    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
-                   hlolointegrals (1, ilo1, ilo2) = gr (nr) / y00
+                   t3=gr (nr)
+#endif
+                   hlolointegrals (1, ilo1, ilo2) = t3 / y00
                  End If
               End Do
             End Do

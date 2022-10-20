@@ -14,6 +14,7 @@ Subroutine addrhocr
 ! !USES:
   Use modmain
   use constants, only: pi, fourpi
+  use modinteg
 ! !DESCRIPTION:
 !   Adds the core density to the muffin-tin and interstitial densities. A
 !   uniform background density is added in the interstitial region to take into
@@ -26,7 +27,7 @@ Subroutine addrhocr
       Implicit None
 ! local variables
       Integer :: is, ia, ias, ir
-      Real (8) :: t1, sum1, sum2
+      Real (8) :: t1,t2, sum1, sum2
 ! automatic arrays
       Real (8) :: fr (nrmtmax), gr (nrmtmax), cf (3, nrmtmax)
       sum1 = 0.d0
@@ -41,8 +42,13 @@ Subroutine addrhocr
                fr (ir) = fourpi * rhocr (ir, ias) * spr (ir, is) ** 2
             End Do
 ! compute the core charge inside the muffin-tins
+#ifdef integlib
+            Call integ_v_mt (nrmt(is), is, fr, t2)
+#else
             Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
-            sum1 = sum1 + gr (nrmt(is))
+            t2 = gr (nrmt(is))
+#endif
+            sum1 = sum1 + t2
          End Do
          sum2 = sum2 + dble (natoms(is)) * (4.d0/3.d0) * pi * &
         & (rmt(is)**3)

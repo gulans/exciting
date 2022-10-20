@@ -146,9 +146,9 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
 !$OMP DO
          Do ia = 1, natoms (is)
             ias = idxas (ia, is)
-            Call zpotclmt (input%groundstate%ptnucl, &
+            Call zpotclmt1 (input%groundstate%ptnucl, &
             & input%groundstate%lmaxvr, nr(is), r(:, is), zn(is), &
-            & lmmaxvr, zrhomt(:, :, ias), zvclmt(:, :, ias))
+            & lmmaxvr, zrhomt(:, :, ias), zvclmt(:, :, ias),is)
             ias = idxas (ia, is)
          End Do
 !$OMP END DO

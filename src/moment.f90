@@ -16,6 +16,7 @@ Subroutine moment
       Use modmain
       use constants, only: pi, fourpi
       Use constants, only: y00
+      use modinteg
 ! !DESCRIPTION:
 !   Computes the muffin-tin, interstitial and total moments by integrating the
 !   magnetisation.
@@ -27,7 +28,7 @@ Subroutine moment
       Implicit None
 ! local variables
       Integer :: is, ia, ias, ir, idm
-      Real (8) :: sum
+      Real (8) :: sum, t1
 ! automatic arrays
       Real (8) :: fr (nrmtmax), gr (nrmtmax), cf (3, nrmtmax)
       If ( .Not. associated(input%groundstate%spin)) Then
@@ -47,8 +48,13 @@ Subroutine moment
                   fr (ir) = fourpi * magmt (1, ir, ias, idm) * y00 * &
                  & spr (ir, is) ** 2
                End Do
+#ifdef integlib
+               Call integ_v_mt(nrmt(is), is, fr, t1)
+#else
                Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
-               mommt (idm, ias) = gr (nrmt(is))
+               t1=gr(nrmt(is))
+#endif
+               mommt (idm, ias) = t1 
                mommttot (idm) = mommttot (idm) + mommt (idm, ias)
             End Do
          End Do
