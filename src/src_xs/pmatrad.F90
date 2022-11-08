@@ -91,7 +91,7 @@ Subroutine pmatrad
                                 & io1, l1, ias) * dapwfr (lm1, 1:nr, j, &
                                 & io2, lm3)
 #ifdef integlib
-                                 call integ_v_mt(nr,is,fr,t1)
+                                 call integ_v(nr,is,fr,t1,mt_integw)
 #else
                                  Call fderiv (-1, nr, spr(1, is), fr, &
                                 & gr, cf)
@@ -123,7 +123,7 @@ Subroutine pmatrad
                                 & io1, l1, ias) * dlofr (lm1, 1:nr, j, &
                                 & ilo, m3)
 #ifdef integlib
-                                 call integ_v_mt(nr,is,fr,t1)
+                                 call integ_v(nr,is,fr,t1, mt_integw)
 #else
                                  Call fderiv (-1, nr, spr(1, is), fr, &
                                 & gr, cf)
@@ -153,7 +153,7 @@ Subroutine pmatrad
                                 & ias) * dapwfr (lm1, 1:nr, j, io2, &
                                 & lm3)
 #ifdef integlib
-                                 call integ_v_mt(nr,is,fr,t1)
+                                 call integ_v(nr,is,fr,t1,mt_integw)
 #else
                                  Call fderiv (-1, nr, spr(1, is), fr, &
                                 & gr, cf)
@@ -183,7 +183,7 @@ Subroutine pmatrad
                              & ias) * dlofr (lm1, 1:nr, j, ilo2, m3)
 
 #ifdef integlib
-                                 call integ_v_mt(nr,is,fr,t1)
+                                 call integ_v(nr,is,fr,t1,mt_integw)
 #else
                                  Call fderiv (-1, nr, spr(1, is), fr, &
                                 & gr, cf)

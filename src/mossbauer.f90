@@ -88,7 +88,7 @@ Subroutine mossbauer
                fr (ir) = (fourpi*spr(ir, is)**2) * fr (ir)
             End Do
 #ifdef integlib
-            Call integ_v_atom ( nr, is, fr, t1)
+            Call integ_v ( nr, is, fr, t1,atom_integw)
 #else
             Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
             t1=gr (nr)
@@ -124,7 +124,7 @@ Subroutine mossbauer
                   fr (ir) = t1 * y00 * fourpi * spr (ir, is) ** 2
                End Do
 #ifdef integlib
-               Call integ_v_atom ( nr, is, fr, t1)
+               Call integ_v ( nr, is, fr, t1,atom_integw)
 #else
                Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                t1=gr (nr)

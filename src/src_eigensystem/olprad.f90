@@ -73,7 +73,7 @@ Subroutine olprad
                       fr (ir) = a*(0.5d0*t2*rm**2 + 0.5d0*angular*t1*rm**2/spr(ir,is)**2)*r2 (ir)
                     End Do
 #ifdef integlib
-                    Call integ_v_mt(nr, is, fr, t2)
+                    Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                     Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                     t2=gr(nr)
@@ -101,7 +101,7 @@ Subroutine olprad
                      fr (ir) = apwfr (ir, 1, io, l, ias) * lofr (ir, 1, ilo, ias) * r2 (ir)
                    End Do
 #ifdef integlib
-                  Call integ_v_mt(nr, is, fr, t2)
+                  Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t2=gr(nr)
@@ -117,7 +117,7 @@ Subroutine olprad
                      fr (ir) = (a*(0.5d0*t2*rm**2 + 0.5d0*angular*t1*rm**2/spr(ir,is)**2))*r2 (ir)
                    End Do
 #ifdef integlib
-                   Call integ_v_mt(nr, is, fr, t2)
+                   Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                    t2=gr(nr)
@@ -138,7 +138,7 @@ Subroutine olprad
                         fr (ir) = lofr (ir, 1, ilo1, ias) * lofr (ir, 1, ilo2, ias) * r2 (ir)
                       End Do
 #ifdef integlib
-                      Call integ_v_mt(nr, is, fr, t2)
+                      Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                       Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                       t2=gr(nr)
@@ -153,7 +153,7 @@ Subroutine olprad
                         fr (ir) = (a*(0.5d0*t2*rm**2 + 0.5d0*angular*t1*rm**2/spr(ir,is)**2))*r2 (ir)
                       End Do
 #ifdef integlib
-                      Call integ_v_mt(nr, is, fr, t2)
+                      Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                       Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                       t2=gr(nr)

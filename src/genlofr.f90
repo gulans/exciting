@@ -169,7 +169,7 @@ Subroutine genlofr
                      fr (ir) = p0 (ir, io2) ** 2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt(nr, is, fr, t1)
+                  Call integ_v(nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -223,7 +223,7 @@ Subroutine genlofr
                  fr (ir) = p0s (ir) ** 2
                End Do
 #ifdef integlib
-               Call integ_v_mt(nr, is, fr, t1)
+               Call integ_v(nr, is, fr, t1, mt_integw)
 #else
                Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                t1=gr(nr)

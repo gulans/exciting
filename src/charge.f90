@@ -40,7 +40,7 @@ Subroutine charge
                fr (ir) = rhomt (1, ir, ias) * spr (ir, is) ** 2
             End Do
 #ifdef integlib
-            Call integ_v_mt(nrmt(is), is, fr, t2)
+            Call integ_v(nrmt(is), is, fr, t2, mt_integw)
 #else
             Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
             t2= gr (nrmt(is))

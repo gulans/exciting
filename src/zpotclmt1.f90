@@ -78,11 +78,12 @@ Subroutine zpotclmt1 (ptnucl, lmax, nr, r, zn, ld, zrhomt, zvclmt,is)
                fr4 (ir) = t3 * t5
             End Do
 #ifdef integlib
-            Call integ_f_mt(nr, is, fr1, gr1)
-            Call integ_f_mt(nr, is, fr2, gr2)
-            Call integ_f_mt(nr, is, fr3, gr3)
-            Call integ_f_mt(nr, is, fr4, gr4)
+            Call integ_f(nr, is, fr1, gr1, mt_integw)
+            Call integ_f(nr, is, fr2, gr2, mt_integw)
+            Call integ_f(nr, is, fr3, gr3, mt_integw)
+            Call integ_f(nr, is, fr4, gr4, mt_integw)
 #else
+
 
             Call fderiv (-1, nr, r, fr1, gr1, cf)
             Call fderiv (-1, nr, r, fr2, gr2, cf)

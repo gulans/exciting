@@ -101,6 +101,38 @@ Subroutine atom1 (ptnucl, zn, nst, n, l, k, occ, xctype, xcgrad, nr, &
       If (xcgrad .Eq. 1) Then
          Allocate (grho(nr), g2rho(nr), g3rho(nr))
       End If
+
+if(.false.)then        
+      do ir=1,10
+      write(*,*)ir,r(ir)
+      enddo      
+      do ir=nr-10,nr
+      write(*,*)ir,r(ir)
+      enddo
+vn=r*exp(-r)
+vx=1d0-exp(-r)*(1d0+r)
+call integ_f(nr,is,vn,vh,atom_integw)
+
+Call fderiv (-1, nr, r, vn, gr1, cf)
+
+write(*,*)"integrals"
+do ir=1,10
+      write(*,*)vh(ir),gr1(ir),vx(ir)
+enddo
+ do ir=nr-10,nr
+      write(*,*)vh(ir),gr1(ir),vx(ir)
+enddo
+
+call integ_v(nr,is,vn,t1,atom_integw)
+
+write(*,*)"integral:",t1
+stop
+endif
+      
+      
+      
+      
+      
 ! find total electronic charge
       ze = 0.d0
       Do ist = 1, nst
@@ -158,8 +190,8 @@ Subroutine atom1 (ptnucl, zn, nst, n, l, k, occ, xctype, xcgrad, nr, &
             rho (ir) = (1.d0/fourpi) * sum * ri (ir) ** 2
          End Do
 #ifdef integlib
-         Call integ_f_atom ( nr, is, fr1, gr1)
-         Call integ_f_atom ( nr, is, fr2, gr2)
+         Call integ_f ( nr, is, fr1, gr1, atom_integw)
+         Call integ_f ( nr, is, fr2, gr2, atom_integw)
 #else
          Call fderiv (-1, nr, r, fr1, gr1, cf)
          Call fderiv (-1, nr, r, fr2, gr2, cf)

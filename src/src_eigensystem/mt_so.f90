@@ -97,7 +97,7 @@ if (.true.) then
 !            Call fderiv (1, nr, spr(:, is), fr, gr, cf)
             fr(1:nr)=rmtable (1:nr)
 #ifdef integlib
-            call deriv_f_mt(nr, is, fr, gr)
+            call deriv_f(nr, is, fr, gr, mt_integw)
 #else
             Call fderiv (1, nr, spr(:, is), fr, gr, cf)
 #endif
@@ -126,7 +126,7 @@ if (InterstitialSO) then
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2 
                   End Do
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -139,7 +139,7 @@ if (InterstitialSO) then
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -150,7 +150,7 @@ else
                     fr(ir)=basis_alpha%apwfr(ir, 1, io1, l1, ias)*basis_beta%apwfr(ir, 1, io2, l1, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -208,7 +208,7 @@ if (InterstitialSO) then
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -221,7 +221,7 @@ if (InterstitialSO) then
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -233,7 +233,7 @@ else
                     fr(ir)=basis_alpha%apwfr(ir, 1, io, l1, ias)*basis_beta%lofr(ir, 1, ilo, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -280,7 +280,7 @@ if (InterstitialSO) then
                   End Do
 
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -294,7 +294,7 @@ if (InterstitialSO) then
                   End Do
 
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -305,7 +305,7 @@ else
                     fr(ir)=basis_alpha%lofr(ir, 1, ilo, ias)*basis_beta%apwfr(ir, 1, io, l1, ias)*rmtable2(ir)*spr(ir,is)**2
                   enddo
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -375,7 +375,7 @@ if (InterstitialSO) then
                     fr (ir) =t1*t2*rmtable(ir)*spr(ir,is)**2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -388,7 +388,7 @@ if (InterstitialSO) then
                   End Do
 
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)
@@ -400,7 +400,7 @@ else
                   enddo
 
 #ifdef integlib
-                  Call integ_v_mt ( nr, is, fr, t1)
+                  Call integ_v ( nr, is, fr, t1, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t1=gr(nr)

@@ -125,7 +125,7 @@ Subroutine mt_kin(pot,basis,mt_h)
                     fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir) )*r2 (ir)
                   End Do
 #ifdef integlib
-                  Call integ_v_mt(nr, is, fr, t3)
+                  Call integ_v(nr, is, fr, t3, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t3=gr (nr)
@@ -149,7 +149,7 @@ Subroutine mt_kin(pot,basis,mt_h)
                        fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir))*r2 (ir)
                     End Do
 #ifdef integlib
-                    Call integ_v_mt(nr, is, fr, t3)
+                    Call integ_v(nr, is, fr, t3,mt_integw)
 #else
                     Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                     t3=gr (nr)
@@ -175,7 +175,7 @@ Subroutine mt_kin(pot,basis,mt_h)
                      fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir))*r2 (ir)
                    End Do
 #ifdef integlib
-                   Call integ_v_mt(nr, is, fr, t3)
+                   Call integ_v(nr, is, fr, t3,mt_integw)
 #else
                    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                    t3=gr (nr)

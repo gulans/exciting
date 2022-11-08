@@ -43,7 +43,7 @@ Subroutine addrhocr
             End Do
 ! compute the core charge inside the muffin-tins
 #ifdef integlib
-            Call integ_v_mt (nrmt(is), is, fr, t2)
+            Call integ_v (nrmt(is), is, fr, t2, mt_integw)
 #else
             Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
             t2 = gr (nrmt(is))

@@ -280,7 +280,7 @@ use modinteg
       endif
       
 #ifdef integlib
-      Call integ_v_atom ( nr, is, fr, t1)
+      Call integ_v ( nr, is, fr, t1,atom_integw)
 #else
       Call fderiv (-1, nr, r, fr, gr, cf)
       t1=gr(nr)

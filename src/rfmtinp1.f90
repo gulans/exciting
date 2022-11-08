@@ -76,7 +76,7 @@ use modinteg
         & (r(ir)**2)
       End Do
 #ifdef integlib
-      Call integ_v_mt(nr, is, fr, t2)
+      Call integ_v(nr, is, fr, t2, mt_integw)
 #else
       Call fderiv (-1, irc, rc, fr, gr, cf)
       t2= gr (nrmt(is))

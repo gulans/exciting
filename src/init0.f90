@@ -338,11 +338,8 @@ Subroutine init0
 !-----------------------!
 #ifdef integlib
 
-  d_order=9
-  i_order=9
-  integrate_0_r1=.true.
 
-  if (allocated(fintw_mt)) then
+if (allocated(mt_integw%fintw)) then
   call dealoc_icoef()
   call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
 

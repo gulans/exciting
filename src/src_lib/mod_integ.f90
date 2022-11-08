@@ -1,28 +1,27 @@
+!> Module to evaluate integrals and derivatives using Newton-Cotes and Lagrange polynomial interpolation methods respectively. 
 module modinteg
 implicit none 
+  !> Data type that holds arrays of coeficients that are used for integral and derivative evaluation. 
+Type IntegWeightsType
+      real(8), allocatable :: fintw(:, :, :) !!array of weigts to evaluate integral as a funciton
+      real(8), allocatable :: intw(:, :)     !!array of weigts to evaluate integral value
+      real(8), allocatable :: fderivw(:, :, :)
+      integer,allocatable :: istart(:,:)
+      integer,allocatable :: dstart(:,:)
+End Type IntegWeightsType
 
-real(8),allocatable :: fintw_mt(:,:,:)
-real(8),allocatable :: fintw_atom(:,:,:)
+Type(IntegWeightsType) :: mt_integw, atom_integw
 
-real(8),allocatable :: fderivw_mt(:,:,:)
-real(8),allocatable :: fderivw_atom(:,:,:)
-
-real(8),allocatable :: intw_mt(:,:)
-real(8),allocatable :: intw_atom(:,:)
-
-integer,allocatable :: istart_mt(:,:)
-integer,allocatable :: istart_atom(:,:)
-
-integer,allocatable :: dstart_mt(:,:)
-integer,allocatable :: dstart_atom(:,:)
 
 logical :: integrate_0_r1
 integer :: d_order
 integer :: i_order
+integer :: Npoints2
+real(8),allocatable :: w2(:)
 
 contains
 
-
+  !> Generates IntegWeigthType data type variables that consists of arrays for each species for grid of MT size and atom size
 subroutine gen_icoef(nspecies,nrmax,nrmt,nratom,r)
 
 implicit none
@@ -32,62 +31,86 @@ integer, intent(in) :: nrmt(nspecies)
 integer, intent(in) :: nratom(nspecies)
 real(8), intent(in) :: r(nrmax,nspecies)
 
-!!!!!module variables!!!!!!
 integer :: iNpoints, dNpoints
 integer :: isp
-integer  ::ir,i
+integer :: ir,i
+
+!!!!!global module variables!!!!!!
+
+d_order=9
+i_order=9
+integrate_0_r1=.true.
+Npoints2=2 ! 2,3 or 4   
+allocate(w2(Npoints2))
+
 iNpoints=i_order+1
 dNpoints=d_order+1
 
+allocate(mt_integw%fintw    (nrmax,iNpoints,nspecies))
+allocate(mt_integw%intw    (nrmax,nspecies))
+allocate(mt_integw%fderivw (nrmax,dNpoints,nspecies))
+allocate(mt_integw%istart  (nrmax,nspecies))
+allocate(mt_integw%dstart  (nrmax,nspecies))
 
-allocate(intw_mt(nrmax,nspecies))
-allocate(intw_atom(nrmax,nspecies))
-
-allocate(fintw_mt(nrmax,iNpoints,nspecies))
-allocate(fintw_atom(nrmax,iNpoints,nspecies))
-
-allocate(fderivw_mt(nrmax,dNpoints,nspecies))
-allocate(fderivw_atom(nrmax,dNpoints,nspecies))
-
-allocate(istart_mt(nrmax,nspecies))
-allocate(istart_atom(nrmax,nspecies))
+allocate(atom_integw%fintw    (nrmax,iNpoints,nspecies))
+allocate(atom_integw%intw    (nrmax,nspecies))
+allocate(atom_integw%fderivw (nrmax,dNpoints,nspecies))
+allocate(atom_integw%istart  (nrmax,nspecies))
+allocate(atom_integw%dstart  (nrmax,nspecies))
 
 
-allocate(dstart_mt(nrmax,nspecies))
-allocate(dstart_atom(nrmax,nspecies))
+mt_integw%fintw=0d0
+mt_integw%intw=0d0
+mt_integw%fderivw=0d0
+mt_integw%istart=0
+mt_integw%dstart=0
 
-write(*,*)"modint generate cefs, array size",nrmax
+atom_integw%fintw=0d0   
+atom_integw%intw=0d0   
+atom_integw%fderivw=0d0
+atom_integw%istart=0
+atom_integw%dstart=0
+
+
+
+
+if (Npoints2.eq.2) then !Trapezoidal rule
+        w2(1)=1d0
+        w2(2)=1d0
+        w2=w2/2d0
+elseif (Npoints2.eq.3) then !Simpson's rule
+        w2(1)=1d0
+        w2(2)=4d0
+        w2(3)=1d0
+        w2=1d0*w2/3d0
+elseif (Npoints2.eq.4) then !Simpson's 3/8 rule
+        w2(1)=1d0
+        w2(2)=3d0
+        w2(3)=3d0
+        w2(4)=1d0
+        w2=3d0*w2/8d0
+endif
 
 
 do isp=1, nspecies
-  write(*,*)"speces",isp," MT grid points",nrmt(isp)," atom: ",nratom(isp)
-  call gen_icoef_one_grid(nrmt(isp),& 
+  !write(*,*)"species",isp," MT grid points",nrmt(isp)," atom: ",nratom(isp)
+  call gen_icoef_one_grid(nrmt(isp),&
           r(1:nrmt(isp),isp),iNpoints,dNpoints,&
-          istart_mt(1:nrmt(isp),isp),dstart_mt(1:nrmt(isp),isp),&
-          intw_mt(1:nrmt(isp),isp),&
-          fintw_mt(1:nrmt(isp),:,isp),&
-          fderivw_mt(1:nrmt(isp),:,isp) )
-do ir=nrmt(isp)+1,nrmax
-istart_mt(ir,isp)=0
-dstart_mt(ir,isp)=0
-intw_mt(ir,isp)=0d0
-do i=1,iNpoints
-fintw_mt(ir,i,isp)=0d0
-enddo
-do i=1,dNpoints
-fderivw_mt(ir,i,isp)=0d0
-enddo
-enddo
+          mt_integw%istart(1:nrmt(isp),isp),mt_integw%dstart(1:nrmt(isp),isp),&
+          mt_integw%intw(1:nrmt(isp),isp),&
+          mt_integw%fintw(1:nrmt(isp),:,isp),&
+          mt_integw%fderivw(1:nrmt(isp),:,isp) )
 
   call gen_icoef_one_grid(nratom(isp),&
           r(1:nratom(isp),isp),iNpoints,dNpoints,&
-          istart_atom(1:nratom(isp),isp),dstart_atom(1:nratom(isp),isp),&
-          intw_atom(1:nratom(isp),isp),&
-          fintw_atom(1:nratom(isp),:,isp),&
-          fderivw_atom(1:nratom(isp),:,isp) )
-  
- 
+          atom_integw%istart(1:nratom(isp),isp),atom_integw%dstart(1:nratom(isp),isp),&
+          atom_integw%intw(1:nratom(isp),isp),&
+          atom_integw%fintw(1:nratom(isp),:,isp),&
+          atom_integw%fderivw(1:nratom(isp),:,isp) )
+
 enddo
+
+
 
 end subroutine
 
@@ -113,7 +136,6 @@ real(8) :: xx2(dNpoints)
 integer :: ir,i,j
 
 real(8) :: hh(Ngrid)
-
 
 if (iNpoints.eq.2) then !Trapezoidal rule
         w(1)=1d0
@@ -246,12 +268,22 @@ enddo
 !!!!!!!!!!!!!!!END Generate dstart array !!!!!!!!!!!!!!!
 
 !!!!!!!!!!!!!!!!!!!!Interpolation coeficients !!!!!!!!!!!!!!!!!!!!!
-
+if(.false.)then
 xx1(1)=0d0
 xx1(2:iNpoints)=r(1:iNpoints-1)
 do j=1,iNpoints-2
    call lagr_c(0d0+j*r(1)/(iNpoints-1),iNpoints,xx1,lc(1,:,j))
 enddo
+else
+xx1(1)=0d0
+xx1(2:Npoints2)=r(1:Npoints2-1)
+do j=1,Npoints2-2
+   call lagr_c(0d0+j*r(1)/(Npoints2-1),Npoints2,xx1,lc(1,1:Npoints2,j))
+enddo
+
+endif
+
+
 
 do ir=1,Ngrid-1
    do j=1,iNpoints-2  !How many points have to be interpolated in between grid points
@@ -270,11 +302,11 @@ do i=1, iNpoints
 enddo
 
 if (integrate_0_r1) then
-  icf(1,1)=icf(1,1)+w(1)
-  icf(1,2)=icf(1,2)+w(iNpoints)
-  do i=1, iNpoints
-    do j=1, iNpoints-2
-      icf(1,i)=icf(1,i)+w(j+1)*lc(1,i,j)
+  icf(1,1)=icf(1,1)+w2(1)
+  icf(1,2)=icf(1,2)+w2(Npoints2)
+  do i=1, Npoints2
+    do j=1, Npoints2-2
+      icf(1,i)=icf(1,i)+w2(j+1)*lc(1,i,j)
     enddo
   enddo
 endif
@@ -294,7 +326,7 @@ enddo
 
 
 do i=1, iNpoints
-  icf(1,i)=icf(1,i)*r(1)/(iNpoints-1)
+  icf(1,i)=icf(1,i)*r(1)/(Npoints2-1)
   do ir=1,Ngrid-1
      icf(ir+1,i)=icf(ir+1,i)*hh(ir)
   enddo
@@ -306,7 +338,7 @@ enddo
 
 icv=r*0d0
 
-do i=2, iNpoints
+do i=2, Npoints2
     icv(i-1)=icv(i-1)+icf(1,i)
 enddo
 
@@ -334,11 +366,15 @@ enddo
 
 end subroutine
 
-subroutine deriv_f_mt(Ngrid,isp,fin,fout)
+
+subroutine deriv_f(Ngrid,isp,fin,fout,integw)
 integer, intent(in) :: Ngrid
 integer, intent(in) :: isp
 real(8), intent(in) :: fin(Ngrid)
 real(8), intent(out) :: fout(Ngrid)
+Type(IntegWeightsType) , intent(in):: integw
+
+
 real(8) :: r1
 integer :: i,ir
 integer :: Npoints
@@ -347,144 +383,76 @@ Npoints=d_order+1
 do ir=1, Ngrid
   r1=0d0
   do i=1, Npoints
-    r1=r1+fderivw_mt(ir,i,isp)*fin(dstart_mt(ir,isp)+i-1)
-  enddo
-  fout(ir)=r1
-enddo
-end subroutine
+    r1=r1+integw%fderivw(ir,i,isp)*fin(integw%dstart(ir,isp)+i-1)
 
-subroutine deriv_f_atom(Ngrid,isp,fin,fout)
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-real(8), intent(in) :: fin(Ngrid)
-real(8), intent(out) :: fout(Ngrid)
-real(8) :: r1
-integer :: i,ir
-integer :: Npoints
-
-Npoints=d_order+1
-do ir=1, Ngrid
-  r1=0d0
-  do i=1, Npoints
-    r1=r1+fderivw_atom(ir,i,isp)*fin(dstart_atom(ir,isp)+i-1)
+    !r1=r1+fderivw_mt(ir,i,isp)*fin(dstart_mt(ir,isp)+i-1)
   enddo
   fout(ir)=r1
 enddo
 end subroutine
 
 
-subroutine integ_f_mt(Ngrid,isp,fin,fout)
+
+subroutine integ_f(Ngrid,isp,fin,fout,integw)
 integer, intent(in) :: Ngrid
-integer, intent(in) :: isp 
+integer, intent(in) :: isp
 real(8), intent(in) :: fin(Ngrid)
 real(8), intent(out) :: fout(Ngrid)
+Type(IntegWeightsType) , intent(in):: integw
+
 real(8) :: r1
 integer :: ir,i,Npoints
 
+
 Npoints=i_order+1
 if (integrate_0_r1) then
+
   r1=0d0
-  r1=r1+fintw_mt(1,1,isp)*0d0
-    do i=2, Npoints
-      r1=r1+fintw_mt(1,i,isp)*fin(i-1)
+  r1=r1+integw%fintw(1,1,isp)*0d0
+
+!  r1=r1+fintw_mt(1,1,isp)*0d0
+    do i=2, Npoints2
+      r1=r1+integw%fintw(1,i,isp)*fin(i-1)
+
+      !r1=r1+fintw_mt(1,i,isp)*fin(i-1)
     enddo
   fout(1)=r1
 else
   fout(1)=0d0
 endif
+
 do ir=1, Ngrid-1
   r1=0d0
   do i=1, Npoints
-    r1=r1+fintw_mt(ir+1,i,isp)*fin(istart_mt(ir,isp)+i-1)
+    r1=r1+integw%fintw(ir+1,i,isp)*fin(integw%istart(ir,isp)+i-1)
+
+!    r1=r1+fintw_mt(ir+1,i,isp)*fin(istart_mt(ir,isp)+i-1)
   enddo
   fout(ir+1)=fout(ir)+r1
 enddo
 end subroutine
 
 
-subroutine integ_f_atom(Ngrid,isp,fin,fout)
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-real(8), intent(in) :: fin(Ngrid)
-real(8), intent(out) :: fout(Ngrid)
-real(8) :: r1
-integer :: ir,i,Npoints
-
-Npoints=i_order+1
-if (integrate_0_r1) then
-  r1=0d0
-  r1=r1+fintw_mt(1,1,isp)*0d0
-    do i=2, Npoints
-      r1=r1+fintw_mt(1,i,isp)*fin(i-1)
-    enddo
-  fout(1)=r1
-else
-  fout(1)=0d0
-endif
-do ir=1, Ngrid-1
-  r1=0d0
-  do i=1, Npoints
-    r1=r1+fintw_atom(ir+1,i,isp)*fin(istart_atom(ir,isp)+i-1)
-  enddo
-  fout(ir+1)=fout(ir)+r1
-enddo
-end subroutine
-
-
-
-!subroutine integ_f_rev(Ngrid,r,fin,fout)
-!integer, intent(in) :: Ngrid
-!real(8), intent(in) :: r(Ngrid)
-!real(8), intent(in) :: fin(Ngrid)
-!real(8), intent(out) :: fout(Ngrid)
-!real(8) :: r1
-!integer :: ir,i,Npoints
-!Npoints=i_order+1
-!fout(Ngrid)=0d0
-!do ir=Ngrid-1, Ngrid-int(Npoints/2),-1
-!  !interpolation gives incorect results if the fin functioon is small in the current point, but is a few orders higher around the
-!  !point ,trapezoidal rule is used insead:
-!  fout(ir)=fout(ir+1)+(r(ir+1)-r(ir))*(fin(ir)+fin(ir+1))/2d0
-!enddo
-!do ir=Ngrid-int(Npoints/2)-1, 1,-1
-!  r1=0d0
-!  do i=1, Npoints
-!    r1=r1+icf(ir+1,i)*fin(istart(ir)+i-1)
-!  enddo
-!  fout(ir)=fout(ir+1)+r1
-!enddo
-!end subroutine
-
-subroutine integ_v_mt(Ngrid,isp,fin,vout)
+subroutine integ_v(Ngrid,isp,fin,vout,integw)
 integer, intent(in) :: Ngrid
 integer, intent(in) :: isp
 real(8), intent(in) :: fin(Ngrid)
 real(8), intent(out) :: vout
+Type(IntegWeightsType) , intent(in):: integw
+
 real(8) :: r1
 integer :: ir
 r1=0d0
 
 do ir=1, Ngrid
-   r1=r1+intw_mt(ir,isp)*fin(ir)
+   r1=r1+integw%intw(ir,isp)*fin(ir)
+
+!   r1=r1+intw_mt(ir,isp)*fin(ir)
 
 enddo
 vout=r1
 end subroutine
 
-subroutine integ_v_atom(Ngrid,isp,fin,vout)
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-real(8), intent(in) :: fin(Ngrid)
-real(8), intent(out) :: vout
-real(8) :: r1
-integer :: ir
-r1=0d0
-
-do ir=1, Ngrid
-  r1=r1+intw_atom(ir,isp)*fin(ir)
-enddo
-vout=r1
-end subroutine
 
 
 subroutine lagr_c(xx,k,x,l)
@@ -537,20 +505,18 @@ end subroutine
 
 subroutine dealoc_icoef()
 implicit none
-deallocate(fintw_mt)
-deallocate(fintw_atom)
 
-deallocate(fderivw_mt)
-deallocate(fderivw_atom)
+deallocate(mt_integw%fintw)
+deallocate(mt_integw%intw)
+deallocate(mt_integw%fderivw)
+deallocate(mt_integw%istart)
+deallocate(mt_integw%dstart)
 
-deallocate(intw_mt)
-deallocate(intw_atom)
-
-deallocate(istart_mt)
-deallocate(istart_atom)
-
-deallocate(dstart_mt)
-deallocate(dstart_atom)
+deallocate(atom_integw%fintw)
+deallocate(atom_integw%intw)
+deallocate(atom_integw%fderivw)
+deallocate(atom_integw%istart)
+deallocate(atom_integw%dstart)
 
 end subroutine
 

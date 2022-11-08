@@ -114,8 +114,8 @@ Subroutine gendmat (tspndg, tlmdg, lmin, lmax, is, ia, ngp, apwalm, &
                            fr2 (irc) = aimag (zt1) * t1
                         End Do
 #ifdef integlib
-                       call integ_v_mt(nrcmt(is),is,fr1,t1)
-                       call integ_v_mt(nrcmt(is),is,fr2,t2)
+                       call integ_v(nrcmt(is),is,fr1,t1,mt_integw)
+                       call integ_v(nrcmt(is),is,fr2,t2,mt_integw)
 #else
                        Call fderiv (-1, nrcmt(is), rcmt(:, is), fr1, &
                        & gr, cf)

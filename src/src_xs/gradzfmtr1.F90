@@ -63,7 +63,7 @@ use modinteg
   ! compute the radial derivatives
       f (1:nr) = fmt (1:nr)
 #ifdef integlib
-      call deriv_f_mt(nr,is,f,g1)
+      call deriv_f(nr,is,f,g1,mt_integw)
 #else
       Call fderiv (1, nr, r, f, g1, cf)
 #endif

@@ -59,7 +59,7 @@ Subroutine genapwfr
                      fr (ir) = p0 (ir, io1) ** 2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt(nr, is, fr, t2)
+                  Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                   t2=gr(nr)
@@ -76,7 +76,7 @@ Subroutine genapwfr
                         fr (ir) = p0 (ir, io1) * p0 (ir, io2)
                      End Do
 #ifdef integlib
-                     Call integ_v_mt(nr, is, fr, t1)
+                     Call integ_v(nr, is, fr, t1, mt_integw)
 #else
                      Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                      t1 = gr (nr)
@@ -92,7 +92,7 @@ Subroutine genapwfr
                      fr (ir) = p0 (ir, io1) ** 2
                   End Do
 #ifdef integlib
-                  Call integ_v_mt(nr, is, fr, t1)
+                  Call integ_v(nr, is, fr, t1, mt_integw)
                   t1 = Abs(t1)
 #else
                   Call fderiv (-1, nr, spr(:, is), fr, gr, cf)

@@ -127,7 +127,7 @@ Subroutine mt_pot(pot,basis,mt_h)
 ! Radial integrals first
 #ifdef USEOMP
 !xOMP PARALLEL DEFAULT(NONE) SHARED(input,apword,lmmaxvr,mfromlm,lfromlm,apwfr,r2,pot,spr,nr,haaintegrals,is,ias,rmtable,r2inv) PRIVATE(lm2,m2,l2,ir,t1,fr,gr,cf,l1,l3,t2,angular,io1,io2)
-!$OMP PARALLEL DEFAULT(NONE) SHARED(lorbl,nlorb,input,apword,lmmaxvr,mfromlm,lfromlm,apwfr,lofr,r2,pot,spr,nr,haaintegrals,hlolointegrals,halointegrals,is,ias,rmtable,r2inv) PRIVATE(lm2,m2,l2,ir,t1,fr,gr,cf,l1,l3,t2,angular,io1,io2,ilo1,ilo2,io,ilo)
+!$OMP PARALLEL DEFAULT(NONE) SHARED(lorbl,nlorb,input,apword,lmmaxvr,mfromlm,lfromlm,apwfr,lofr,r2,pot,spr,nr,haaintegrals,hlolointegrals,halointegrals,is,ias,rmtable,r2inv, mt_integw) PRIVATE(lm2,m2,l2,ir,t1,fr,gr,cf,l1,l3,t2,angular,io1,io2,ilo1,ilo2,io,ilo)
 #endif
             Do l1 = 0, input%groundstate%lmaxmat
                Do io1 = 1, apword (l1, is)
@@ -144,7 +144,7 @@ Subroutine mt_pot(pot,basis,mt_h)
                             fr (ir) = t1 * pot (lm2, ir, ias)
                           End Do
 #ifdef integlib
-                            Call integ_v_mt(nr, is, fr, t2)
+                            Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                             Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                             t2=gr(nr)
@@ -184,7 +184,7 @@ Subroutine mt_pot(pot,basis,mt_h)
                          fr (ir) = t1 * pot (lm2, ir, ias)
                        End Do
 #ifdef integlib
-                       Call integ_v_mt(nr, is, fr, t2)
+                       Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                        Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                        t2=gr(nr)
@@ -220,7 +220,7 @@ Subroutine mt_pot(pot,basis,mt_h)
                       fr (ir) = t1 * pot (lm2, ir, ias)
                     End Do
 #ifdef integlib
-                    Call integ_v_mt(nr, is, fr, t2)
+                    Call integ_v(nr, is, fr, t2, mt_integw)
 #else
                     Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                     t2=gr(nr)

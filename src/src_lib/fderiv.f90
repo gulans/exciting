@@ -44,7 +44,7 @@ Subroutine fderiv (m, n, x, f, g, cf)
 !      Real (8):: cf2 (4, n)
 
 write(*,*)"fderiv.f90"
-read(*,*)
+!read(*,*)
    If (n .Le. 0) Then
          Write (*,*)
          Write (*, '("Error(fderiv): invalid number of points : ", I8)') n

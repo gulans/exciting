@@ -49,7 +49,7 @@ Subroutine moment
                  & spr (ir, is) ** 2
                End Do
 #ifdef integlib
-               Call integ_v_mt(nrmt(is), is, fr, t1)
+               Call integ_v(nrmt(is), is, fr, t1,mt_integw)
 #else
                Call fderiv (-1, nrmt(is), spr(:, is), fr, gr, cf)
                t1=gr(nrmt(is))
