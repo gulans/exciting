@@ -1,46 +1,58 @@
-!> Module to evaluate integrals and derivatives using Newton-Cotes and Lagrange polynomial interpolation methods respectively. 
+!> Module to evaluate radial integrals and derivatives using Newton-Cotes and Lagrange polynomial interpolation methods. 
 module modinteg
 implicit none 
-  !> Data type that holds arrays of coeficients that are used for integral and derivative evaluation. 
+  !> Data type that holds arrays of coefficients that are used for integral and derivative evaluation. 
 Type IntegWeightsType
-      real(8), allocatable :: fintw(:, :, :) !!array of weigts to evaluate integral as a funciton
-      real(8), allocatable :: intw(:, :)     !!array of weigts to evaluate integral value
-      real(8), allocatable :: fderivw(:, :, :)
-      integer,allocatable :: istart(:,:)
-      integer,allocatable :: dstart(:,:)
+      real(8), allocatable :: fintw(:, :, :)   !!array of weights to evaluate integral as a function
+      real(8), allocatable :: intw(:, :)       !!array of weights to evaluate integral value
+      real(8), allocatable :: fderivw(:, :, :) !!array of weights to evaluate derivative as a function
+      integer,allocatable :: istart(:,:)       !!array of grid point indexes for the beginning of the range that is being used for
+                                               !!interpolation during integral calculation 
+      integer,allocatable :: dstart(:,:)       !!array of grid point indexes for the beginning of the range that is being used for
+                                               !!interpolation during derivative calculation
+
 End Type IntegWeightsType
 
-Type(IntegWeightsType) :: mt_integw, atom_integw
-
-
-logical :: integrate_0_r1
-integer :: d_order
-integer :: i_order
-integer :: Npoints2
-real(8),allocatable :: w2(:)
+Type(IntegWeightsType) :: mt_integw    !!all the arrays of coefficients that are used for integral and derivative evaluation
+                                       !!for mt region for all the atom species
+Type(IntegWeightsType) :: atom_integw  !!all the arrays of coeficients that are used for integral and derivative evaluation
+                                       !!for atom grid for all the atom species
+integer :: i_order           !! order of the interpolated polynomial (can be set from 1 to 10) for integral calculation.
+integer :: d_order           !! order of the interpolated polynomial (can be set from 1 to 10) for derivative calculation.
+logical :: integrate_0_r1    !! region between r=0 and r(1) is included in the integrals, if integrate_0_r1=True
+integer :: i_order2          !! order of the polynomial used for interpolation between r=0 and r(1) (can be set from 1 to 3)
+real(8),allocatable :: w2(:) !! array of Newton-Cotes coefficients for interpolation between r=0 and r(1). 
 
 contains
 
-  !> Generates IntegWeigthType data type variables that consists of arrays for each species for grid of MT size and atom size
+!> Stores all the needed arrays in IntegWeigthType data type variables for each species for MT grid and atom grid.
 subroutine gen_icoef(nspecies,nrmax,nrmt,nratom,r)
-
 implicit none
-integer, intent(in) :: nspecies
-integer, intent(in) :: nrmax
-integer, intent(in) :: nrmt(nspecies)
-integer, intent(in) :: nratom(nspecies)
-real(8), intent(in) :: r(nrmax,nspecies)
+integer, intent(in) :: nspecies          !! number of atom species
+integer, intent(in) :: nrmax             !! the largest grid size   
+integer, intent(in) :: nrmt(nspecies)    !! MT grid size for all species 
+integer, intent(in) :: nratom(nspecies)  !! atom grid size for all species 
+real(8), intent(in) :: r(nrmax,nspecies) !! all the radial grids for all species
 
-integer :: iNpoints, dNpoints
+integer :: iNpoints, dNpoints, Npoints2
 integer :: isp
 integer :: ir,i
 
-!!!!!global module variables!!!!!!
 
-d_order=9
-i_order=9
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+! Variables to adjust module settings !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+d_order=10  
+i_order=8
 integrate_0_r1=.true.
-Npoints2=2 ! 2,3 or 4   
+i_order2=1 ! 1,2 or 3   
+
+!!!!!!!!!!!!!!!!!!!! 
+! End of Variables !
+!!!!!!!!!!!!!!!!!!!!
+
+Npoints2=i_order2+1
 allocate(w2(Npoints2))
 
 iNpoints=i_order+1
@@ -71,9 +83,6 @@ atom_integw%fderivw=0d0
 atom_integw%istart=0
 atom_integw%dstart=0
 
-
-
-
 if (Npoints2.eq.2) then !Trapezoidal rule
         w2(1)=1d0
         w2(2)=1d0
@@ -93,7 +102,6 @@ endif
 
 
 do isp=1, nspecies
-  !write(*,*)"species",isp," MT grid points",nrmt(isp)," atom: ",nratom(isp)
   call gen_icoef_one_grid(nrmt(isp),&
           r(1:nrmt(isp),isp),iNpoints,dNpoints,&
           mt_integw%istart(1:nrmt(isp),isp),mt_integw%dstart(1:nrmt(isp),isp),&
@@ -110,32 +118,38 @@ do isp=1, nspecies
 
 enddo
 
-
-
 end subroutine
 
 
-
+  !> Generates and returns all the needed coefficients for one given grid.
 subroutine gen_icoef_one_grid(Ngrid,r,iNpoints,dNpoints,istart1,dstart1,icv,icf,dcf)
 implicit none
-integer, intent(in) :: Ngrid
-real(8), intent(in) :: r(Ngrid)
-integer, intent(in) :: iNpoints
-integer, intent(in) :: dNpoints
-integer, intent(out) :: istart1(Ngrid)
-integer, intent(out) :: dstart1(Ngrid)
-real(8), intent(out) :: icv(Ngrid)          !icv(Integral Coefficients value) 
-real(8), intent(out) :: dcf(Ngrid,dNpoints) !dcf(derivative Coefficients function) 
-real(8), intent(out) :: icf(Ngrid,iNpoints) !icf(Integral Coefficients function)
+integer, intent(in) :: Ngrid             !! number of grid points
+real(8), intent(in) :: r(Ngrid)          !! grid 
+integer, intent(in) :: iNpoints          !! number of grid points being used in interpolation during integral calculations
+integer, intent(in) :: dNpoints          !! number of grid points being used in interpolation during derivative calculations
+integer, intent(out) :: istart1(Ngrid)   !! array of grid point indexes for the beginning of the range that is being used for
+                                         !! interpolation during integral calculation
+integer, intent(out) :: dstart1(Ngrid)   !! array of grid point indexes for the beginning of the range that is being used for
+                                         !! interpolation during derivative calculation
+real(8), intent(out) :: icv(Ngrid)          !! array of weights to evaluate integral value
+real(8), intent(out) :: dcf(Ngrid,dNpoints) !! array of weights to evaluate derivative as a function
+real(8), intent(out) :: icf(Ngrid,iNpoints) !! array of weights to evaluate integral as a function
 
 
 real(8) :: w(iNpoints)
 real(8) :: lc(Ngrid,iNpoints,iNpoints-2)
 real(8) :: xx1(iNpoints)   !Grid section
-real(8) :: xx2(dNpoints)
+real(8) :: xx2(dNpoints)   !Grid section
+integer :: Npoints2
 integer :: ir,i,j
-
 real(8) :: hh(Ngrid)
+
+Npoints2=i_order2+1
+
+!--------------------------!
+! Newton-Cotes coefficents !
+!--------------------------!
 
 if (iNpoints.eq.2) then !Trapezoidal rule
         w(1)=1d0
@@ -224,13 +238,13 @@ elseif (iNpoints.eq.11) then
         w=5d0*w/299376d0
 endif
 
-
 do ir=1,Ngrid-1
   hh(ir)=(r(ir+1)-r(ir))/(iNpoints-1)
 enddo
 
-!!!!!!!!!!!!!!!Generate istart array !!!!!!!!!!!!!!!
-
+!-----------------------!
+! Generate istart array !
+!-----------------------!
 do ir=1,int(iNpoints/2)
    istart1(ir)=1
 enddo
@@ -245,10 +259,9 @@ do ir=Ngrid-int(iNpoints/2),Ngrid-1
    istart1(ir)=Ngrid-iNpoints+1
 enddo
 
-
-!!!!!!!!!!!!!!!END Generate istart array !!!!!!!!!!!!!!!
-
-!!!!!!!!!!!!!!!Generate dstart array !!!!!!!!!!!!!!!
+!-----------------------!
+! Generate dstart array !
+!-----------------------!
 
 do ir=1,int(dNpoints/2)
    dstart1(ir)=1
@@ -264,26 +277,15 @@ do ir=Ngrid-int(dNpoints/2),Ngrid
    dstart1(ir)=Ngrid-dNpoints+1
 enddo
 
+!------------------------------------!
+! Generate interpolation coeffiencts !
+!------------------------------------!
 
-!!!!!!!!!!!!!!!END Generate dstart array !!!!!!!!!!!!!!!
-
-!!!!!!!!!!!!!!!!!!!!Interpolation coeficients !!!!!!!!!!!!!!!!!!!!!
-if(.false.)then
-xx1(1)=0d0
-xx1(2:iNpoints)=r(1:iNpoints-1)
-do j=1,iNpoints-2
-   call lagr_c(0d0+j*r(1)/(iNpoints-1),iNpoints,xx1,lc(1,:,j))
-enddo
-else
 xx1(1)=0d0
 xx1(2:Npoints2)=r(1:Npoints2-1)
 do j=1,Npoints2-2
    call lagr_c(0d0+j*r(1)/(Npoints2-1),Npoints2,xx1,lc(1,1:Npoints2,j))
 enddo
-
-endif
-
-
 
 do ir=1,Ngrid-1
    do j=1,iNpoints-2  !How many points have to be interpolated in between grid points
@@ -292,10 +294,9 @@ do ir=1,Ngrid-1
    enddo
 enddo
 
-!!!!!!!!!!!!!!!!!!!! END Interpolation coeficients!!!!!!!!!!!!!!!!!!!!!
-
-
-!!!!!!!!!!!!!!!!!!!! Build array of coficients to get function
+!--------------------------------------------------------------------!
+! Build an array of coficients for integral evaluation as a function !
+!--------------------------------------------------------------------!
 
 do i=1, iNpoints
   icf(:,i)=0d0*r
@@ -332,12 +333,12 @@ do i=1, iNpoints
   enddo
 enddo
 
-!!!!!!!!!!!!!!!!!!!!END Build array of coficients to get function
-
-!!!!!!!!!!!!!!!!!!!! Build array of coficients to get integral value
+!------------------------------------------------------------!
+! Build an array of coficients for integral value evaluation !
+!------------------------------------------------------------!
 
 icv=r*0d0
-
+        
 do i=2, Npoints2
     icv(i-1)=icv(i-1)+icf(1,i)
 enddo
@@ -349,31 +350,24 @@ do ir=1, Ngrid-1
 
 enddo
 
-
-!!!!!!!!!!!!!!!!!!!!END Build array of coficients to get integral value
-
-
-
-
-!!!!!!!!!!!!!!!!!!!! Build array of coficients to get derivative function
+!--------------------------------------------------------!
+! Build an array of coficients for derivative evaluation !
+!--------------------------------------------------------!
 
 do ir=1,Ngrid
   xx2=r(dstart1(ir):dstart1(ir)+dNpoints-1)
   call lagr_c_d(r(ir),dNpoints,xx2,dcf(ir,:))
 enddo
 
-!!!!!!!!!!!!!!!!!!!! Build array of coficients to get derivative function
-
 end subroutine
 
-
+!> Evaluates derivative for the given function
 subroutine deriv_f(Ngrid,isp,fin,fout,integw)
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-real(8), intent(in) :: fin(Ngrid)
-real(8), intent(out) :: fout(Ngrid)
-Type(IntegWeightsType) , intent(in):: integw
-
+integer, intent(in) :: Ngrid !! Number of grid points
+integer, intent(in) :: isp   !! species index
+real(8), intent(in) :: fin(Ngrid) !! input function
+real(8), intent(out) :: fout(Ngrid) !! output function (derivative)
+Type(IntegWeightsType) , intent(in):: integw !! coefficient array, that lets the subroutine distinguish if this is a MT or atom grid 
 
 real(8) :: r1
 integer :: i,ir
@@ -384,37 +378,31 @@ do ir=1, Ngrid
   r1=0d0
   do i=1, Npoints
     r1=r1+integw%fderivw(ir,i,isp)*fin(integw%dstart(ir,isp)+i-1)
-
-    !r1=r1+fderivw_mt(ir,i,isp)*fin(dstart_mt(ir,isp)+i-1)
   enddo
   fout(ir)=r1
 enddo
 end subroutine
 
-
-
+!> Evaluates integral function for the given function
 subroutine integ_f(Ngrid,isp,fin,fout,integw)
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-real(8), intent(in) :: fin(Ngrid)
-real(8), intent(out) :: fout(Ngrid)
-Type(IntegWeightsType) , intent(in):: integw
+integer, intent(in) :: Ngrid  !! Number of grid points
+integer, intent(in) :: isp    !! species index
+real(8), intent(in) :: fin(Ngrid) !! input function
+real(8), intent(out) :: fout(Ngrid) !! output function (derivative)
+Type(IntegWeightsType) , intent(in):: integw !! coefficient array, that lets the subroutine distinguish if this is a MT or atom grid
 
 real(8) :: r1
-integer :: ir,i,Npoints
+integer :: ir,i,Npoints,Npoints2
 
+Npoints2=i_order2+1
 
 Npoints=i_order+1
-if (integrate_0_r1) then
 
+if (integrate_0_r1) then
   r1=0d0
   r1=r1+integw%fintw(1,1,isp)*0d0
-
-!  r1=r1+fintw_mt(1,1,isp)*0d0
     do i=2, Npoints2
       r1=r1+integw%fintw(1,i,isp)*fin(i-1)
-
-      !r1=r1+fintw_mt(1,i,isp)*fin(i-1)
     enddo
   fout(1)=r1
 else
@@ -425,46 +413,43 @@ do ir=1, Ngrid-1
   r1=0d0
   do i=1, Npoints
     r1=r1+integw%fintw(ir+1,i,isp)*fin(integw%istart(ir,isp)+i-1)
-
-!    r1=r1+fintw_mt(ir+1,i,isp)*fin(istart_mt(ir,isp)+i-1)
   enddo
   fout(ir+1)=fout(ir)+r1
 enddo
 end subroutine
 
-
+  !> Evaluates integral value for the given function
 subroutine integ_v(Ngrid,isp,fin,vout,integw)
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-real(8), intent(in) :: fin(Ngrid)
-real(8), intent(out) :: vout
-Type(IntegWeightsType) , intent(in):: integw
+integer, intent(in) :: Ngrid  !! Number of grid points
+integer, intent(in) :: isp    !! species index
+real(8), intent(in) :: fin(Ngrid) !! input function
+real(8), intent(out) :: vout !! output (result)
+Type(IntegWeightsType) , intent(in):: integw  !! coefficient array, that lets the subroutine distinguish if this is a MT or atom grid
 
 real(8) :: r1
 integer :: ir
 r1=0d0
 
+!can be done with dot product
 do ir=1, Ngrid
    r1=r1+integw%intw(ir,isp)*fin(ir)
-
-!   r1=r1+intw_mt(ir,isp)*fin(ir)
-
 enddo
 vout=r1
 end subroutine
 
 
-
+   !> Calculates Lagrange interpolation coefficients
 subroutine lagr_c(xx,k,x,l)
 implicit none
-integer, intent(in) :: k
-real(8), intent(in) :: x(k),xx
-real(8), intent(out):: l(k)
+
+real(8), intent(in) :: xx   !! coordinate on the grid where the interpolation is needed
+integer, intent(in) :: k    !! k-1 - order of the polynomial
+real(8), intent(in) :: x(k) !! section of the grid region that is being used for interpolation
+real(8), intent(out):: l(k) !! result - Lagrange interpolation coefficients
 
 real(8) :: prod
 integer :: i,j,m
 
-!Get coeficients
 do j=1,k
  prod=1d0
   do m=1,k
@@ -476,11 +461,13 @@ do j=1,k
 enddo
 end subroutine
 
+   !> Calculates Lagrange interpolation coefficients for derivative
 subroutine lagr_c_d(xx,k,x,l)
 implicit none
-integer, intent(in) :: k
-real(8), intent(in) :: x(k),xx
-real(8), intent(out):: l(k)
+real(8), intent(in) :: xx   !! coordinate on the grid where the derivative is needed
+integer, intent(in) :: k    !! k-1 - order of the polynomial
+real(8), intent(in) :: x(k) !! section of the grid region that is being used for interpolation
+real(8), intent(out):: l(k) !! result - Lagrange interpolation coefficients for derivative
 
 real(8) :: prod
 integer :: i,j,m
@@ -503,7 +490,8 @@ enddo
 
 end subroutine
 
-subroutine dealoc_icoef()
+!>Deallocates both wariables mt_integw and atom_integw
+subroutine dealloc_icoef()
 implicit none
 
 deallocate(mt_integw%fintw)

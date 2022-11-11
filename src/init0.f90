@@ -340,7 +340,7 @@ Subroutine init0
 
 
 if (allocated(mt_integw%fintw)) then
-  call dealoc_icoef()
+  call dealloc_icoef()
   call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
 
   else
