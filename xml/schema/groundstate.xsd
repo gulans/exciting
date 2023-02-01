@@ -358,6 +358,29 @@
                 </xs:restriction>
               </xs:simpleType>
             </xs:attribute>
+            <xs:attribute ex:importance="expert" ex:unit="" name="HSEsingularity" default="Taylor">
+              <xs:annotation>
+                  <xs:documentation> Method to compute the HSE singualarity integral constructed 
+                     employing the isotropic average method.
+	             <list>
+                     <li> Taylor (default): the exponent in the argument of the integral is expanded
+                         in a Taylor series up to the second order before the integral is solved.
+                         This method is the same employed by Betzinger <it> et al. </it>, <it> Phys. Rev. B </it>
+                         <bf>84 </bf>, 125142 (2011). Not suitable for small value of the screening parameter. </li> 
+                      <li>  Exact: The integral is solved exactly. This method is the one adviced for value
+                         of the screening parameter lower than 0.11 <inlinemath>a_0^{-1}</inlinemath>. 
+                         More information can be found in Vona <it> et al. </it>,<it>Adv. Theory Simul.</it>, 
+                         <bf>5 </bf>, 2100496 (2022). </li>
+                      </list> 
+                  </xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="Taylor"/>
+                  <xs:enumeration value="Exact"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
             <xs:attribute ex:importance="essential" ex:unit="" name="excoeff" type="fortrandouble"
               default="0.25d0">
               <xs:annotation>
