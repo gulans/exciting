@@ -173,6 +173,11 @@ hybrid/EXX-C:
 # TODO(Cecilia) Issue 54. HSE and PBE0 sometimes fail in our CI pipeline within Intel MPIANDSMP build
 #  - Repeating the test changes the results each time but the diff is never < tolerances.
 #  - Only occurs in the CI pipeline.
+hybrid/HSE-Si-exact-singularity:
+   failing_builds:
+      - intel_mpiandsmp
+   comments: 'Test is flakey when run in the CI with Intel parallel build.'
+
 hybrid/HSE-Si:
    failing_builds:
       - intel_mpiandsmp

@@ -1,4 +1,4 @@
-!> Module for unit tests for for the functions in math_utils.
+!> Module for unit tests for the functions in math_utils.
 
 module math_utils_test
   use precision, only: dp

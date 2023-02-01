@@ -14,6 +14,7 @@ warn: false
 search: false  
 proc_internals: false  
 src_dir: ../src/src_gw  
+         ../src/src_hybrids
          ../src/input
          ../src/testframework
          ../src/lapack_wrappers

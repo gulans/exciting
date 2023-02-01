@@ -13,6 +13,7 @@ module unit_test_drivers
    use testframework_test_drivers, only: testframework_test_driver
    use char_utils_test_drivers, only: char_utils_test_driver
    use simplified_input_test_drivers, only: simplified_input_test_driver
+   use hybrids_test_drivers, only: hybrids_test_driver
 
    implicit none
    private
@@ -92,6 +93,10 @@ contains
 
       if (run%testframework .or. run%all) then
          call testframework_test_driver(mpiglobal, kill_on_failure)
+      end if
+
+      if (run%hybrids .or. run%all) then         
+         call hybrids_test_driver(mpiglobal, kill_on_failure) 
       end if
 
    end subroutine unit_test_driver
