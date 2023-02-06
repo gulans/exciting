@@ -150,13 +150,12 @@ subroutine scf_cycle(verbosity)
     If ((rank .Eq. 0) .And. ((task .Eq. 0) .Or. (task .Eq. 2))) Call delevec()
 
 !! TIME - First IO segment
-    Call timesec (ts0)
 !----------------------------------------!
 ! begin the self-consistent loop
 !----------------------------------------!
     call stopwatch("exciting:scf", 1)
     Do iscl = 1, input%groundstate%maxscl
-!
+        call timesec (ts0)
 ! exit self-consistent loop if last iteration is complete
         if (tlast) then
             If ((verbosity>-1).and.(rank==0)) Then
@@ -194,8 +193,8 @@ subroutine scf_cycle(verbosity)
 
 10      continue
 
-        Call timesec (ts1)
-        timeio=ts1-ts0+timeio
+        call timesec (ts1)
+        timeio = ts1 - ts0 + timeio
 
 !! TIME - End of first IO segment
 
@@ -229,14 +228,14 @@ subroutine scf_cycle(verbosity)
             chgpart(:,:,:)=0.d0
         end if
 
-        Call timesec (ts1)
-        timemt=ts1-ts0+timemt
+        call timesec (ts1)
+        timemt = ts1 - ts0 + timemt
 
 !! TIME - End of muffin-tin segment
 
 !! TIME - Second IO segment
 
-        Call timesec (ts0)
+        call timesec (ts0)
 
 !-----------------------------------------------
 ! Solve Secular Equation for each k-point
@@ -268,14 +267,14 @@ subroutine scf_cycle(verbosity)
 
 !! TIME - seceqn does not belong to IO
 
-                Call timesec(ts1)
-                timeio=ts1-ts0+timeio
+                call timesec(ts1)
+                timeio = ts1 - ts0 + timeio
 
 !__________________________________________________________
 ! solve the first- and second-variational secular equations
-                Call seceqn (ik, evalfv, evecfv, evecsv)
+                call seceqn (ik, evalfv, evecfv, evecsv)
 
-                Call timesec(ts0)
+                call timesec(ts0)
 
 !______________________________________
 ! write the eigenvalues/vectors to file
@@ -326,6 +325,8 @@ subroutine scf_cycle(verbosity)
         if ( associated(input%groundstate%sirius) ) then
           call put_occ_sirius()
         end if
+        call timesec(ts1)
+        timeio = ts1 - ts0 + timeio
         call stopwatch("exciting:occ", 0)
 
         call stopwatch("exciting:rhomag", 1)
@@ -335,8 +336,10 @@ subroutine scf_cycle(verbosity)
         if (associated(input%groundstate%sirius) .and. sirius_options%use_density ) then
           call generate_density_sirius()
           call get_periodic_function_sirius(rhoir, ngrtot)
+          call timesec(ts0)
         else
           call generate_density_and_magnetization()
+          call timesec(ts0)
 #ifdef MPI
         ! EXX case
           If (input%groundstate%xctypenumber.Lt.0) Call mpiresumeevecfiles()
@@ -347,17 +350,17 @@ subroutine scf_cycle(verbosity)
               call writepchgs(69,input%groundstate%lmaxvr)
               call flushifc(69)
           end if
-          Call timesec(ts1)
-          timeio=ts1-ts0+timeio
+          call timesec(ts1)
+          timeio = ts1 - ts0 + timeio
 !! TIME - End of second IO segment
 
-          Call timesec(ts0)
+          call timesec(ts0)
 ! symmetrise the density
-          Call symrf(input%groundstate%lradstep, rhomt, rhoir)
+          call symrf(input%groundstate%lradstep, rhomt, rhoir)
 ! symmetrise the magnetisation
           If (associated(input%groundstate%spin)) Call symrvf(input%groundstate%lradstep, magmt, magir)
 ! convert the density from a coarse to a fine radial mesh
-          Call rfmtctof (rhomt)
+          call rfmtctof (rhomt)
 ! convert the magnetisation from a coarse to a fine radial mesh
           Do idm = 1, ndmag
               Call rfmtctof (magmt(:, :, :, idm))
@@ -458,7 +461,7 @@ subroutine scf_cycle(verbosity)
 !-----------------------------
 
 !! TIME - Third IO segment
-        Call timesec(ts0)
+        call timesec(ts0)
         deltae=abs(et-engytot)
         do id=1, input%groundstate%niterconvcheck-1
            vdeltae(id)=vdeltae(id+1)
@@ -509,8 +512,8 @@ subroutine scf_cycle(verbosity)
                 end if
             End If
         End If
-        Call timesec(ts1)
-        timeio=ts1-ts0+timeio
+        call timesec(ts1)
+        timeio = ts1 - ts0 + timeio
 !! TIME - End of third IO segment
 
 ! exit self-consistent loop if last iteration is complete
@@ -524,7 +527,7 @@ subroutine scf_cycle(verbosity)
         end if
 
 !! TIME - Fourth IO segment
-        Call timesec(ts0)
+        call timesec(ts0)
 
 ! output the current total time
         timetot = timeinit+timemat+timefv+timesv+timerho+timepot+timefor+timeio+timemt+timemixer
@@ -636,8 +639,8 @@ subroutine scf_cycle(verbosity)
         Call MPI_bcast (tstop, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, ierr)
         Call MPI_bcast (tlast, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, ierr)
 #endif
-        Call timesec(ts1)
-        timeio=ts1-ts0+timeio
+        call timesec(ts1)
+        timeio = ts1 - ts0 + timeio
 !! TIME - End of fourth IO segment
     End Do ! iscl
 ! end the self-consistent loop
@@ -665,7 +668,7 @@ subroutine scf_cycle(verbosity)
         End If
     End If
     Call timesec(ts1)
-    timeio=ts1-ts0+timeio
+    timeio = ts1 - ts0 + timeio
 
 !------------------
 ! Compute forces
