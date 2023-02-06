@@ -4,7 +4,7 @@ Test for the input.xml file parser
 import pytest
 
 from excitingtools.exciting_dict_parsers.input_parser import parse_groundstate, parse_structure, parse_xs, \
-    parse_input_xml
+    parse_input_xml, parse_title
 
 
 reference_input_str = """<?xml version="1.0" encoding="UTF-8"?>
@@ -57,6 +57,10 @@ reference_input_str = """<?xml version="1.0" encoding="UTF-8"?>
   
 </input>
 """
+
+
+def test_parse_title():
+    assert parse_title(reference_input_str) == "Lithium Fluoride BSE"
 
 
 def test_parse_groundstate():
@@ -115,9 +119,7 @@ def test_parse_xs():
 
 def test_parse_input_xml():
     parsed_data = parse_input_xml(reference_input_str)
-    assert set(parsed_data.keys()) == {'groundstate', 'structure', 'xs'}
-    parsed_objects = parse_input_xml(reference_input_str)
-    assert set(parsed_objects.keys()) == {'groundstate', 'structure', 'xs'}
+    assert set(parsed_data.keys()) == {'title', 'groundstate', 'structure', 'xs'}
 
 
 reference_input_str_without_xs = """<?xml version="1.0" encoding="UTF-8"?>

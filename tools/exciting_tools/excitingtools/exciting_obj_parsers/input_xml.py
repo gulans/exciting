@@ -8,7 +8,7 @@ from excitingtools.input.structure import ExcitingStructure
 from excitingtools.input.xs import ExcitingXSInput
 from excitingtools.parser_utils.parser_decorators import xml_root
 from excitingtools.exciting_dict_parsers.input_parser import root_type, parse_groundstate as parse_groundstate_to_dict, \
-    parse_structure as parse_structure_to_dict, parse_xs as parse_xs_to_dict
+    parse_structure as parse_structure_to_dict, parse_xs as parse_xs_to_dict, parse_title
 
 
 @xml_root
@@ -66,9 +66,10 @@ def parse_input_xml(root: root_type) -> Dict[str, exciting_input_type]:
     :param root: Input for the parser.
     :returns: Dictionary which looks like: {'structure': ExcitingStructure,
         'ground_state': ExcitingGroundstateInput, 'xs': ExcitingXSInput}
-    If no xs element was found, the value of 'xs' is None.
+    All subelements which are not present are removed in the end.
     """
-    structure = parse_structure(root)
-    ground_state = parse_groundstate(root)
-    xs = parse_xs(root)
-    return {'structure': structure, 'groundstate': ground_state, 'xs': xs}
+    parsed_data = {'title': parse_title(root),
+                   'structure': parse_structure(root),
+                   'groundstate': parse_groundstate(root),
+                   'xs': parse_xs(root)}
+    return {key: value for key, value in parsed_data.items() if value}
