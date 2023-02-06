@@ -46,7 +46,7 @@ class ExcitingXMLInput(ExcitingInput):
             check_valid_keys(kwargs.keys(), valid_attributes, self.name)
         self.__dict__.update(kwargs)
 
-    def to_xml(self) -> ElementTree:
+    def to_xml(self, **kwargs) -> ElementTree:
         """Put class attributes into an XML tree, with the element given by self.name.
 
         Example ground state XML sub-tree:
@@ -55,14 +55,13 @@ class ExcitingXMLInput(ExcitingInput):
         Note, kwargs preserve the order of the arguments, however the order does not appear to be
         preserved when passed to (or perhaps converted to string) with xml.etree.ElementTree.tostring.
 
+        kwargs argument allows to specify additional attributes.
+
         :return ElementTree.Element sub_tree: sub_tree element tree, with class attributes inserted.
         """
-        inputs = {}
-        attributes = {key: value for key, value in self.__dict__.items() if key != 'name'}
-        for key, value in attributes.items():
-            inputs[key] = self._attributes_to_input_str[type(value)](value)
+        attributes = {key: self._attributes_to_input_str[type(value)](value) for key, value in vars(self).items()}
 
-        sub_tree = ElementTree.Element(self.name, **inputs)
+        sub_tree = ElementTree.Element(attributes.pop("name"), **attributes, **kwargs)
 
         # Seems to want this operation on a separate line
         sub_tree.text = ' '

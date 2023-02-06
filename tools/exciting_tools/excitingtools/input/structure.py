@@ -1,7 +1,7 @@
 """Structure class, mirroring that of exciting's structure XML sub-tree.
 http://exciting.wikidot.com/ref:structure
 """
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict
 import pathlib
 import xml.etree.ElementTree as ET
 
@@ -189,54 +189,45 @@ class ExcitingStructure(ExcitingXMLInput):
 
         return atom_properties
 
-    def _init_structure_properties(self, structure_properties: dict) -> dict:
+    def _init_structure_properties(self, structure_properties: dict) -> ExcitingXMLInput:
         """ Initialise structure_properties.
 
         :param structure_properties: Dict of optional structure properties.
-        :return Dict of structure_properties, with string values.
+        :return ExitingXMLInput with structure_properties.
         """
         if structure_properties is None:
-            return {}
+            structure_properties = {}
 
-        check_valid_keys(structure_properties.keys(), self._valid_structure_attributes, "structure_properties")
+        return ExcitingXMLInput("structure", self._valid_structure_attributes, **structure_properties)
 
-        return {key: str(value).lower() for key, value in structure_properties.items()}
-
-    def _init_crystal_properties(self, crystal_properties: dict) -> dict:
+    def _init_crystal_properties(self, crystal_properties: dict) -> ExcitingXMLInput:
         """ Initialise crystal_properties.
 
         :param crystal_properties: Dict of optional structure properties.
-        :return Dict of crystal_properties, with string values.
+        :return ExitingXMLInput with crystal_properties.
         """
         if crystal_properties is None:
-            return {}
+            crystal_properties = {}
 
-        check_valid_keys(crystal_properties.keys(), self._valid_crystal_attributes, "crystal_properties")
+        return ExcitingXMLInput("crystal", self._valid_crystal_attributes, **crystal_properties)
 
-        return {key: str(value) for key, value in crystal_properties.items()}
-
-    def _init_species_properties(self, species_properties: dict) -> dict:
+    def _init_species_properties(self, species_properties: dict) -> Dict[str, ExcitingXMLInput]:
         """ Initialise species_properties.
 
         For species without properties, return empty_properties: {'S': {}, 'Al': {}}.
 
         :param species_properties: Species properties
-        :return Dict of species_properties, with string values.
+        :return Dict of ExitingXMLInput-species_properties.
         """
         if species_properties is None:
-            empty_properties = {s: {} for s in self.unique_species}
-            return empty_properties
+            species_properties = {}
 
-        new_species_properties = {}
+        new_species_properties: Dict[str, ExcitingXMLInput] = {}
         for species in self.unique_species:
-            try:
-                properties = species_properties[species]
-                check_valid_keys(properties.keys(),
-                                 self._valid_species_attributes,
-                                 f"{species} element's species_properties")
-                new_species_properties[species] = {key: str(value) for key, value in properties.items()}
-            except KeyError:
-                new_species_properties[species] = {}
+            properties = species_properties.get(species)
+            if properties is None:
+                properties = {}
+            new_species_properties[species] = ExcitingXMLInput("species", self._valid_species_attributes, **properties)
 
         return new_species_properties
 
@@ -267,6 +258,7 @@ class ExcitingStructure(ExcitingXMLInput):
 
     def to_xml(self) -> ET.Element:
         """Convert structure attributes to XML ElementTree
+        Makes use of the to_xml() function of the ExitingXMLInput class to convert values to string.
 
         Expect to return an XML structure which looks like:
           <structure speciespath="./">
@@ -285,17 +277,19 @@ class ExcitingStructure(ExcitingXMLInput):
 
         :return ET structure: Element tree containing structure attributes.
         """
-        structure = ET.Element("structure", speciespath=self.species_path, **self.structure_properties)
+        structure = self.structure_properties.to_xml(speciespath=self.species_path)
 
         # Lattice vectors
-        crystal = ET.SubElement(structure, "crystal", **self.crystal_properties)
+        crystal = self.crystal_properties.to_xml()
+        structure.append(crystal)
         for vector in self.lattice:
             ET.SubElement(crystal, "basevect").text = list_to_str(vector)
 
         # Species tags
         atomic_indices = self._group_atoms_by_species()
         for x in self.unique_species:
-            species = ET.SubElement(structure, "species", speciesfile=x + '.xml', **self.species_properties[x])
+            species = self.species_properties[x].to_xml(speciesfile=x + '.xml')
+            structure.append(species)
             self._xml_atomic_subtree(x, species, atomic_indices)
 
         return structure

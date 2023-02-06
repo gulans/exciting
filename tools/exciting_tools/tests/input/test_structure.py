@@ -181,11 +181,11 @@ def test_optional_structure_attributes_xml(lattice_and_atoms_CdS):
     )
     xml_structure = structure.to_xml()
 
-    mandatory = ['speciespath']
-    optional = list(structure_attributes)
+    mandatory = {'speciespath'}
+    optional = set(structure_attributes)
 
     assert xml_structure.tag == 'structure'
-    assert xml_structure.keys() == mandatory + optional, \
+    assert set(xml_structure.keys()) == mandatory | optional, \
         'Should contain mandatory speciespath plus all optional attributes'
     assert xml_structure.get('speciespath') == './', 'species path should be ./'
     assert xml_structure.get('autormt') == 'true'
@@ -240,21 +240,19 @@ def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
     species_s_xml = elements[2]
     assert species_s_xml.tag == "species", 'Third subtree is species'
 
-    assert species_cd_xml.keys() == ['speciesfile', 'rmt'], "species attributes differ from expected"
+    assert set(species_cd_xml.keys()) == {'speciesfile', 'rmt'}, "species attributes differ from expected"
     assert species_cd_xml.get('speciesfile') == 'Cd.xml', 'speciesfile differs from expected'
     assert species_cd_xml.get('rmt') == '3.0', 'Cd muffin tin radius differs from input'
 
-    assert species_s_xml.keys() == ['speciesfile', 'rmt'], "species attributes differ from expected"
+    assert set(species_s_xml.keys()) == {'speciesfile', 'rmt'}, "species attributes differ from expected"
     assert species_s_xml.get('speciesfile') == 'S.xml', 'speciesfile differs from expected'
     assert species_s_xml.get('rmt') == '4.0', 'S muffin tin radius differs from input'
 
 
-ref_dict = {'xml_string': '<structure speciespath="./"><crystal><basevect>1.0 0.0 '
-                          '0.0</basevect><basevect>0.0 1.0 0.0</basevect><basevect>0.0 '
-                          '0.0 1.0</basevect></crystal><species '
-                          'speciesfile="Cd.xml"><atom coord="0.0 0.0 0.0"> '
-                          '</atom></species><species speciesfile="S.xml"><atom coord="1.0 '
-                          '0.0 0.0"> </atom></species></structure>'}
+ref_dict = {'xml_string': '<structure speciespath="./"> <crystal> <basevect>1.0 0.0 0.0</basevect>'
+                          '<basevect>0.0 1.0 0.0</basevect><basevect>0.0 0.0 1.0</basevect></crystal>'
+                          '<species speciesfile="Cd.xml"> <atom coord="0.0 0.0 0.0"> </atom></species>'
+                          '<species speciesfile="S.xml"> <atom coord="1.0 0.0 0.0"> </atom></species></structure>'}
 
 
 def test_as_dict(lattice_and_atoms_CdS, mock_env_jobflow_missing):

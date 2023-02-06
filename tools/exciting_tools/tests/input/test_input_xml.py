@@ -4,16 +4,18 @@ TODO(Fab/Alex/Dan) Issue 117. Would be nice to assert that the output is valid
     XML * https://lxml.de/validation.html
 Also see: https://xmlschema.readthedocs.io/en/latest/usage.html#xsd-declarations
 """
-from excitingtools.input.input_xml import exciting_input_xml
+import re
+
+import pytest
+
+from excitingtools.input.input_xml import ExcitingInputXML
 from excitingtools.input.structure import ExcitingStructure
 from excitingtools.input.ground_state import ExcitingGroundStateInput
 from excitingtools.input.xs import ExcitingXSInput
 
 
-def test_exciting_input_xml_structure_and_gs_and_xs():
-    """Test the XML created for a ground state input is valid.
-    Test SubTree composition using only mandatory attributes for each XML subtree.
-    """
+@pytest.fixture
+def exciting_input_xml() -> ExcitingInputXML:
     # Structure
     cubic_lattice = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     arbitrary_atoms = [{'species': 'Li', 'position': [0.0, 0.0, 0.0]},
@@ -30,7 +32,7 @@ def test_exciting_input_xml_structure_and_gs_and_xs():
         vkloff=[0, 0, 0],
         tforce=True,
         nosource=False
-        )
+    )
 
     xs_attributes = {'broad': 0.32, 'ngridk': [8, 8, 8]}
     bse_attributes = {'bsetype': 'singlet', 'xas': True}
@@ -45,8 +47,14 @@ def test_exciting_input_xml_structure_and_gs_and_xs():
                          qpointset=qpointset_input,
                          plan=plan_input)
 
-    input_xml_tree = exciting_input_xml(
-        structure, title='Test Case', groundstate=ground_state, xs=xs)
+    return ExcitingInputXML(structure, title='Test Case', groundstate=ground_state, xs=xs)
+
+
+def test_exciting_input_xml_structure_and_gs_and_xs(exciting_input_xml: ExcitingInputXML):
+    """Test the XML created for a ground state input is valid.
+    Test SubTree composition using only mandatory attributes for each XML subtree.
+    """
+    input_xml_tree = exciting_input_xml.to_xml()
 
     assert input_xml_tree.tag == 'input'
     assert input_xml_tree.keys() == []
@@ -79,10 +87,7 @@ def test_exciting_input_xml_structure_and_gs_and_xs():
 
     xs_xml = subelements[3]
     assert xs_xml.tag == 'xs'
-    try:
-        assert xs_xml.keys() == ['broad', 'ngridk', 'xstype']
-    except AssertionError:
-        assert xs_xml.keys() == ['xstype', 'broad', 'ngridk']
+    assert set(xs_xml.keys()) == {'broad', 'ngridk', 'xstype'}
     assert xs_xml.get('broad') == '0.32'
     assert xs_xml.get('ngridk') == '8 8 8'
     assert xs_xml.get('xstype') == 'BSE'
@@ -129,3 +134,67 @@ def test_exciting_input_xml_structure_and_gs_and_xs():
     assert doonlys[0].items() == [('task', 'screen')]
     assert doonlys[1].tag == 'doonly'
     assert doonlys[1].items() == [('task', 'bse')]
+
+
+def test_attribute_modification(exciting_input_xml: ExcitingInputXML):
+    """Test the XML created for a ground state input is valid.
+    Test SubTree composition using only mandatory attributes for each XML subtree.
+    """
+    exciting_input_xml.title = "New Test Case"
+    exciting_input_xml.structure.crystal_properties.scale = 2.3
+    exciting_input_xml.groundstate.rgkmax = 9.0
+    exciting_input_xml.__dict__['xs'].energywindow.points = 4000
+    input_xml_tree = exciting_input_xml.to_xml()
+
+    subelements = list(input_xml_tree)
+    assert len(subelements) == 4
+
+    title_xml = subelements[0]
+    assert title_xml.tag == 'title'
+    assert title_xml.text == 'New Test Case'
+
+    structure_xml = subelements[1]
+    assert structure_xml[0].get("scale") == "2.3"
+
+    groundstate_xml = subelements[2]
+    assert groundstate_xml.get('rgkmax') == "9.0"
+
+    xs_xml = subelements[3]
+    xs_subelements = list(xs_xml)
+    assert len(xs_subelements) == 5
+
+    energywindow_xml = xs_subelements[2]
+    assert energywindow_xml.get('points') == '4000'
+
+
+def test_as_dict(exciting_input_xml: ExcitingInputXML, mock_env_jobflow_missing):
+    dict_representation = exciting_input_xml.as_dict()
+    assert len(dict_representation) == 4, "expect 4 different keys"
+    assert dict_representation['title'] == "Test Case"
+    # check only that the xml string starts with the correct tag:
+    assert re.match(r'<structure', dict_representation['structure']['xml_string'], flags=re.MULTILINE)
+    assert re.match(r'<groundstate', dict_representation['groundstate']['xml_string'], flags=re.MULTILINE)
+    assert re.match(r'<xs', dict_representation['xs']['xml_string'], flags=re.MULTILINE)
+
+
+def test_as_dict_jobflow(exciting_input_xml: ExcitingInputXML, mock_env_jobflow):
+    ref_dict = {'@class': 'ExcitingInputXML',
+                '@module': 'excitingtools.input.input_xml',
+                'title': "Test Case"}
+    dict_representation = exciting_input_xml.as_dict()
+    # assert only the correct keys, rest is tested in corresponding test files
+    assert set(dict_representation.pop('structure').keys()) == {'@class', '@module', 'xml_string'}
+    assert set(dict_representation.pop('groundstate').keys()) == {'@class', '@module', 'xml_string'}
+    assert set(dict_representation.pop('xs').keys()) == {'@class', '@module', 'xml_string'}
+    assert dict_representation == ref_dict
+
+
+def test_from_dict(exciting_input_xml: ExcitingInputXML, mock_env_jobflow_missing):
+    new_input_xml = ExcitingInputXML.from_dict(exciting_input_xml.as_dict())
+    assert new_input_xml.title == "Test Case"
+    assert new_input_xml.groundstate.ngridk == '6 6 6'
+
+
+def test_from_dict_jobflow(exciting_input_xml: ExcitingInputXML, mock_env_jobflow):
+    new_input_xml = ExcitingInputXML.from_dict(exciting_input_xml.as_dict())
+    assert new_input_xml.title == "Test Case"

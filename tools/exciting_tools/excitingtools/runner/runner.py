@@ -110,7 +110,7 @@ class BinaryRunner:
         # call function on class to get only the keys (values not needed)
         serialise_keys = special_serialization_attrs(cls)
         for key in serialise_keys:
-            my_dict.pop(key)
+            my_dict.pop(key, None)
         return cls(**my_dict)
 
     def _check_mpi_processes(self):

@@ -16,6 +16,17 @@ root_type = Union[str, ElementTree.Element, pathlib.Path]
 
 
 @xml_root
+def parse_title(root: root_type) -> str:
+    """
+    Parse exciting input.xml title element to find the title.
+    :param root: Input for the parser.
+    :returns: Title as string.
+    """
+    ground_state = find_element(root, 'title')
+    return ground_state.text
+
+
+@xml_root
 def parse_groundstate(root: root_type) -> dict:
     """
     Parse exciting input.xml groundstate element into python dictionary.
@@ -120,7 +131,8 @@ def parse_input_xml(root: root_type) -> Dict[str, dict]:
     :returns: Dictionary which looks like: {'structure': structure_dict,
         'ground_state': groundstate_dict, 'xs': xs_dict}.
     """
+    title = parse_title(root)
     structure = parse_structure(root)
     ground_state = parse_groundstate(root)
     xs = parse_xs(root)
-    return {'structure': structure, 'groundstate': ground_state, 'xs': xs}
+    return {'title': title, 'structure': structure, 'groundstate': ground_state, 'xs': xs}
