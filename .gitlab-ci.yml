@@ -8,7 +8,7 @@
 #   suite is also used locally.
 
 stages:
-  - build 
+  - build
   - python
   - test
 
