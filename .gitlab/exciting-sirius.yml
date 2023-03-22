@@ -38,7 +38,8 @@ test-ubuntu-focal-sirius-gcc9-mpich-3.3.2-mkl:
     - docker
   script:
     # Run exciting unit tests
-    - pip3 install -e tools/exciting_tools
+    - python3 -m pip install --upgrade pip setuptools
+    - pip3 install tools/exciting_tools
     # Set GROUPs to run 
     - cd test
     # In this case, ONLY run tests with GROUPS tag: SIRIUS

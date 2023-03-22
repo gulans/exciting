@@ -168,7 +168,7 @@ structure = ExcitingStructure(atoms, lattice, species_path='.')
 Additional examples can be found in the test cases, `exciting_tools/tests/input`. We note that not all XML tags 
 currently map onto Python classes. One can consult `exciting_tools/excitingtools/input` to see what is available. 
 Development follows a continuous integration and deployment workflow, therefore if one wishes for additional features, 
-please make a request on Github issues or open a merge request.
+please make a request on GitHub issues or open a merge request.
 
 #### Binary Execution
 
@@ -298,7 +298,7 @@ excitingtools is available as a separate package on PyPi. In order to upload a n
 
 ```bash
 # Ensure twine is installed
-pip3 install twine
+pip3 install --upgrade twine build
 # Build the wheels
 cd $EXCITINGROOT/tools/exciting_tools
 python3 -m build
@@ -311,7 +311,7 @@ twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 twine upload dist/*
 ```
 
-Before doing so, please ensure the semantic versioning is appropriately updated in `setup.py`.
+Before doing so, please ensure the semantic versioning is appropriately updated in `pyproject.toml`.
 
 
 ## Contributors

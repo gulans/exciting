@@ -38,7 +38,8 @@ test-debian-buster-GCC8-mpiandsmp:
     # Run exciting unit tests
     - export OMP_NUM_THREADS=2 && mpirun --allow-run-as-root -np 2 bin/exciting_mpismp -run-unit-tests -kill-on-failure
     # Install test framework parsers
-    - python3 -m pip install -e tools/exciting_tools
+    - python3 -m pip install --upgrade pip setuptools
+    - python3 -m pip install tools/exciting_tools
     # Allow mpirun to run as root (mpirun typically shouldn't be run as root)
     # See this ref: https://github.com/open-mpi/ompi/issues/4451
     # This variable gets parsed by the test framework

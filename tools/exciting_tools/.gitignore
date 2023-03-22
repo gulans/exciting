@@ -1,5 +1,2 @@
-*egg-info
-*venv
-*build
-*dist
-*.coverage
+.pytest_cache/
+excitingtools.egg-info/

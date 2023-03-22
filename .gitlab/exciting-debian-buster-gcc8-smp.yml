@@ -38,6 +38,7 @@ test-debian-buster-GCC8-smp:
     # Run exciting unit tests
     - export OMP_NUM_THREADS=2 && bin/exciting_smp -run-unit-tests -kill-on-failure
     # Install test framework parsers
-    - python3 -m pip install -e tools/exciting_tools
+    - python3 -m pip install --upgrade pip setuptools
+    - python3 -m pip install tools/exciting_tools
     # Run exciting app tests
     - cd test/ && python3 runtest.py -e exciting_smp -repeat-tests 2

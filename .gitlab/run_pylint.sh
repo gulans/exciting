@@ -28,7 +28,10 @@ echo "Running pylint on python files with diff w.r.t. ${reference_branch}:"
 for file in $(echo "$changed_files" | tr " " "\n")
 do
   echo "Checking file: $file"
-  error_msg=$(pylint -E "$file")
+  # F0001 disables import errors. This is a workaround for when files
+  # have been deleted between commits (and there's nothing 
+  # check in that instance)
+  error_msg=$(pylint -E --disable=F0001 "$file")
   # pylint returns nothing if there are no errors
   if [ -n "$error_msg" -a "$error_msg" != " " ]; then
       echo "pylint has experienced an error:"
