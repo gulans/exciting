@@ -37,5 +37,6 @@ Module modmain
       Use mod_convergence
       Use mod_names
       Logical :: lwarning = .False.
+      logical :: killflag = .false.
 End Module
 !

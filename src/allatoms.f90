@@ -51,7 +51,7 @@ Subroutine allatoms(verbosity)
       Real (8), Allocatable :: ionization(:)
       Real (8), Allocatable :: rhoslave(:)
       Type (xmlf_t), Save :: xf
-      
+      integer :: ia,ias,ist      
       dirac_eq=(input%groundstate%CoreRelativity.eq."dirac")
 ! allocate global species charge density and potential arrays
       If (allocated(sprho)) deallocate (sprho)
@@ -83,6 +83,15 @@ Subroutine allatoms(verbosity)
         & spn(:, is), spl(:, is), spk(:, is), spocc(:, is), xctypearray, &
         & xcgrad_, spnr(is), spr(:, is), &
         & speval(:, is), sprho(:, is), spvr(:, is), rwf,nrmt(is),dirac_eq)
+        do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+            do ist=1,spnst (is)
+               if (spcore(ist,is)) then
+                 rwfcr(:,1,ist,ias)=rwf(:,1,ist)
+                 rwfcr(:,2,ist,ias)=rwf(:,2,ist)
+               endif
+            enddo!ist
+        enddo!ia
          Deallocate (rwf)
          if (associated(input%groundstate%dfthalf)) then
 !          Here, we check if the user has defined the DFT-1/2 correction for this species

@@ -21,6 +21,7 @@ Subroutine init0
 #ifdef XS
       Use modxs
 #endif
+      use modinteg
 ! !DESCRIPTION:
 !   Performs basic consistency checks as well as allocating and initialising
 !   global variables not dependent on the $k$-point set.
@@ -323,6 +324,24 @@ Subroutine init0
      & input%groundstate%isgkmax = js
 ! set up atomic and muffin-tin radial meshes
       Call genrmesh
+
+!-----------------------!
+! initialize modinteg   !
+!-----------------------!
+
+
+
+if (allocated(mt_integw%fintw)) then
+  call dealloc_icoef()
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+
+  else
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+  endif
+      
+      
+      
+      
 !
 !--------------------------------------!
 !     charges and number of states     !
@@ -384,6 +403,19 @@ Subroutine init0
 #ifdef XS
       If (init0symonly) Go To 10
 #endif
+
+! allocate core state radial wavefunction array
+      If (allocated(rwfcr)) deallocate (rwfcr)
+      Allocate (rwfcr(spnrmax, 2, spnstmax, natmtot))
+rwfcr=0d0
+      If (allocated(vx_rwfcr)) deallocate (vx_rwfcr)
+      Allocate (vx_rwfcr(spnrmax, 1, spnstmax, natmtot))
+vx_rwfcr=0d0
+
+
+
+
+
 ! solve the Kohn-Sham-Dirac equations for all atoms
       Call allatoms(1)
 ! allocate core state eigenvalue array and set to default
@@ -397,9 +429,6 @@ Subroutine init0
             End Do
          End Do
       End Do
-! allocate core state radial wavefunction array
-      If (allocated(rwfcr)) deallocate (rwfcr)
-      Allocate (rwfcr(spnrmax, 2, spnstmax, natmtot))
 ! allocate core state charge density array
       If (allocated(rhocr)) deallocate (rhocr)
       Allocate (rhocr(spnrmax, natmtot))

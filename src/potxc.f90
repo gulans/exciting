@@ -416,8 +416,18 @@ else
              ec=ecir,exsr=exsr,vx=vx,vc=vc,vxsr=vxsr,v2xsr=v2xsr)
        call gv2xir(grho,vxsr,v2xsr) 
     else
-       call xcifc(xctype,n=ngrtot,rho=rhoir,grho=grho,g2rho=g2rho,g3rho=g3rho, &
+!if ((mt_dm%maxnlo.ne.0) .and. (mt_dm%maxaa.ne.0))then
+!write(*,*)"potxc.f90 421 rindina1",mt_dm%main%ff(1,1,1)
+!read(*,*)
+!endif
+
+            call xcifc(xctype,n=ngrtot,rho=rhoir,grho=grho,g2rho=g2rho,g3rho=g3rho, &
              ex=exir,ec=ecir,vx=vx,vc=vc)
+!if ((mt_dm%maxnlo.ne.0) .and. (mt_dm%maxaa.ne.0))then
+!write(*,*)"potxc.f90 427 rindina",mt_dm%main%ff(1,1,1)
+!read(*,*)
+!endif
+
     endif
   else if (xcgrad.eq.2) then
     call ggair_2a(g2rho,gvrho,grho2)

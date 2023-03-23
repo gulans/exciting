@@ -17,5 +17,14 @@ Module mod_corestate
 ! true for a frozen-core calculation (core state wavefunctions, densities and
 ! energies calculated only in the first iteration)
 !replaced by inputstructurelogical :: frozencore
+
+! non-local exchange operator acting on core wf
+       Real (8), Allocatable :: vx_rwfcr (:, :, :, :)
+
+       real (8) :: engy_exnl_core
+
+
+
+
 End Module
 !

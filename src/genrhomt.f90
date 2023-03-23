@@ -41,6 +41,11 @@ subroutine genrhomt( basis1, basis2, densitymt )
 
 !write(*,*) sum(mt_dm%main%aa)
 
+!write(*,*)" izdrukājam genrhomt"
+!write(*,*)mt_dm%main%ff(1,1,1)
+!read(*,*)
+
+
       a=0.5d0*alpha**2
 
       maxnlo=mt_dm%maxnlo
@@ -66,7 +71,16 @@ call timesec(t1)
         Do ia = 1, natoms (is)
           ias = idxas (ia, is)
           rho=0d0
+!write(*,*)"genrhomt.f90"
+!write(*,*)'shape(rho)',shape(rho)
+! (nrMT, (lmax+1)**2, 1) 
 
+!density matrix:
+!mt_dm%main%ff(if1,if3,ias)
+!write(*,*)'shape(mt_dm%main%ff)',shape(mt_dm%main%ff)
+
+
+!write(*,*)"**********APW-APW part****************"
 ! APW-APW part
 !if (.true.) then
 #ifdef xUSEOMP
@@ -77,6 +91,7 @@ call timesec(t1)
           rho=0d0
           if1=0
           Do l1 = 0, input%groundstate%lmaxmat
+!write(*,*)"l1",l1, "apword",apword (l1, is)
             Do io1 = 1, apword (l1, is)
               if3=0
               if1old=if1
@@ -95,7 +110,14 @@ call timesec(t1)
                       lm3 = idxlm (l3, m3)
                       if3=if3+1
                       i=1
-                      do while(indgnt(i,lm3,lm1).ne.0)
+
+!              if (l1.eq.0) then
+!                      write(*,*)"if1",if1,"if3",if3,"l3",l3,"m3",m3
+!              endif
+             
+     
+     
+                     do while(indgnt(i,lm3,lm1).ne.0)
                         lm2=indgnt(i,lm3,lm1)
                         if (lm2.le.lmmaxvr) factorsnew(lm2,1)=factorsnew(lm2,1)+dble(mt_dm%main%ff(if1,if3,ias)*conjg(listgnt(i,lm3,lm1)))
 !                        write(*,*) "indgnt",lm2,conjg(listgnt(i,lm3,lm1))
@@ -123,18 +145,26 @@ call timesec(t1)
             End Do
           End Do
 
+
+
 if (losize(is).gt.0) then
 !write(*,*) 'howdy'
+!write(*,*)"*************APW-LO part**************"
+
 !APW-LO part
+!     write(*,*)"Viss skaits lo nlorb:",nlorb (is)
+     !!! par lo l var uzzināt lorbl(i,is) 
+
+
 
           if1=0
           Do l1 = 0, input%groundstate%lmaxmat
             Do io1 = 1, apword (l1, is)
               if3=0
               if1old=if1
+
               Do ilo2 = 1, nlorb (is)
                 l3 = lorbl (ilo2, is)
-
 
                 frnew(:,1)=basis1%apwfr (:, 1, io1, l1, ias) * basis1%lofr (:, 1, ilo2, ias)
                   if1=if1old
@@ -147,6 +177,13 @@ if (losize(is).gt.0) then
                     Do m3 = - l3, l3
                       lm3 = idxlm (l3, m3)
                       if3=if3+1
+
+              if (l1.eq.0) then
+ !                     write(*,*)"if1",if1,"if3",if3,"l3",l3,"m3",m3
+              endif
+
+
+
 
                       i=1
 !                      do lm2=1,lmmaxvr
@@ -161,7 +198,6 @@ if (losize(is).gt.0) then
 
                     enddo
                   enddo
-
 #ifdef xUSEOMP
 !$OMP DO
 #endif
@@ -178,7 +214,7 @@ if (losize(is).gt.0) then
             End Do
           End Do
 
-
+!stop
 !LO-LO part
             if1=0
             Do ilo1 = 1, nlorb (is)
@@ -256,5 +292,6 @@ call timesec(t2)
 !      read(*,*)
       timerho = timerho + ts1 - ts0
       Return
+!stop
 End Subroutine
 !EOC

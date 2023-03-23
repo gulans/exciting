@@ -133,7 +133,7 @@ Subroutine genlofr
              endif
            enddo
           endif
-          write(*,*) 'n=',nodes,0.5d0*(ens(nodes)+0.5d0*(ehi+elo))
+          write(*,*) 'n=',nodes,":",0.5d0*(ens(nodes)+0.5d0*(ehi+elo))
 !          write(*,*) ens(nodes),0.5d0*(ehi+emi)
         enddo
 

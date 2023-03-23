@@ -234,8 +234,14 @@ endif
           If (tlast) Call exxengy
        End If
 ! Hybrids
-      if (task == 7) engyx = engyx + ex_coef*exnl
+write(*,*)""
+      if (task == 7)  then
+      write(*,*)"energy.f90 ",ex_coef*exnl
 
+      engyx = engyx + ex_coef*exnl + ex_coef*0.5d0* engy_exnl_core
+      write(*,*)"energy.f90 ",engyx,"=",ex_coef*exnl ,"+",ex_coef*0.5d0* engy_exnl_core
+  
+      endif
 !----------------------------!
 !     correlation energy     !
 !----------------------------!
@@ -314,12 +320,13 @@ endif
         ! HF-based hybrids
         !------------------
         engykn = engykncr ! Importantly, engykncr should be computed first with PBE!
+
         do ik = 1, nkpt
           do ist = 1, nstfv
             engykn = engykn + wkpt(ik)*occsv(ist,ik)*engyknst(ist,ik)
+
           end do
         end do
-
       else
 
         ! Default way

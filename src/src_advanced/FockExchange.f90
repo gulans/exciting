@@ -314,6 +314,7 @@ call timesec(tb)
 write(*,*) 'vcv',tb-ta
 
       vxpsimt=vxpsimt+zvclmt
+     If (allocated(wf1ir)) deallocate (wf1ir)
       Allocate (wf1ir(ngrtot))
 call timesec(ta)
       Do ist1 = 1, nstsv

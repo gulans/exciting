@@ -133,8 +133,16 @@ Subroutine hybrids
         ex_coef = 0.d0
         ec_coef = 1.d0
         call scf_cycle(-1)
+
         ex_coef = input%groundstate%Hybrid%excoeff
         ec_coef = input%groundstate%Hybrid%eccoeff
+
+
+!killflag=.true.
+!call gencore()
+!write(*,*)"gencore done"
+!stop
+
 
         ! Kinetic energy of core states (is not going to be updated)
         call energykncr()
@@ -237,6 +245,14 @@ Subroutine hybrids
       ! Calculate the non-local potential
       !-----------------------------------
       call timesec(ts0)
+     
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!atņemt serdes blīvumu
+        call gencore()        ! generate the core wavefunctions and densities
+        call energykncr()   
+!pieskaitī serdes blīvumu
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/gencore
+      
       call calc_vxnl()
       call timesec(ts1)
 

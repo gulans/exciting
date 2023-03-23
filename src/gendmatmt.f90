@@ -241,6 +241,20 @@ call timesec(t2)
       End Do
 
 
+
+
+
+write(*,*)"gendmatmt.f90 diagonāle", mt_dm%main%ff(1,1,1)
+    !if (dimag(mt_dm%main%ff(1,1,1)).gt.1e-20)  then
+    !       
+    ! write(*,*)"gendmatmt.f90 nreāla diagonāle"   
+    !        stop
+    !endif
+
+
+
+
+
       deallocate(wf1,wf2prime,wfalpha,wfbeta)
       deallocate(apwi,apwalm)
       deallocate(dm2)

@@ -200,7 +200,6 @@ subroutine scf_cycle(verbosity)
 !! TIME - Muffin-tin segment
 
         Call timesec (ts0)
-
         if (task /= 7) then
           ! No updates of core and valence radial functions during hybrids run
           call gencore          ! generate the core wavefunctions and densities
