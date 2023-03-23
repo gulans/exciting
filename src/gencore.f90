@@ -259,8 +259,11 @@ Do il = 1, lmax+1
       if ( (spcore(ist, is)).and.(spl(ist,is).eq.(il-1)).and.(spn(ist,is).eq.number_n(l_n)) ) then
               write(*,*)evalcr(ist,ias),"<-",eig(l_n)
               evalcr(ist,ias)=eig(l_n) 
-write(*,*)shape(spr(:,is)),shape(wf(:,l_n,1))
-              rwfcr(:,1,ist,ias)=wf(:,l_n,1)*spr(:,is)
+
+
+              rwfcr(1:spnr(is),1,ist,ias)=wf(:,l_n,1)*spr(:,is)
+
+
       endif
     enddo 
   enddo

@@ -70,9 +70,7 @@ logical :: spin
 real(8) :: t1, vx_psi_in(Ngrid,nmax),vx_psi_sr_in(Ngrid,nmax)
 integer :: n1
 
-
-
-
+vx_psi=0d0
 
 vx_psi_in=vx_psi
 vx_psi_sr_in=vx_psi_sr
@@ -97,8 +95,8 @@ do iscl=1,maxscl
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Convergence check  !!
 !!!!!!!!!!!!!!!!!!!!!!!!
-
-!write(*,*)l,eig,iscl!,". eig-eigp: ",eig-eigp
+!write(*,*)"is=",is,"Ngrid",Ngrid
+!write(*,*)l,eig,iscl,". eig-eigp: ",eig-eigp
 !convergence check
 if((maxval(abs((eig-eigp)/(eig-1d0)))).lt.1d-14)then
         iner_loop=iscl-1
@@ -145,6 +143,7 @@ do inn=1,nmax
     f=-f
 
   endif
+
   call scrPoisson(Ngrid,is, r,l, f, eig(inn), psi(:,inn))
 
   call integ_v(Ngrid,is,r**2*psi(:,inn)**2,norm,atom_integw)
