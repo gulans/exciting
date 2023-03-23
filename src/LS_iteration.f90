@@ -127,12 +127,8 @@ do inn=1,nmax
   ish=shell0+inn
 
   if (.not.relativity) then 
-!write(*,*)"hybx_coef",hybx_coef
-!  if (killflag) stop
 
           f=-2d0* (vloc(:)*psi(:,inn)+ hybx_coef *vx_psi(:,inn) )
-          
-
                 
      !     f=-2d0*( vloc(:)*psi(:,inn) + hybx_w(2,1)*vx_psi(:,inn)&
      !            + hybx_w(3,1)*vx_psi_sr(:,inn) )

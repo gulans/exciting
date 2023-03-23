@@ -87,18 +87,6 @@ engy_exnl_core=0d0
                
 if (.false.) then               
 
-
- Do ist = 1, spnst (is)
-
-     !call integ_v(spnr(is),is,rwfcr(:,1,ist,ias)**2,t1,atom_integw)
-     !write(*,*)"norm before",t1
- If (spcore(ist, is)) Then
-!    write(*,*)"eval: ",evalcr(ist, ias)
- endif
- enddo
-
-
-
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP PRIVATE(ir,t1)
 !$OMP DO
@@ -139,12 +127,12 @@ else !new solver
                stop
         endif
 
-!all orbitals with all quantum numbers and eigenvalues         
+!all core orbitals with all quantum numbers and eigenvalues         
 !write(*,*)"spnst",spnst(is)
 !do k=1, spnst(is)
 !  write(*,*)"spl",k,". l=",spl(k,is)," n=",spn(k,is)," kappa=",spk(k,is)," core=",spcore(k,is),"e=",evalcr(k,ias)
 !enddo
-!
+
 
 
 !find the largest l between core orbitals
@@ -223,79 +211,45 @@ write(*,*)"Final:"
       end do
    end do
 
-
-
-
-!open(11,file='wf.out',status='replace')
-!  do ir=1,spnr(is)
-!  write(11,*) spr(ir,is),wf0(ir,6,1)
-!  enddo
-!  close(11)
-
-
-!
-!  do l_n=1, number_of_states
-!     call integ_v(spnr(is),is,spr(:,is)**2*wf0(:,l_n,1)**2,t1,atom_integw)
-!     write(*,*)"norm",t1
-!  enddo
-
-
-
-
-
-!-------start of iteration process, iterating through each value of l
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!-------start the solver go through each value of l----!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 wf=wf0
 l_n=0
 
-!write(*,*)"gencore.f90"
-!read(*,*)
 
 Do il = 1, lmax+1
-       call LS_iteration(spnr(is),is,ia,hybx_coef,spr(:,is),vr,il-1,number_l,occ(:,1),1,count_l(il),l_n,& !in
-            number_of_states,1,.false.,lmax, wf0,& !in
-            wf(:,l_n+1:l_n+count_l(il),1),vx_wf(:,l_n+1:l_n+count_l(il),1),&
-            eig(l_n+1:l_n+count_l(il)))  
+       call LS_iteration(spnr(is),is,ia,hybx_coef,spr(:,is),& !in
+               vr,il-1,number_l,occ(:,1),1,count_l(il),l_n,& !in
+               number_of_states,1,.false.,lmax, wf0,& !in
+               wf(:,l_n+1:l_n+count_l(il),1),vx_wf(:,l_n+1:l_n+count_l(il),1),&
+               eig(l_n+1:l_n+count_l(il)))  
 
-!    write(*,*)"eig",eig(l_n+1:l_n+count_l(il))
 
     l_n=l_n+count_l(il)
 enddo
-       ! call LS_iteration(spnr(is),is, spr(:,is),tools, tools_info,il-1,spin,&
-       !                                 count_l(il),mspin,vr,&
-       !                                 wf(:,:,spin),eig(:))
-
-
-
-
-
-!!----------engy_exnl_core
-! integral <psi|vx_nl|psi>
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Calculate non-local exchange energy for core orbitals !
+! <psi|vx_nl|psi>          store it in engy_exnl_core  !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if(hybx_coef.gt.1e-10)then
 
 l_n=0
 Do il = 1, lmax+1
   do nn=1,count_l(il)
-  l_n=l_n+1
-  call integ_v(spnr(is),is,wf(:,l_n,1)*vx_wf(:,l_n,1)*spr(:,is)**2,t1,atom_integw)
-write(*,*)"l_n=",l_n,"Ex_nl_core=",occ(l_n, 1)*t1/2d0
-engy_exnl_core = engy_exnl_core + occ(l_n, 1)*t1
-
-      
+    l_n=l_n+1
+    call integ_v(spnr(is),is,wf(:,l_n,1)*vx_wf(:,l_n,1)*spr(:,is)**2,t1,atom_integw)
+    engy_exnl_core = engy_exnl_core + occ(l_n, 1)*t1
    enddo
 enddo
-!read(*,*)
-
-
-!----------engy_exnl_core
-
 endif
 
 
 
-
-!!!---------put the corresponding wf in correct places in rwfcr
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! put the corresponding wf in correct places in rwfcr !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 l_n=0
 
 Do il = 1, lmax+1
@@ -311,38 +265,22 @@ write(*,*)shape(spr(:,is)),shape(wf(:,l_n,1))
     enddo 
   enddo
 enddo
-
-!Kinetic energy
-
-do ist = 1, spnst (is)
-if (spcore(ist, is)) Then
-
-  call deriv_f(spnr(is),is,rwfcr(:,1,ist,ias)/spr(:,is),ftemp1,atom_integw)
-  call integ_v(spnr(is),is,0.5d0*ftemp1**2*spr(:,is)**2,e1,atom_integw)
-  call integ_v(spnr(is),is,0.5d0*dble(spl(ist,is))*dble(spl(ist,is)+1)*&
-          (rwfcr(:,1,ist,ias)/spr(:,is))**2,e2,atom_integw)
-  e_kin=e_kin+spocc(ist, is)*(e1+e2)
-write(*,*)"kinetic new:",e_kin
+!!!!!!!!!!!!!!!!!!!
+! Kinetic energy  !
+!!!!!!!!!!!!!!!!!!!
+if (.false.) then
+  do ist = 1, spnst (is)
+    if (spcore(ist, is)) Then
+      call deriv_f(spnr(is),is,rwfcr(:,1,ist,ias)/spr(:,is),ftemp1,atom_integw)
+      call integ_v(spnr(is),is,0.5d0*ftemp1**2*spr(:,is)**2,e1,atom_integw)
+      call integ_v(spnr(is),is,0.5d0*dble(spl(ist,is))*dble(spl(ist,is)+1)*&
+             (rwfcr(:,1,ist,ias)/spr(:,is))**2,e2,atom_integw)
+      e_kin=e_kin+spocc(ist, is)*(e1+e2)
+      write(*,*)"kinetic new:",e_kin
+    endif
+ enddo
 endif
-enddo
 
-!read(*,*)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-!-----------end iteration process
 
 !-------- add to core density
                 do ist = 1, spnst(is)
@@ -366,13 +304,6 @@ enddo
         
 !___________________________
 !end of LS iteration process
-
-
-
-
-
-
-
 
 
 

@@ -55,10 +55,10 @@ losize=>mt_dm%losize
 maxaa=mt_dm%maxaa
 wfsize=maxaa+maxnlo
 
-if (.false.)then !extra otputs
-  write(*,*)"maxaa",maxaa
-  write(*,*)"dm size",wfsize
-  write(*,*)"lmaxmat",input%groundstate%lmaxmat
+if (.true.)then !write dm to a file
+!  write(*,*)"maxaa",maxaa
+!  write(*,*)"dm size",wfsize
+!  write(*,*)"lmaxmat",input%groundstate%lmaxmat
 
   open (11, file = 'dm.dat', status = 'replace')
   do if1=1, wfsize
@@ -80,8 +80,8 @@ if (.false.)then !extra otputs
 endif !exta outputs
 
 
-if (.true.) then  !test mt_dm
-  write(*,*)"*********apw************"
+if (.true.) then  !test mt_dm if diagonal is real
+ !write(*,*)"*********apw************"
   if1=1
   do l1=0, input%groundstate%lmaxmat
     do io1=1, apword (l1, is)
@@ -96,11 +96,10 @@ if (.true.) then  !test mt_dm
               stop
             endif
         if1=if1+1
-
         enddo
      enddo
   enddo
-  write(*,*)"*********lo************"
+  !write(*,*)"*********lo************"
   if1=1
   do ilo1 = 1, nlorb (is)
     l1 = lorbl (ilo1, is)
@@ -164,7 +163,7 @@ enddo
 
 
 open (2, file = 'dm_map.dat', status = 'replace')
-write(*,*)"***********MATMAP***********"
+write(2,*)"***********MATMAP***********"
 do l1=0, input%groundstate%lmaxmat
   write(2,*)l1,".",matmap(1:norb(l1),l1)
 
@@ -172,10 +171,9 @@ do l1=0, input%groundstate%lmaxmat
 enddo
 close(2)
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! go through the density matrix and store needed coeficents in newmat !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-allocate(newmat (maxnorb**2,0:input%groundstate%lmaxmat) )
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! go through the density matrix and and construct vx_psi form valece orbitals !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !basis(ir,orb,l)
 !ir    1:nrmt(is)     
@@ -194,111 +192,55 @@ do l1=0, input%groundstate%lmaxmat
       do m1=0, 2*l1
         t2c=mt_dm%main%ff(if1+m1,if2+m1,ias)
         t1c=t1c+t2c
-        write(*,'("l=",I1," m=",I2,"|",I3,"|" ,I3,"| Re=",E11.4," Im=",E11.4)')l1,m1,if1+m1,if2+m1,&
-                dreal(t2c),dimag(t2c)
+        !write(*,'("l=",I1," m=",I2,"|",I3,"|" ,I3,"| Re=",E11.4," Im=",E11.4)')l1,m1,if1+m1,if2+m1,&
+        !        dreal(t2c),dimag(t2c)
       enddo
 
-      t1c=t1c!/dble(2*l1+1) 
-write(*,*)"           Average=",t1c
-      newmat(ioo,l1)=t1c
+      !write(*,*)"           value=",t1c
       occ=dreal(t1c)
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-     ! place to construct functions from basis
+      vx_u_part=0d0
 
-
-     if(.true.) then
-   vx_u_part=0d0
-   call insum(nrmt(is),r(1:nrmt(is)),is,l,l1,occ,&
+      call insum(nrmt(is),r(1:nrmt(is)),is,l,l1,occ,&
            basis(:,io1,l1)*r(1:nrmt(is)),&
            basis(:,io2,l1)*r(1:nrmt(is)),&
            u(1:nrmt(is)),&
            vx_u_part(1:nrmt(is)),.true.)
-   integ(1:nrmt(is))=integ(1:nrmt(is))+vx_u_part(1:nrmt(is))
 
-   endif
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      integ(1:nrmt(is))=integ(1:nrmt(is))+vx_u_part(1:nrmt(is))
       ioo=ioo+1
     enddo !io2
   enddo !io1
 enddo !l1
 vx_psi=vx_psi+integ/r
 
-
-
-
-
-
-write(*,*)"************NEWMAT**********"
-do l1=0, input%groundstate%lmaxmat
-  write(*,*)l1,".",newmat(1:norb(l1)**2,l1)
-!  write(*,*)l1,".",newmat(1:maxnorb**2,l1)
-
-enddo
-
-
-
-
 endif!(mt_dm%maxnlo.ne.0).and.(mt_dm%maxaa.ne.0))
 
-
-
-
-
-
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! go through the core orbitals and and construct vx_psi !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 do ish=1, Nshell
   u_all(:,ish)=psi_all(:,ish)*r
 enddo
 integ=0d0
 do ish=1, Nshell
-
   lpri=shell_l(ish)
-
   call insum(Ngrid,r,is,l,lpri,shell_occ(ish),u_all(:,ish),u_all(:,ish),u,vx_u_part,.false.)
   integ = integ + vx_u_part
-
-if ((ish.eq.3).and.(shell.eq.3))then
-  open (2, file = 'vx3.dat', status = 'replace')!, rwfcr(ir,1,1,ias)
-   do ir = 1,Ngrid
-        write(2,*) r(ir), vx_u_part(ir)/r(ir),u(ir)/r(ir) 
-  enddo
-  close(2)
-endif
-
-  
 enddo !ish
 
 
+!open (2, file = 'vx_psi_core_apw.dat', status = 'replace')
+! do ir = 1,Ngrid
+!      write(2,*) r(ir), integ(ir)/r(ir), vx_psi(ir), integ(ir)/r(ir)+vx_psi(ir),
+! end do
+!close(2)
 
-open (2, file = 'vx_psi_core_apw.dat', status = 'replace')!, rwfcr(ir,1,1,ias)
- do ir = 1,Ngrid
-      write(2,*) r(ir), integ(ir)/r(ir), vx_psi(ir)
- end do
-close(2)
-
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! sum in vx_psi contribution from calence and core       !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 vx_psi=vx_psi+integ/r
-
-
-open (2, file = 'vx_psi.dat', status = 'replace')!, rwfcr(ir,1,1,ias)
- do ir = 1,Ngrid
-      write(2,*) r(ir), vx_psi(ir)
- end do
-close(2)
-
-
-!if ((mt_dm%maxnlo.ne.0) .and. (mt_dm%maxaa.ne.0))  stop
-!write(*,*)"vx_psi.dat written"  
-if ((killflag).and.(l.eq.1))then
-       write(*,*)"l=1 apmaiņa ir nokaujam" 
-        stop
-endif
-
-
-
 
 
 
@@ -324,7 +266,7 @@ vx_u=0d0
     gc=wigner3j(l,lpri,lpripri,0d0,0d0,0d0)
 
     gc=0.5d0*occ*gc**2
-        write(*,*)"(l,l',l'') (",l,",",lpri,",",lpripri,")", " Gaunt_coef=",gc
+    !    write(*,*)"(l,l',l'') (",l,",",lpri,",",lpripri,")", " Gaunt_coef=",gc
     if (gc.ne.0d0) then
       if (mt) then      
         call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,mt_integw)
@@ -341,7 +283,6 @@ vx_u=0d0
 
       integ2=integ2*r**lpripri
       vx_u=vx_u + gc*u1*(-integ1-integ2)
-write(*,*)vx_u(1:10)
     endif !(gc.ne.0d0)
   enddo !lpripri
 
