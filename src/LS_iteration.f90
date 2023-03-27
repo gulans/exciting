@@ -135,11 +135,11 @@ do inn=1,nmax
 
     f1=1d0/(1d0-alpha2*v_rel)
     call deriv_f(Ngrid,is,log(f1),f2,atom_integw)
-    call deriv_f(Ngrid,is,psi_in(:,ish,sp),f3,atom_integw)
+    call deriv_f(Ngrid,is,psi(:,inn),f3,atom_integw)
     f4=-f2*f3
     
-    f2=2d0*vloc(:)*psi_in(:,ish,sp)/f1
-    f3=2d0*alpha2*v_rel*eig(inn)*psi_in(:,ish,sp)+2d0*hybx_coef *vx_psi(:,inn) 
+    f2=2d0*(vloc(:)*psi(:,inn) + hybx_coef*vx_psi(:,inn))/f1
+    f3=2d0*alpha2*v_rel*eig(inn)*psi(:,inn) 
     f=f4+f2+f3
     f=-f
 

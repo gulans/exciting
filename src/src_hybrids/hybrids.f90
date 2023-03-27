@@ -140,7 +140,7 @@ Subroutine hybrids
 
 !killflag=.true.
 !call gencore()
-!write(*,*)"gencore done"
+!write(*,*)"hybrids.f90 gencore done"
 !stop
 
 
