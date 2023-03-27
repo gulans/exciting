@@ -40,7 +40,7 @@ Subroutine gendmatmt (ik, evecfv, evecsv)
       Complex (8), pointer :: wf1(:,:), wf2prime(:,:), wfalpha(:,:),wfbeta(:,:)
       Complex (8), Allocatable :: dm2(:,:)
       integer :: l3,lm3,if3,ngp,l1,lm1,j1,j3
-
+      integer :: ii
       Call timesec (ts0)
 
 !      ist=1
@@ -241,10 +241,24 @@ call timesec(t2)
       End Do
 
 
+if (.true.) then !write diagonal to a file
+   open (11, file = 'dm-diago0.dat', status = 'replace')
+
+   do ii=1, wfsize
+     write(11,'(E11.4,",",E11.4)')dreal(mt_dm%main%ff(ii,ii,ias)),dimag(mt_dm%main%ff(ii,ii,ias))
+   enddo
+   close(11)
+endif  
 
 
+  if (.not.allocated(dm_copy)) then
+    allocate(dm_copy (wfsize,wfsize,natmtot) )
+  endif
 
-write(*,*)"gendmatmt.f90 diagonāle", mt_dm%main%ff(1,1,1)
+  dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
+
+
+!write(*,*)"gendmatmt.f90 diagonāle", mt_dm%main%ff(1,1,1)
     !if (dimag(mt_dm%main%ff(1,1,1)).gt.1e-20)  then
     !       
     ! write(*,*)"gendmatmt.f90 nreāla diagonāle"   

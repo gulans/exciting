@@ -236,10 +236,10 @@ endif
 ! Hybrids
 write(*,*)""
       if (task == 7)  then
-      write(*,*)"energy.f90 ",ex_coef*exnl
+!      write(*,*)"energy.f90 ",ex_coef*exnl
 
       engyx = engyx + ex_coef*exnl + ex_coef*0.5d0* engy_exnl_core
-      write(*,*)"energy.f90 ",engyx,"=",ex_coef*exnl ,"+",ex_coef*0.5d0* engy_exnl_core
+!      write(*,*)"energy.f90 ",engyx,"=",ex_coef*exnl ,"+",ex_coef*0.5d0* engy_exnl_core
   
       endif
 !----------------------------!

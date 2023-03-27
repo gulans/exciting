@@ -106,6 +106,8 @@ Module mod_potential_and_density
 
       Type(MTDensityMatrixList) :: mt_dm
 
+      complex(8),allocatable  :: dm_copy(:,:,:)
+
 Contains
 !
 !

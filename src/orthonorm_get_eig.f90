@@ -85,7 +85,8 @@ else
     call integ_v(Ngrid,is,0.5d0*f2*f1*f3*r**2,H(inn,inp),atom_integw)
 
 
-    f=(0.5d0*f1*dble(l*(l+1))/r**2+vn+vh+vxc)*psi(:,inp)
+    f=(0.5d0*f1*dble(l*(l+1))/r**2+vn+vh+vxc)*psi(:,inp)+&
+            hybx_coef*vx_psi(:,inp)
     !call integ_BodesN_value(Ngrid,r,tools,tools_info,psi(:,inn)*f*r**2,Hnn)
     call integ_v(Ngrid,is,psi(:,inn)*f*r**2,Hnn,atom_integw)
     H(inn,inp)=H(inn,inp)+Hnn

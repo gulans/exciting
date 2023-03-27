@@ -1,5 +1,5 @@
 subroutine LS_iteration(Ngrid,is,ia,hybx_coef,r, vloc,l,shell_l,shell_occ,sp, nmax, shell0,&
-                Nshell,Nspin,relativity,lmax,psi_in,&
+                Nshell,Nspin,relativity,v_rel,lmax,psi_in,&
                 psi,vx_psi,eig )
         ! Ngrid
         ! r
@@ -30,6 +30,9 @@ integer, intent(in) :: shell0
 integer, intent(in) :: Nshell
 integer, intent(in) :: Nspin
 logical, intent(in) :: relativity
+
+real(8),intent(in) :: v_rel(Ngrid)
+
 integer, intent(in) :: lmax
 real(8), intent(in) :: psi_in(Ngrid,Nshell,Nspin)
 
@@ -49,7 +52,6 @@ real(8), intent(inout) :: eig(nmax)
 
 real(8) :: vx_psi_sr(Ngrid,nmax)
 !logical, intent(in) :: relativity
-real(8) :: v_rel(Ngrid)
 !complex(8)::Bess_ik(Ngrid,Nrsfun,2*lmax+1,2)
 !real(8), intent(inout) :: eig(nmax)
 integer :: iner_loop
@@ -69,7 +71,6 @@ logical :: spin
 
 real(8) :: t1, vx_psi_in(Ngrid,nmax),vx_psi_sr_in(Ngrid,nmax)
 integer :: n1
-
 vx_psi=0d0
 
 vx_psi_in=vx_psi
@@ -138,7 +139,7 @@ do inn=1,nmax
     f4=-f2*f3
     
     f2=2d0*vloc(:)*psi_in(:,ish,sp)/f1
-    f3=2d0*alpha2*v_rel*eig(inn)*psi_in(:,ish,sp)
+    f3=2d0*alpha2*v_rel*eig(inn)*psi_in(:,ish,sp)+2d0*hybx_coef *vx_psi(:,inn) 
     f=f4+f2+f3
     f=-f
 

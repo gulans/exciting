@@ -52,15 +52,17 @@ Use mod_hybrids, only: ex_coef
         real(8), allocatable :: wf(:,:,:),vx_wf(:,:,:),wf0(:,:,:),eig(:),occ(:,:)
         integer, allocatable :: count_l(:),number_n(:),number_l(:),nn,l_n
 logical ::file_exists
-!new dummy or extra variables
+logical :: zora
+real(8), allocatable :: v_rel(:)
 real(8) :: ftemp1(spnrmax),e_kin,e1,e2,hybx_coef
 
 hybx_coef = ex_coef !mod_hybrids variable
+
 e_kin=0d0
 engy_exnl_core=0d0
 
 
-
+zora=(input%groundstate%ValenceRelativity.eq."zora")
 
       dirac_eq=(input%groundstate%CoreRelativity.eq."dirac")
      
@@ -169,6 +171,7 @@ else !new solver
 
    allocate( wf0(spnr(is),number_of_states,1), eig(number_of_states) )
    allocate( wf(spnr(is),number_of_states,1))
+   allocate( v_rel(spnr(is)) )
    allocate( vx_wf(spnr(is),number_of_states,1))
    allocate( number_n(number_of_states),number_l(number_of_states))
     allocate( occ(number_of_states,1) )
@@ -196,7 +199,6 @@ else !new solver
    end do
 
 !sum occ for each l,n   
-write(*,*)"Final:"
   l_n=1
   do il = 1, lmax+1 !count occ
      do nn=1,count_l(il)
@@ -216,12 +218,14 @@ write(*,*)"Final:"
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 wf=wf0
 l_n=0
-
+if (zora)then !ca be created a cese for nZORA
+        v_rel=vr 
+endif
 
 Do il = 1, lmax+1
        call LS_iteration(spnr(is),is,ia,hybx_coef,spr(:,is),& !in
                vr,il-1,number_l,occ(:,1),1,count_l(il),l_n,& !in
-               number_of_states,1,.false.,lmax, wf0,& !in
+               number_of_states,1,zora,v_rel,lmax, wf0,& !in
                wf(:,l_n+1:l_n+count_l(il),1),vx_wf(:,l_n+1:l_n+count_l(il),1),&
                eig(l_n+1:l_n+count_l(il)))  
 
@@ -296,7 +300,7 @@ endif
                      end IF
                 end do
 
-  deallocate(count_l,wf,vx_wf,eig)
+  deallocate(count_l,wf,vx_wf,eig,v_rel)
 
    deallocate( wf0 )
    deallocate( number_n)

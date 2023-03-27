@@ -1,6 +1,6 @@
 subroutine get_Fock_ex(Ngrid,r,is,ia,shell,Nshell,shell_l,shell_occ,lmax,psi,psi_all,vx_psi)
 
-use modmain, only: mt_dm,apword,nlorb,lorbl,idxlm,idxas,nrmt,lofr,apwfr,killflag
+use modmain, only: mt_dm,apword,nlorb,lorbl,idxlm,idxas,nrmt,lofr,apwfr,killflag,dm_copy
 use modinput!, only: input
 
 use modinteg
@@ -40,14 +40,16 @@ l=shell_l(shell)
 
 
 
+
 !write(*,*)"Fock sākums"
+
 
 ias=idxas (ia, is)
 !write(*,*)"ias",ias
 
 
 
-if ((mt_dm%maxnlo.ne.0) .and. (mt_dm%maxaa.ne.0))then
+if ((mt_dm%maxnlo.ne.0) .or. (mt_dm%maxaa.ne.0))then
 
 
 maxnlo=mt_dm%maxnlo
@@ -55,7 +57,7 @@ losize=>mt_dm%losize
 maxaa=mt_dm%maxaa
 wfsize=maxaa+maxnlo
 
-if (.true.)then !write dm to a file
+if (.false.)then !write dm to a file
 !  write(*,*)"maxaa",maxaa
 !  write(*,*)"dm size",wfsize
 !  write(*,*)"lmaxmat",input%groundstate%lmaxmat
@@ -79,6 +81,16 @@ if (.true.)then !write dm to a file
   close(11)
 endif !exta outputs
 
+if (.false.) then !write diagonal to a file
+   open (11, file = 'dm-diago1.dat', status = 'replace')
+
+   do if1=1, wfsize
+     write(11,'(E11.4,",",E11.4)')dreal(mt_dm%main%ff(if1,if1,ias)),dimag(mt_dm%main%ff(if1,if1,ias))
+   enddo
+   close(11)
+
+
+endif
 
 if (.true.) then  !test mt_dm if diagonal is real
  !write(*,*)"*********apw************"
@@ -89,9 +101,13 @@ if (.true.) then  !test mt_dm if diagonal is real
     !        lm1 = idxlm (l1, m1)
            ! write(*,'(i3,". l=",i1," m=",i2," lm=",i2," dm=")')if1,l1,m1,lm1
            ! write(*,*)"                   ",mt_dm%main%ff(if1,if1,ias)
-            if (dimag(mt_dm%main%ff(if1,if1,ias)).gt.1e-10) then
+           ! if (dimag(mt_dm%main%ff(if1,if1,ias)).gt.1e-10) then
+
+            if (dimag(dm_copy(if1,if1,ias)).gt.1e-10) then
+
               write(*,'(i3,". l=",i1," m=",i2," lm=",i2," dm=")')if1,l1,m1,lm1
-              write(*,*)"                   ",mt_dm%main%ff(if1,if1,ias)
+!              write(*,*)"                   ",mt_dm%main%ff(if1,if1,ias)
+              write(*,*)"                   ",dm_copy(if1,if1,ias)
               write(*,*)"get_Fock_ex.f90 - complex element in the diagonal of mt_dm"
               stop
             endif
@@ -108,9 +124,15 @@ if (.true.) then  !test mt_dm if diagonal is real
 !      write(*,'(i3,". l=",i1," m=",i2," lm=",i2)')maxaa+if1,l1,m1,lm1
 !      write(*,*)"                   ",mt_dm%main%ff(maxaa+if1,maxaa+if1,ias)
 
-            if (dimag(mt_dm%main%ff(if1,if1,ias)).gt.1e-10) then
+!            if (dimag(mt_dm%main%ff(if1,if1,ias)).gt.1e-10) then
+            if (dimag(dm_copy(if1,if1,ias)).gt.1e-10) then
+
               write(*,'(i3,". l=",i1," m=",i2," lm=",i2," dm=")')if1,l1,m1,lm1
-              write(*,*)"                   ",mt_dm%main%ff(if1,if1,ias)
+!              write(*,*)"                   ",mt_dm%main%ff(if1,if1,ias)
+
+              write(*,*)"                   ",dm_copy(if1,if1,ias)
+
+
               write(*,*)"get_Fock_ex.f90 - complex element in the diagonal of mt_dm"
               stop
             endif
@@ -166,8 +188,6 @@ open (2, file = 'dm_map.dat', status = 'replace')
 write(2,*)"***********MATMAP***********"
 do l1=0, input%groundstate%lmaxmat
   write(2,*)l1,".",matmap(1:norb(l1),l1)
-
-  write(*,*)l1,".",matmap(1:norb(l1),l1)
 enddo
 close(2)
 
@@ -190,7 +210,8 @@ do l1=0, input%groundstate%lmaxmat
       if2=matmap(io2,l1)
       t1c=cmplx(0d0,0d0,8)
       do m1=0, 2*l1
-        t2c=mt_dm%main%ff(if1+m1,if2+m1,ias)
+        !t2c=mt_dm%main%ff(if1+m1,if2+m1,ias)
+        t2c=dm_copy(if1+m1,if2+m1,ias)
         t1c=t1c+t2c
         !write(*,'("l=",I1," m=",I2,"|",I3,"|" ,I3,"| Re=",E11.4," Im=",E11.4)')l1,m1,if1+m1,if2+m1,&
         !        dreal(t2c),dimag(t2c)
