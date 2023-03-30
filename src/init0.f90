@@ -35,6 +35,7 @@ Subroutine init0
       Integer :: is, js, ia, ias
       Integer :: ist, l, m, lm, iv (3)
       Real (8) :: ts0, ts1, tv3 (3)
+      integer :: i2,i3, core_count 
 ! zero self-consistent loop number
       iscl = 0
       tlast = .False.
@@ -408,13 +409,40 @@ if (allocated(mt_integw%fintw)) then
       If (allocated(rwfcr)) deallocate (rwfcr)
       Allocate (rwfcr(spnrmax, 2, spnstmax, natmtot))
 rwfcr=0d0
-      If (allocated(vx_rwfcr)) deallocate (vx_rwfcr)
-      Allocate (vx_rwfcr(spnrmax, 1, spnstmax, natmtot))
-vx_rwfcr=0d0
 
 
+ If (allocated(c_count)) deallocate (c_count)
+      Allocate (c_count(nspecies))
 
 
+!count how many core orbitals for each species
+!and store in mod_corestate variable c_count(nspecies)
+do is=1, nspecies
+  core_count=0
+  do i2=1, spnst(is) 
+     if (spcore(i2,is)) core_count = core_count + 1
+  enddo
+  c_count(is)=core_count
+enddo
+
+!generate a list of core orbital indexes
+!and store in mod_corestate variable c_list(1:c_count(nspecies),nspecies)
+ If (allocated(c_list)) deallocate (c_list)
+ Allocate (c_list(maxspst,nspecies))
+c_list(:,:)=0d0
+do is=1, nspecies
+  i3=0
+  do i2=1, spnst(is)
+    if (spcore(i2,is)) then
+            i3=i3+1
+            c_list(i3,is)=i2 
+    endif
+  enddo
+enddo
+
+do is=1, nspecies
+  write(*,*)"is=",is,"core list:",c_list(1:c_count(is),is)
+enddo
 
 ! solve the Kohn-Sham-Dirac equations for all atoms
       Call allatoms(1)

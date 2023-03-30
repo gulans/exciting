@@ -56,6 +56,8 @@ logical :: zora
 real(8), allocatable :: v_rel(:)
 real(8) :: ftemp1(spnrmax),e_kin,e1,e2,hybx_coef
 
+
+
 hybx_coef = ex_coef !mod_hybrids variable
 
 e_kin=0d0
@@ -134,7 +136,6 @@ else !new solver
 !do k=1, spnst(is)
 !  write(*,*)"spl",k,". l=",spl(k,is)," n=",spn(k,is)," kappa=",spk(k,is)," core=",spcore(k,is),"e=",evalcr(k,ias)
 !enddo
-
 
 
 !find the largest l between core orbitals

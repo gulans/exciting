@@ -18,13 +18,9 @@ Module mod_corestate
 ! energies calculated only in the first iteration)
 !replaced by inputstructurelogical :: frozencore
 
-! non-local exchange operator acting on core wf
-       Real (8), Allocatable :: vx_rwfcr (:, :, :, :)
-
        real (8) :: engy_exnl_core
-
-
-
+integer , Allocatable :: c_count(:)
+integer , Allocatable :: c_list(:,:) !list of indexes of core orbitals for each species
 
 End Module
 !

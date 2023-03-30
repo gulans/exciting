@@ -1,5 +1,4 @@
-subroutine get_Fock_ex(Ngrid,r,is,ia,shell,Nshell,shell_l,shell_occ,lmax,psi,psi_all,vx_psi)
-
+subroutine get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,shell_occ,lmax,psi,psi_all,vx_psi)
 use modmain, only: mt_dm,apword,nlorb,lorbl,idxlm,idxas,nrmt,lofr,apwfr,killflag,dm_copy
 use modinput!, only: input
 
@@ -8,13 +7,13 @@ implicit none
 real(8), PARAMETER :: Pi = 3.1415926535897932384d0
 
 integer, intent(in) :: lmax,is,ia
-integer, intent(in)  :: Nshell,Ngrid,shell,shell_l(Nshell)
+integer, intent(in)  :: Nshell,Ngrid,l,shell_l(Nshell)
 real(8), intent(in)  :: psi_all(Ngrid,Nshell),r(Ngrid),psi(Ngrid),shell_occ(Nshell)
 real(8), intent(out) :: vx_psi(Ngrid)
 
 complex(8) ::rez(Ngrid)
 complex(8) :: integc1(Ngrid),integc2(Ngrid),t1c,t2c
-integer :: k,i,ir,ish,l,lpri,lpripri
+integer :: k,i,ir,ish,lpri,lpripri
 real(8) :: gc,u_all(Ngrid,Nshell),u(Ngrid)
 real(8) :: integ(Ngrid)
 
@@ -34,8 +33,6 @@ real(8) :: vx_u_part(Ngrid),occ
 vx_psi=0d0
 
 u=psi*r
-l=shell_l(shell)
-
 
 
 

@@ -111,7 +111,7 @@ endif
 if (abs(hybx_coef).gt.1d-20) then
   do inn=1,nmax
     ish=inn+shell0
-    call get_Fock_ex(Ngrid,r,is,ia,ish,Nshell,shell_l,&
+    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,&
             shell_occ,lmax,psi(:,inn), psi_in(:,:,sp),vx_psi(:,inn))
   enddo
 endif
@@ -158,8 +158,10 @@ enddo
 if (abs(hybx_coef).gt.1d-20) then
    do inn=1,nmax
    ish=inn+shell0
-   call get_Fock_ex(Ngrid,r,is,ia,ish,Nshell,shell_l,shell_occ,lmax,&
+   call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,shell_occ,lmax,&
            psi(:,inn),psi_in(:,:,sp),vx_chi(:,inn))
+
+
    enddo
 endif
 
@@ -174,7 +176,7 @@ call orthonorm_get_eig(Ngrid,is,r,vloc,l,nmax,relativity,v_rel,hybx_coef,&
 if (abs(hybx_coef).gt.1d-20) then
   do inn=1,nmax
     ish=inn+shell0
-    call get_Fock_ex(Ngrid,r,is,ia,ish,Nshell,shell_l, shell_occ,lmax,&
+    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l, shell_occ,lmax,&
             psi(:,inn), psi_in(:,:,sp),vx_psi(:,inn))
   
   enddo
