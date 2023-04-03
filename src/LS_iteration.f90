@@ -1,6 +1,6 @@
 subroutine LS_iteration(Ngrid,is,ia,hybx_coef,r, vloc,l,shell_l,shell_occ,sp, nmax, shell0,&
-                Nshell,Nspin,relativity,v_rel,lmax,psi_in,&
-                psi,vx_psi,eig )
+                Nshell,Nspin,relativity,v_rel,lmax,u_all,&
+                u,vx_u,eig )
         ! Ngrid
         ! r
         ! vfull - potential (v_n+v_h+v_xc)
@@ -34,34 +34,22 @@ logical, intent(in) :: relativity
 real(8),intent(in) :: v_rel(Ngrid)
 
 integer, intent(in) :: lmax
-real(8), intent(in) :: psi_in(Ngrid,Nshell,Nspin)
+real(8), intent(in) :: u_all(Ngrid,Nshell,Nspin)
 
-real(8), intent(out) :: psi(Ngrid,nmax)
-real(8), intent(out) :: vx_psi(Ngrid,nmax)
+real(8), intent(out) :: u(Ngrid,nmax)
+real(8), intent(out) :: vx_u(Ngrid,nmax)
 
 real(8), intent(inout) :: eig(nmax)
 
 
-!integer, intent(in) :: Nrsfun,lmax
-!complex(8), intent(in) :: rsfunC(Nrsfun+1,2)
-!real(8), intent(in) :: hybx_w(3,2)
-!integer, intent(in) :: Ngrid, is,nmax, shell0, Nshell,Nspin
-!integer, intent(in) :: l,sp, shell_l(Nshell) 
-!real(8), intent(in) :: r(Ngrid),vloc(Ngrid),shell_occ(Nshell,Nspin)
-!real(8), intent(in) :: psi_in(Ngrid,Nshell,Nspin),psi_in_p(Ngrid,Nshell,Nspin),F_mix
 
-real(8) :: vx_psi_sr(Ngrid,nmax)
-!logical, intent(in) :: relativity
-!complex(8)::Bess_ik(Ngrid,Nrsfun,2*lmax+1,2)
-!real(8), intent(inout) :: eig(nmax)
 integer :: iner_loop
-!real(8), intent(out) :: psi(Ngrid,nmax)
 
 real(8), PARAMETER :: Pi = 3.1415926535897932384d0
 real(8), PARAMETER :: alpha2=0.5d0*7.2973525693d-3**2 !1/(2*c^2)
+
 integer :: inn,inp,ish,i,j 
-real(8) :: vx_chi(Ngrid,nmax),vx_chi_sr(Ngrid,nmax)
-real(8) :: vx_chi2(Ngrid,nmax),vx_chi2_sr(Ngrid,nmax)
+real(8) :: vx_chi(Ngrid,nmax),psi(Ngrid,nmax)
 real(8) :: f1(Ngrid),f2(Ngrid),f3(Ngrid),f4(Ngrid),f5(Ngrid)
 real(8) :: f6(Ngrid),f7(Ngrid)
 real(8) :: phi(Ngrid,nmax),norm,eigp(nmax)
@@ -69,15 +57,17 @@ integer :: iscl,maxscl,ir,isp
 real(8) :: f(Ngrid)
 logical :: spin
 
-real(8) :: t1, vx_psi_in(Ngrid,nmax),vx_psi_sr_in(Ngrid,nmax)
+real(8) :: t1, vx_psi(Ngrid,nmax),vx_chi_sr(Ngrid,nmax),vx_psi_sr(Ngrid,nmax) 
 integer :: n1
+
+  do inn=1,nmax
+    psi(:,inn)=u(:,inn)/r
+  enddo
+
 vx_psi=0d0
-
-vx_psi_in=vx_psi
-vx_psi_sr_in=vx_psi_sr
-
-vx_chi=psi*0d0
-vx_chi_sr=psi*0d0
+vx_chi=0d0
+vx_chi_sr=0d0
+vx_psi_sr=0d0
 
 if (Nspin.eq.2)then
         spin=.true.
@@ -85,6 +75,17 @@ else
         spin=.false.
 endif
 
+
+
+if (abs(hybx_coef).gt.1d-20) then
+  do inn=1,nmax
+    ish=inn+shell0
+!    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,&
+!            shell_occ,psi(:,inn)*r, u_all(:,:,sp),vx_psi(:,inn))
+    call getrFock(Ngrid,r,is,ia,l,psi(:,inn)*r,vx_psi(:,inn))
+    vx_psi(:,inn)=vx_psi(:,inn)/r
+  enddo
+endif
 
 
 
@@ -106,15 +107,6 @@ if((maxval(abs((eig-eigp)/(eig-1d0)))).lt.1d-14)then
         exit
 endif
 
-
-
-if (abs(hybx_coef).gt.1d-20) then
-  do inn=1,nmax
-    ish=inn+shell0
-    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,&
-            shell_occ,lmax,psi(:,inn), psi_in(:,:,sp),vx_psi(:,inn))
-  enddo
-endif
 
 
 
@@ -146,7 +138,6 @@ do inn=1,nmax
   endif
 
   call scrPoisson(Ngrid,is, r,l, f, eig(inn), psi(:,inn))
-
   call integ_v(Ngrid,is,r**2*psi(:,inn)**2,norm,atom_integw)
 
   psi(:,inn)=psi(:,inn)/dsqrt(norm)
@@ -158,9 +149,12 @@ enddo
 if (abs(hybx_coef).gt.1d-20) then
    do inn=1,nmax
    ish=inn+shell0
-   call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,shell_occ,lmax,&
-           psi(:,inn),psi_in(:,:,sp),vx_chi(:,inn))
+!   call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,shell_occ,&
+!           psi(:,inn)*r,u_all(:,:,sp),vx_chi(:,inn))
+   call getrFock(Ngrid,r,is,ia,l,psi(:,inn)*r,vx_chi(:,inn))
 
+   
+   vx_chi(:,inn)=vx_chi(:,inn)/r
 
    enddo
 endif
@@ -173,18 +167,30 @@ call orthonorm_get_eig(Ngrid,is,r,vloc,l,nmax,relativity,v_rel,hybx_coef,&
         vx_psi,vx_psi_sr)
 
 
-if (abs(hybx_coef).gt.1d-20) then
-  do inn=1,nmax
-    ish=inn+shell0
-    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l, shell_occ,lmax,&
-            psi(:,inn), psi_in(:,:,sp),vx_psi(:,inn))
-  
-  enddo
-endif
+!if (abs(hybx_coef).gt.1d-20) then
+!  do inn=1,nmax
+!    ish=inn+shell0
+!    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l, shell_occ,&
+!            psi(:,inn)*r, u_all(:,:,sp),vx_psi(:,inn))
+!
+!!    call getrFock(Ngrid,r,is,ia,l,psi(:,inn)*r,vx_psi(:,inn))
+!
+!    vx_psi(:,inn)=vx_psi(:,inn)/r
+!  enddo
+!endif
 
 
 
 enddo !self consistent loop
+
+
+  do inn=1,nmax
+    u(:,inn)=psi(:,inn)*r
+    vx_u(:,inn)=vx_psi(:,inn)*r
+  enddo
+
+
+
 end subroutine
 
 subroutine scrPoisson(Ngrid,is,r,l,f, e, psi)

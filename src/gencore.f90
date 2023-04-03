@@ -189,7 +189,7 @@ else !new solver
       do k = 1, spnst(is)
          if ( ((il-1).eq.spl(k,is)) .and. (spcore(k,is)) .and. (spn(k,is).eq.nn ) )  then
 !             write(*,*)"OK: l=",il-1," n=",nn, " k=",k,"eig=",evalcr(k,ias)
-             wf0(:,l_n,1)=rwfcr(:,1,k,ias)/spr(:,is)
+             wf0(:,l_n,1)=rwfcr(:,1,k,ias)
              eig(l_n)=evalcr(k,ias)
              number_n(l_n)=spn(k,is)
              number_l(l_n)=il-1
@@ -244,7 +244,7 @@ l_n=0
 Do il = 1, lmax+1
   do nn=1,count_l(il)
     l_n=l_n+1
-    call integ_v(spnr(is),is,wf(:,l_n,1)*vx_wf(:,l_n,1)*spr(:,is)**2,t1,atom_integw)
+    call integ_v(spnr(is),is,wf(:,l_n,1)*vx_wf(:,l_n,1),t1,atom_integw)
     engy_exnl_core = engy_exnl_core + occ(l_n, 1)*t1
    enddo
 enddo
@@ -266,7 +266,7 @@ Do il = 1, lmax+1
               evalcr(ist,ias)=eig(l_n) 
 
 
-              rwfcr(1:spnr(is),1,ist,ias)=wf(:,l_n,1)*spr(:,is)
+              rwfcr(1:spnr(is),1,ist,ias)=wf(:,l_n,1)
 
 
       endif

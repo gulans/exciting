@@ -1,15 +1,21 @@
-subroutine get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,shell_occ,u,u_all,vx_u)
-use modmain, only: mt_dm,apword,nlorb,lorbl,idxlm,idxas,nrmt,lofr,apwfr,killflag,dm_copy
+subroutine getrFock(Ngrid,r,is,ia,l,u,vx_u)
+use modmain, only: mt_dm,apword,nlorb,lorbl,idxlm,idxas,nrmt,lofr,apwfr,killflag,dm_copy,spl,spocc
+
 use modinput!, only: input
+use mod_corestate, only: rwfcr,c_list,c_count
 
 use modinteg
 implicit none
 real(8), PARAMETER :: Pi = 3.1415926535897932384d0
 
 integer, intent(in) :: is,ia
-integer, intent(in)  :: Nshell,Ngrid,l,shell_l(Nshell)
-real(8), intent(in)  :: u_all(Ngrid,Nshell),r(Ngrid),u(Ngrid),shell_occ(Nshell)
+integer, intent(in)  :: Ngrid,l
+real(8), intent(in)  :: r(Ngrid),u(Ngrid)
 real(8), intent(out) :: vx_u(Ngrid)
+
+integer ::shell_l(c_count(is))
+real(8) ::u_all(Ngrid,c_count(is)),shell_occ(c_count(is))
+
 
 complex(8) ::rez(Ngrid)
 complex(8) :: integc1(Ngrid),integc2(Ngrid),t1c,t2c
@@ -30,14 +36,23 @@ integer :: tempindex(0:input%groundstate%lmaxmat)
 complex(8),allocatable :: newmat(:,:)
 real(8) :: vx_u_part(Ngrid),occ
 
+
+
+ias=idxas (ia, is)
+
+u_all(:,:)=rwfcr(1:Ngrid,1,c_list(1:c_count(is),is),ias)
+shell_l(:)=spl(1:c_count(is),is)
+shell_occ(:)=spocc(1:c_count(is),is)
+
+
+
+
 vx_u=0d0
 
 
 !write(*,*)"Fock sākums"
 
 
-ias=idxas (ia, is)
-!write(*,*)"ias",ias
 
 
 
@@ -233,7 +248,7 @@ endif!(mt_dm%maxnlo.ne.0).and.(mt_dm%maxaa.ne.0))
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 integ=0d0
-do ish=1, Nshell
+do ish=1, c_count(is)
   lpri=shell_l(ish)
   call insum(Ngrid,r,is,l,lpri,shell_occ(ish),u_all(:,ish),u_all(:,ish),u,vx_u_part,.false.)
   integ = integ + vx_u_part
@@ -256,45 +271,3 @@ vx_u=vx_u+integ
 
 end subroutine
 
-
-subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
-use modinteg
-implicit none
-
-integer, intent(in) :: Ngrid,is, l, lpri
-real(8), intent(in) :: occ,r(Ngrid),u1(Ngrid),u2(Ngrid),u(Ngrid)
-logical, intent(in) :: mt
-real(8), intent(out) ::vx_u(Ngrid)
-
-real (8)  :: wigner3j
-
-integer :: lpripri
-real(8) :: gc,integ1(Ngrid),integ2(Ngrid),integ3(Ngrid)
-vx_u=0d0
-  do lpripri=abs(l-lpri),l+lpri,2
-!    call wigner3j_list(l,lpri,lpripri,gc)
-    gc=wigner3j(l,lpri,lpripri,0d0,0d0,0d0)
-
-    gc=0.5d0*occ*gc**2
-    !    write(*,*)"(l,l',l'') (",l,",",lpri,",",lpripri,")", " Gaunt_coef=",gc
-    if (gc.ne.0d0) then
-      if (mt) then      
-        call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,mt_integw)
-      else
-        call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,atom_integw)
-      endif
-      integ1=integ1/r**(lpripri+1)
-      if (mt) then
-        call integ_f_rev(Ngrid,r,is,u2*u/r**(lpripri+1),integ2,mt_integw)
-      else
-        call integ_f_rev(Ngrid,r,is,u2*u/r**(lpripri+1),integ2,atom_integw)
-      endif
-
-
-      integ2=integ2*r**lpripri
-      vx_u=vx_u + gc*u1*(-integ1-integ2)
-    endif !(gc.ne.0d0)
-  enddo !lpripri
-
-
-end subroutine
