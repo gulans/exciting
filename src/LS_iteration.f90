@@ -152,10 +152,7 @@ if (abs(hybx_coef).gt.1d-20) then
 !   call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,shell_occ,&
 !           psi(:,inn)*r,u_all(:,:,sp),vx_chi(:,inn))
    call getrFock(Ngrid,r,is,ia,l,psi(:,inn)*r,vx_chi(:,inn))
-
-   
    vx_chi(:,inn)=vx_chi(:,inn)/r
-
    enddo
 endif
 
