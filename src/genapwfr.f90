@@ -41,19 +41,33 @@ Subroutine genapwfr
      & (apwordmax)
       Real (8) :: q0 (nrmtmax, apwordmax), q1 (nrmtmax, apwordmax)
       Real (8) :: hp0 (nrmtmax)
-      
+      write(*,*)"TAGAD gatavos apw bāzi"
+open (12, file = 'base_apw.dat', status = 'replace')
+write(12,*)"l order energy"
+
+
       Do is = 1, nspecies
          nr = nrmt (is)
          Do ia = 1, natoms (is)
+write(12,*)"is ia"
+write(12,*)is, ia
+write(12,*)"l order energy"
             ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
             Do l = 0, input%groundstate%lmaxapw
                Do io1 = 1, apword (l, is)
 ! integrate the radial Schrodinger equation
+write(12,*)l,apwdm(io1, l, is),apwe(io1, l, ias)
+if(.true.)then
+                  Call rschroddme2 (is,ia,apwdm(io1, l, is), l, 0, apwe(io1, &
+                 & l, ias), nr, spr(:, is), &
+                 & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
+ else
                   Call rschroddme (apwdm(io1, l, is), l, 0, apwe(io1, &
                  & l, ias), nr, spr(:, is), &
                  & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
-! normalise radial functions
+ endif
+ ! normalise radial functions
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io1) ** 2
                   End Do
@@ -110,6 +124,7 @@ Subroutine genapwfr
          End Do
       End Do
 !      write(*,*)
-      Return
+close(12)
+Return
 End Subroutine
 !EOC

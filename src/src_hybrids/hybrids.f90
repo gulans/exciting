@@ -252,7 +252,15 @@ Subroutine hybrids
         call energykncr()   
 !pieskaitī serdes blīvumu
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/gencore
-      
+
+
+if(.true.)then
+        call genapwfr()       
+        call genlofr()  
+endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
       call calc_vxnl()
       call timesec(ts1)
 

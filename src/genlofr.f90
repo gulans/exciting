@@ -58,6 +58,9 @@ Subroutine genlofr
 ! Andris.
 ! -------------------------------------
 !      allocate(dwf1(mtnr),dwf2(mtnr))
+      write(*,*)"TAGAD gatavos lo bāzi, spied pogu"
+open (12, file = 'base_lo.dat', status = 'replace')
+write(12,*)"l order energy"
      
       if ((input%groundstate%lorecommendation).and.(tlast)) then
 !       energy=-6d0
@@ -152,18 +155,32 @@ Subroutine genlofr
       Do is = 1, nspecies
          nr = nrmt (is)
          Do ia = 1, natoms (is)
-            ias = idxas (ia, is)
+write(12,*)"is ia"
+write(12,*)is, ia
+write(12,*)"l order energy"
+
+           ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
             Do ilo = 1, nlorb (is)
                l = lorbl (ilo, is)
                Do io2 = 1, lorbord (ilo, is)
 !!!                  if (is.eq.2) write(*,*) l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
 ! integrate the radial Schrodinger equation
+
+write(12,*)l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
+if(.true.)then
+                  Call rschroddme2 (is,ia,lorbdm(io2, ilo, is), l, 0, &
+                 & lorbe(io2, ilo, ias), nr, &
+                 & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
+                 & q1(:, io2))
+ else
+
                   Call rschroddme (lorbdm(io2, ilo, is), l, 0, &
                  & lorbe(io2, ilo, ias), nr, &
                  & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
                  & q1(:, io2))
-! normalise radial functions
+ endif
+               ! normalise radial functions
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io2) ** 2
                   End Do
@@ -231,6 +248,7 @@ Subroutine genlofr
          End Do
       End Do
       Deallocate (ipiv, xa, ya, a, b, c)
+close(12)
       Return
 End Subroutine
 !EOC
