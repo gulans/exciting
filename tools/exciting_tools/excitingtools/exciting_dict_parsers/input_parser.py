@@ -3,51 +3,70 @@
 TODO(Fabian): Issues 117 & 121:
 As more sub-elements are implemented in the input files, also add parsers here
 """
-import pathlib
-import warnings
-from typing import Dict, Union
+import copy
+from typing import Tuple
 from xml.etree import ElementTree
 
 from excitingtools.parser_utils.parser_decorators import xml_root
-from excitingtools.parser_utils.parser_utils import find_element
-
-# Valid input formats for all parsers
-root_type = Union[str, ElementTree.Element, pathlib.Path]
+from excitingtools.parser_utils.parser_utils import find_element, convert_string_dict
 
 
 @xml_root
-def parse_title(root: root_type) -> str:
+def parse_input_xml(root):
+    """ Parse an input.xml file into dictionary. """
+    assert root.tag == "input"
+    return parse_element_xml(root)
+
+
+def get_root_from_tag(root: ElementTree.Element, tag: str = None) -> Tuple[ElementTree.Element, str]:
+    """ Get the root from a tag.
+    :param tag: tag of interest
+    :param root: xml root containing the tag (or having the specified tag as tag)
+    :returns: the tag and the found root, if tag was None returns the tag of the given root
     """
-    Parse exciting input.xml title element to find the title.
-    :param root: Input for the parser.
-    :returns: Title as string.
-    """
-    ground_state = find_element(root, 'title')
-    return ground_state.text
+    if tag is None:
+        return root, root.tag
+
+    root = find_element(root, tag)
+    if root is None:
+        raise ValueError(f"Your specified input has no tag {tag}.")
+
+    return root, root.tag
 
 
 @xml_root
-def parse_groundstate(root: root_type) -> dict:
-    """
-    Parse exciting input.xml groundstate element into python dictionary.
-    :param root: Input for the parser.
-    :returns: Dictionary containing the groundstate input element attributes.
-    """
-    ground_state = find_element(root, 'groundstate')
-    return ground_state.attrib
+def parse_element_xml(root, tag: str = None) -> dict:
+    """ Parse a xml element into dictionary. Can be input.xml root or a subelement of it.
+    Put the attributes simply in dict and add recursively the subtrees and nested dicts.
+    Note: Parses all attributes into strings, would be nice to have as their actual data type but this
+     requires some more overhead. Maybe look at 'ast.literal_eval()'.
+    :param tag: the tag to parse
+    :param root: the xml root containing the tag
+    :returns: the parsed dictionary """
+    root, tag = get_root_from_tag(root, tag)
+
+    if tag in special_tags_to_parse_map.keys():
+        return special_tags_to_parse_map[tag](root)
+
+    element_dict = convert_string_dict(copy.deepcopy(root.attrib))
+
+    subelements = list(root)
+    for subelement in subelements:
+        element_dict[subelement.tag] = parse_element_xml(subelement)
+
+    return element_dict
 
 
 @xml_root
-def parse_structure(root: root_type) -> dict:
-    """
-    Parse exciting input.xml structure element into python dictionary.
+def parse_structure(root) -> dict:
+    """ Parse exciting input.xml structure element into python dictionary.
     :param root: Input for the parser.
     :returns: Dictionary containing the structure input element attributes and subelements. Looks like:
         {'atoms': List of atoms with atom positions in fractional coordinates,
          'lattice': List of 3 lattice vectors, 'species_path': species_path as string,
-         'structure_properties': dictionary with the structure_properties,
          'crystal_properties': dictionary with the crystal_properties,
-         'species_properties': dictionary with the species_properties}
+         'species_properties': dictionary with the species_properties,
+         all additional keys are structure attributes}
     """
     structure = find_element(root, 'structure')
     structure_properties = structure.attrib
@@ -76,63 +95,15 @@ def parse_structure(root: root_type) -> dict:
         'atoms': atoms,
         'lattice': lattice,
         'species_path': species_path,
-        'structure_properties': structure_properties,
         'crystal_properties': crystal_properties,
-        'species_properties': species_properties
+        'species_properties': species_properties,
+        **structure_properties
     }
 
 
-@xml_root
-def parse_xs(root: root_type) -> dict:
-    """
-    Parse exciting input.xml xs element into python dictionary.
-    :param root: Input for the parser.
-    :returns: Dictionary containing the xs input element attributes and subelements. Could look like:
-        {'xstype': xstype as string, 'xs_properties': dictionary with the xs_properties,
-         'energywindow': dictionary with the energywindow_properties,
-         'screening': dictionary with the screening_properties, 'BSE': dictionary with bse_properties,
-         'qpointset': List of qpoints, 'plan': List of tasks}
-    """
-    xs = find_element(root, 'xs')
-    if xs is None:
-        return {}
-
-    xs_properties = xs.attrib
-    xs_type = xs_properties.pop('xstype')
-    valid_xml_elements = ['BSE', 'energywindow', 'screening']
-    optional_subelements = {}
-    for subelement in xs:
-        tag = subelement.tag
-        if tag == 'qpointset':
-            qpointset = []
-            for qpoint in subelement:
-                qpointset.append([float(x) for x in qpoint.text.split()])
-            optional_subelements['qpointset'] = qpointset
-        elif tag == 'plan':
-            plan = []
-            for doonly in subelement:
-                plan.append(doonly.attrib.pop('task'))
-            optional_subelements['plan'] = plan
-        elif tag in valid_xml_elements:
-            optional_subelements[tag] = subelement.attrib
-        else:
-            warnings.warn(f'Subelement {tag} not yet supported. Its ignored...')
-
-    xs_dict = {'xstype': xs_type, 'xs_properties': xs_properties}
-    xs_dict.update(optional_subelements)
-    return xs_dict
-
-
-@xml_root
-def parse_input_xml(root: root_type) -> Dict[str, dict]:
-    """
-    Parse exciting input.xml into python dictionaries.
-    :param root: Input for the parser.
-    :returns: Dictionary which looks like: {'structure': structure_dict,
-        'ground_state': groundstate_dict, 'xs': xs_dict}.
-    """
-    title = parse_title(root)
-    structure = parse_structure(root)
-    ground_state = parse_groundstate(root)
-    xs = parse_xs(root)
-    return {'title': title, 'structure': structure, 'groundstate': ground_state, 'xs': xs}
+# special tag to parse function map or lambda if one-liner
+# necessary for tags which doesn't contain simply xml attributes and subtrees
+special_tags_to_parse_map = {"title": lambda root: root.text,
+                             "structure": parse_structure,
+                             "qpointset": lambda root: [[float(x) for x in qpoint.text.split()] for qpoint in root],
+                             "plan": lambda root: [doonly.attrib['task'] for doonly in root]}

@@ -3,26 +3,30 @@
 import numpy as np
 import pytest
 
-from excitingtools.input.xs import ExcitingXSInput
-from excitingtools.input.base_class import ExcitingXMLInput
+from excitingtools.input.xs import ExcitingXSInput, ExcitingXSBSEInput
 
 
 def test_class_ExcitingXSInput():
-    xs_input = ExcitingXSInput("BSE")
+    xs_input = ExcitingXSInput(xstype="BSE")
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
     assert xs_xml.items() == [('xstype', 'BSE')]
 
 
+def test_class_ExcitingXSInput_xstype_missing():
+    with pytest.raises(ValueError, match="Missing mandatory arguments: {'xstype'}"):
+        ExcitingXSInput(ngridk=[4, 4, 4])
+
+
 def test_ExcitingXSInput_as_dict(mock_env_jobflow_missing):
-    xs_input = ExcitingXSInput("BSE")
+    xs_input = ExcitingXSInput(xstype="BSE")
     ref_dict = {'xml_string': '<xs xstype="BSE"> </xs>'}
     assert xs_input.as_dict() == ref_dict, 'expected different dict representation'
 
 
 def test_ExcitingXSInput_as_dict_jobflow(mock_env_jobflow):
-    xs_input = ExcitingXSInput("BSE")
+    xs_input = ExcitingXSInput(xstype="BSE")
     ref_dict = {'@class': 'ExcitingXSInput',
                 '@module': 'excitingtools.input.xs',
                 'xml_string': '<xs xstype="BSE"> </xs>'}
@@ -36,17 +40,12 @@ def test_ExcitingXSInput_from_dict():
 
 
 def test_class_ExcitingXSInput_xs():
-    xs = {'broad': 0.32, 'ngridk': [8, 8, 8], 'tevout': True, 'nempty': 52, 'pwmat': 'fft'}
-    mandatory = ['xstype']
-    optional = list(xs)
-    xs_input = ExcitingXSInput("BSE", xs=xs)
+    xs = {'broad': 0.32, 'ngridk': [8, 8, 8], 'tevout': True, 'nempty': 52, 'pwmat': 'fft', "xstype": "BSE"}
+    xs_input = ExcitingXSInput(**xs)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
-    try:
-        assert xs_xml.keys() == mandatory + optional
-    except AssertionError:
-        assert xs_xml.keys() == optional + mandatory, 'Should contain mandatory xstype plus all optional attributes'
+    assert set(xs_xml.keys()) == set(xs)
     assert xs_xml.get('xstype') == 'BSE'
     assert xs_xml.get('broad') == '0.32'
     assert xs_xml.get('ngridk') == '8 8 8'
@@ -56,19 +55,18 @@ def test_class_ExcitingXSInput_xs():
 
 
 def test_class_ExcitingXsInput_wrong_key():
-    with pytest.raises(ValueError) as error:
-        ExcitingXSInput("BSE", xs={'wrong_key': 1})
-    assert error.value.args[0] == "xs keys are not valid: {'wrong_key'}"
+    with pytest.raises(ValueError, match="xs keys are not valid: {'wrong_key'}"):
+        ExcitingXSInput(xstype="BSE", wrong_key=1)
 
 
 def test_class_ExcitingXSInput_BSE_element():
     bse_attributes = {'bsetype': 'singlet', 'xas': True, 'xasspecies': 1}
     bse_keys = list(bse_attributes)
-    xs_input = ExcitingXSInput("BSE", BSE=bse_attributes)
+    xs_input = ExcitingXSInput(xstype="BSE", BSE=bse_attributes)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
-    assert xs_xml.keys() == ['xstype']
+    assert set(xs_xml.keys()) == {'xstype'}
 
     elements = list(xs_xml)
     assert len(elements) == 1
@@ -82,20 +80,20 @@ def test_class_ExcitingXSInput_BSE_element():
 
 
 def test_class_ExcitingXSInput_BSE_element_object():
-    bse_object = ExcitingXMLInput('BSE', bsetype='singlet', xas=True, xasspecies=1)
-    bse_keys = ['bsetype', 'xas', 'xasspecies']
-    xs_input = ExcitingXSInput("BSE", BSE=bse_object)
+    bse_object = ExcitingXSBSEInput(bsetype='singlet', xas=True, xasspecies=1)
+    bse_keys = {'bsetype', 'xas', 'xasspecies'}
+    xs_input = ExcitingXSInput(xstype="BSE", BSE=bse_object)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
-    assert xs_xml.keys() == ['xstype']
+    assert set(xs_xml.keys()) == {'xstype'}
 
     elements = list(xs_xml)
     assert len(elements) == 1
 
     bse_xml = elements[0]
     assert bse_xml.tag == "BSE"
-    assert bse_xml.keys() == bse_keys, 'Should contain all bse attributes'
+    assert set(bse_xml.keys()) == bse_keys, 'Should contain all bse attributes'
     assert bse_xml.get('bsetype') == 'singlet'
     assert bse_xml.get('xas') == 'true'
     assert bse_xml.get('xasspecies') == '1'
@@ -103,8 +101,7 @@ def test_class_ExcitingXSInput_BSE_element_object():
 
 def test_class_ExcitingXSInput_energywindow_element():
     energywindow_attributes = {'intv': [5.8, 8.3], 'points': 5000}
-    energywindow_keys = list(energywindow_attributes)
-    xs_input = ExcitingXSInput("BSE", energywindow=energywindow_attributes)
+    xs_input = ExcitingXSInput(xstype="BSE", energywindow=energywindow_attributes)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
@@ -114,15 +111,14 @@ def test_class_ExcitingXSInput_energywindow_element():
 
     energywindow_xml = elements[0]
     assert energywindow_xml.tag == "energywindow"
-    assert energywindow_xml.keys() == energywindow_keys, 'Should contain all bse attributes'
+    assert set(energywindow_xml.keys()) == set(energywindow_attributes), 'Should contain all bse attributes'
     assert energywindow_xml.get('intv') == '5.8 8.3'
     assert energywindow_xml.get('points') == '5000'
 
 
 def test_class_ExcitingXSInput_screening_element():
     screening_attributes = {'screentype': 'full', 'nempty': 15}
-    screening_keys = list(screening_attributes)
-    xs_input = ExcitingXSInput("BSE", screening=screening_attributes)
+    xs_input = ExcitingXSInput(xstype="BSE", screening=screening_attributes)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
@@ -132,7 +128,7 @@ def test_class_ExcitingXSInput_screening_element():
 
     screening_xml = elements[0]
     assert screening_xml.tag == "screening"
-    assert screening_xml.keys() == screening_keys, 'Should contain all bse attributes'
+    assert set(screening_xml.keys()) == set(screening_attributes), 'Should contain all bse attributes'
     assert screening_xml.get('screentype') == 'full'
     assert screening_xml.get('nempty') == '15'
 
@@ -140,7 +136,7 @@ def test_class_ExcitingXSInput_screening_element():
 def test_class_ExcitingQpointsetInput_numpy():
     qpointset_input = np.array(((0, 0, 0), (0.5, 0.5, 0.5)))
 
-    xs_input = ExcitingXSInput("BSE", qpointset=qpointset_input)
+    xs_input = ExcitingXSInput(xstype="BSE", qpointset=qpointset_input)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
@@ -163,7 +159,7 @@ def test_class_ExcitingQpointsetInput_numpy():
 def test_class_ExcitingQpointsetInput_list():
     qpointset_input = [[0, 0, 0], [0.5, 0.5, 0.5]]
 
-    xs_input = ExcitingXSInput("BSE", qpointset=qpointset_input)
+    xs_input = ExcitingXSInput(xstype="BSE", qpointset=qpointset_input)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
@@ -186,7 +182,7 @@ def test_class_ExcitingQpointsetInput_list():
 def test_class_ExcitingPlanInput():
     plan_input = ['screen', 'bse', 'bsegenspec']
 
-    xs_input = ExcitingXSInput("BSE", plan=plan_input)
+    xs_input = ExcitingXSInput(xstype="BSE", plan=plan_input)
 
     xs_xml = xs_input.to_xml()
     assert xs_xml.tag == 'xs'
@@ -212,5 +208,5 @@ def test_class_ExcitingPlanInput_wrong_plan():
     plan_input = ['screen', 'bse', 'bsegenspec', 'falseplan']
 
     with pytest.raises(ValueError) as error:
-        ExcitingXSInput("BSE", plan=plan_input)
-    assert error.value.args[0] == "Plan keys are not valid: {'falseplan'}"
+        ExcitingXSInput(xstype="BSE", plan=plan_input)
+    assert error.value.args[0] == "plan keys are not valid: {'falseplan'}"

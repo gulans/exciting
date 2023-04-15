@@ -79,11 +79,8 @@ def test_invalid_input():
     Test error is raised when giving bogus attributes to class constructor.
     """
     # Use an erroneous ground state attribute
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError, match="groundstate keys are not valid: {'erroneous_attribute'}"):
         ExcitingGroundStateInput(erroneous_attribute=True)
-
-    assert error.value.args[
-               0] == "groundstate keys are not valid: {'erroneous_attribute'}"
 
 
 def test_as_dict(mock_env_jobflow_missing):
@@ -109,4 +106,42 @@ def test_from_dict():
 
     assert gs_input.name == 'groundstate'
     # added comment for pylint to disable warning, because of dynamic attributes
-    assert gs_input.rgkmax == str(ref_rgkmax), f'Expect rgkmax to be equal {ref_rgkmax}'  # pylint: disable=no-member
+    assert gs_input.rgkmax == ref_rgkmax, f'Expect rgkmax to be equal {ref_rgkmax}'  # pylint: disable=no-member
+
+
+def test_spin_input():
+    spin_attributes = {'bfieldc': [0, 0, 0], 'fixspin': 'total FSM'}
+    spin_keys = list(spin_attributes)
+    gs_input = ExcitingGroundStateInput(rgkmax=7.0, spin=spin_attributes)
+
+    gs_xml = gs_input.to_xml()
+    assert gs_xml.tag == 'groundstate'
+    assert set(gs_xml.keys()) == {'rgkmax'}
+
+    elements = list(gs_xml)
+    assert len(elements) == 1
+
+    spin_xml = elements[0]
+    assert spin_xml.tag == "spin"
+    assert spin_xml.keys() == spin_keys, 'Should contain all spin attributes'
+    assert spin_xml.get('bfieldc') == '0 0 0'
+    assert spin_xml.get('fixspin') == 'total FSM'
+
+
+def test_solver_input():
+    solver_attributes = {'ArpackImproveInverse': True, 'ArpackShift': 2.4}
+    solver_keys = list(solver_attributes)
+    gs_input = ExcitingGroundStateInput(solver=solver_attributes)
+
+    gs_xml = gs_input.to_xml()
+    assert gs_xml.tag == 'groundstate'
+    assert set(gs_xml.keys()) == set()
+
+    elements = list(gs_xml)
+    assert len(elements) == 1
+
+    solver_xml = elements[0]
+    assert solver_xml.tag == "solver"
+    assert solver_xml.keys() == solver_keys, 'Should contain all spin attributes'
+    assert solver_xml.get('ArpackImproveInverse') == 'true'
+    assert solver_xml.get('ArpackShift') == '2.4'
