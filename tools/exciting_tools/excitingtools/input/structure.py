@@ -1,11 +1,10 @@
 """Structure class, mirroring that of exciting's structure XML sub-tree.
-http://exciting.wikidot.com/ref:structure
+https://exciting.wikidot.com/ref:structure
 """
 from typing import Optional, Union, List, Dict
-import pathlib
-import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml.etree import ElementTree
 
-from excitingtools.exciting_dict_parsers.input_parser import parse_structure
 from excitingtools.utils.utils import list_to_str
 from excitingtools.utils.dict_utils import check_valid_keys
 from excitingtools.structure.lattice import check_lattice, check_lattice_vector_norms
@@ -26,19 +25,20 @@ all_species = {'Ni', 'La', 'K', 'Xe', 'Ag', 'Bk', 'Co', 'Md', 'Lu', 'Ar',
                'P', 'Cu', 'F', 'Nd'}
 
 
-def check_muffin_tin_radii():
-    """Ensure no two MT spheres are touching.
-
-    Muffin tin radii cannot overlap. If MT radii have been explicitly specifed,
-    check that none of the atom-centred MT spheres overlap (which will cause exciting to crash).
-
-    TODO(Fab) Issue 117. Implement check that MT spheres do not overlap, and uncomment the method call above
-      Construct distance matrix with scipy, using the unit cell
-      Iterate through the d matrix and apply minimum image convention
-      Find nearest neighbours (NN) for each atom - build a list of pairwise terms
-      For each NN pair, add the MT radii along the bonding axis and evaluate.
+class ExcitingStructureCrystalInput(ExcitingXMLInput):
     """
-    raise NotImplementedError('Check of MT radii requires implementing. See exciting gitlab issue 117')
+    Class for exciting structure crystal input.
+    """
+    name = "crystal"
+    _valid_attributes = {'scale', 'stretch'}
+
+
+class ExcitingStructureSpeciesInput(ExcitingXMLInput):
+    """
+    Class for exciting structure species input.
+    """
+    name = "species"
+    _valid_attributes = {'rmt'}
 
 
 class ExcitingStructure(ExcitingXMLInput):
@@ -51,22 +51,21 @@ class ExcitingStructure(ExcitingXMLInput):
      Element: dfthalfparam: ampl, cut, exponent
      Element: shell: ionization, number
     """
+    name = "structure"
     # Path type
-    path_type = Union[str, pathlib.Path]
+    path_type = Union[str, Path]
 
     # Mandatory attributes not specified
-    _valid_structure_attributes = {'autormt', 'cartesian', 'epslat', 'primcell', 'tshift'}
-    _valid_crystal_attributes = {'scale', 'stretch'}
-    _valid_species_attributes = {'rmt'}
+    _valid_attributes = {'autormt', 'cartesian', 'epslat', 'primcell', 'tshift'}
     _valid_atom_attributes = {'bfcmt', 'lockxyz', 'mommtfix'}
 
     def __init__(self,
                  atoms,
                  lattice: Optional[list] = None,
                  species_path: Optional[path_type] = './',
-                 structure_properties: Optional[dict] = None,
-                 crystal_properties: Optional[dict] = None,
-                 species_properties: Optional[dict] = None):
+                 crystal_properties: Optional[Union[dict, ExcitingStructureCrystalInput]] = None,
+                 species_properties: Optional[Dict[str, Union[dict, ExcitingStructureSpeciesInput]]] = None,
+                 **kwargs):
         """ Initialise instance of ExcitingStructure.
 
         TODO(Alex) Issue 117. Create our own class with a subset of methods common to ASE' Atom()
@@ -88,13 +87,13 @@ class ExcitingStructure(ExcitingXMLInput):
         :param lattice [a, b, c], where a, b and c are lattice vectors with 3 components.
          For example, a = [ax, ay, az]. Only required if one does not pass an ase Atoms object.
         :param species_path: Optional path to the location of species file/s.
-        :param structure_properties: Optional structure properties. See _valid_structure_attributes.
         :param crystal_properties: Optional crystal properties. See _valid_crystal_attributes
         :param species_properties: Optional species properties, defined as:
         {'species1': {'rmt': rmt_value}, 'species2': {'rmt': rmt_value}}
+        :param kwargs: Optional structure properties. Passed as kwargs. See _valid_attributes
         """
-        if isinstance(species_path, pathlib.Path):
-            species_path = species_path.as_posix()
+        super().__init__(**kwargs)
+        self.structure_attributes = kwargs
 
         if isinstance(atoms, list) and lattice is None:
             raise ValueError("If atoms is a list, lattice must be passed as a separate argument.")
@@ -111,35 +110,16 @@ class ExcitingStructure(ExcitingXMLInput):
             self.lattice, self.species, self.positions = self._init_lattice_species_positions_from_ase_atoms(atoms)
             self.atom_properties = [{}] * len(self.species)
 
-        # TODO(Fab) 117. Implement check that MT spheres do not overlap. check_muffin_tin_radii()
-        self.species_path = species_path
+        self.species_path = Path(species_path)
         self.unique_species = sorted(set(self.species))
 
         # Catch symbols that are not valid elements
-        check_valid_keys({x.lower() for x in self.unique_species},
-                         {x.lower() for x in all_species}, name='Species input')
+        check_valid_keys(self.unique_species, all_species, name='Species input')
 
         # Optional properties
-        self.structure_properties = self._init_structure_properties(structure_properties)
-        self.crystal_properties = self._init_crystal_properties(crystal_properties)
+        self.crystal_properties = self._initialise_subelement_attribute(ExcitingStructureCrystalInput,
+                                                                        crystal_properties or {})
         self.species_properties = self._init_species_properties(species_properties)
-
-    @classmethod
-    def from_xml(cls, xml_string: str):
-        """ Initialise class instance from XML-formatted string.
-        """
-        structure = parse_structure(xml_string)
-        return cls(structure['atoms'],
-                   lattice=structure['lattice'],
-                   species_path=structure['species_path'],
-                   structure_properties=structure['structure_properties'],
-                   crystal_properties=structure['crystal_properties'],
-                   species_properties=structure['species_properties']
-                   )
-
-    @classmethod
-    def from_dict(cls, d):
-        return cls.from_xml(d["xml_string"])
 
     @staticmethod
     def _init_lattice_species_positions_from_ase_atoms(atoms) -> tuple:
@@ -189,28 +169,6 @@ class ExcitingStructure(ExcitingXMLInput):
 
         return atom_properties
 
-    def _init_structure_properties(self, structure_properties: dict) -> ExcitingXMLInput:
-        """ Initialise structure_properties.
-
-        :param structure_properties: Dict of optional structure properties.
-        :return ExitingXMLInput with structure_properties.
-        """
-        if structure_properties is None:
-            structure_properties = {}
-
-        return ExcitingXMLInput("structure", self._valid_structure_attributes, **structure_properties)
-
-    def _init_crystal_properties(self, crystal_properties: dict) -> ExcitingXMLInput:
-        """ Initialise crystal_properties.
-
-        :param crystal_properties: Dict of optional structure properties.
-        :return ExitingXMLInput with crystal_properties.
-        """
-        if crystal_properties is None:
-            crystal_properties = {}
-
-        return ExcitingXMLInput("crystal", self._valid_crystal_attributes, **crystal_properties)
-
     def _init_species_properties(self, species_properties: dict) -> Dict[str, ExcitingXMLInput]:
         """ Initialise species_properties.
 
@@ -222,14 +180,9 @@ class ExcitingStructure(ExcitingXMLInput):
         if species_properties is None:
             species_properties = {}
 
-        new_species_properties: Dict[str, ExcitingXMLInput] = {}
-        for species in self.unique_species:
-            properties = species_properties.get(species)
-            if properties is None:
-                properties = {}
-            new_species_properties[species] = ExcitingXMLInput("species", self._valid_species_attributes, **properties)
-
-        return new_species_properties
+        return {species: self._initialise_subelement_attribute(
+            ExcitingStructureSpeciesInput, species_properties.get(species) or {}
+        ) for species in self.unique_species}
 
     def _group_atoms_by_species(self) -> dict:
         """Get the atomic indices for atoms of each species.
@@ -254,9 +207,9 @@ class ExcitingStructure(ExcitingXMLInput):
         """
         for iatom in atomic_indices[x]:
             coord_str = list_to_str(self.positions[iatom])
-            ET.SubElement(species, "atom", coord=coord_str, **self.atom_properties[iatom]).text = ' '
+            ElementTree.SubElement(species, "atom", coord=coord_str, **self.atom_properties[iatom]).text = ' '
 
-    def to_xml(self) -> ET.Element:
+    def to_xml(self) -> ElementTree.Element:
         """Convert structure attributes to XML ElementTree
         Makes use of the to_xml() function of the ExitingXMLInput class to convert values to string.
 
@@ -277,13 +230,17 @@ class ExcitingStructure(ExcitingXMLInput):
 
         :return ET structure: Element tree containing structure attributes.
         """
-        structure = self.structure_properties.to_xml(speciespath=self.species_path)
+        structure_attributes = {
+            key: self._attributes_to_input_str[type(value)](value) for key, value in self.structure_attributes.items()
+        }
+        structure = ElementTree.Element(self.name, speciespath=self.species_path.as_posix(), **structure_attributes)
+        structure.text = ' '
 
         # Lattice vectors
         crystal = self.crystal_properties.to_xml()
         structure.append(crystal)
         for vector in self.lattice:
-            ET.SubElement(crystal, "basevect").text = list_to_str(vector)
+            ElementTree.SubElement(crystal, "basevect").text = list_to_str(vector)
 
         # Species tags
         atomic_indices = self._group_atoms_by_species()

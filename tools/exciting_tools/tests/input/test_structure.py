@@ -48,7 +48,7 @@ def test_class_exciting_structure_xml(xml_structure_H2He):
     """
     assert xml_structure_H2He.tag == 'structure', 'XML root should be structure'
     assert xml_structure_H2He.keys() == ['speciespath'], 'structure defined to have only speciespath '
-    assert xml_structure_H2He.get('speciespath') == './', 'species path set to ./'
+    assert xml_structure_H2He.get('speciespath') == '.', 'species path set to .'
 
 
 def test_class_exciting_structure_crystal_xml(xml_structure_H2He):
@@ -120,7 +120,7 @@ def test_optional_atom_attributes_xml(xml_structure_CdS):
     """
     assert xml_structure_CdS.tag == 'structure'
     assert xml_structure_CdS.keys() == ['speciespath'], 'structure defined to have only speciespath '
-    assert xml_structure_CdS.get('speciespath') == './', 'speciespath set to be ./'
+    assert xml_structure_CdS.get('speciespath') == '.', 'speciespath set to be .'
 
     elements = list(xml_structure_CdS)
     assert len(elements) == 3, 'Expect structure tree to have 3 sub-elements'
@@ -176,9 +176,7 @@ def test_optional_structure_attributes_xml(lattice_and_atoms_CdS):
     structure_attributes = {
         'autormt': True, 'cartesian': False, 'epslat': 1.e-6, 'primcell': False, 'tshift': True
     }
-    structure = ExcitingStructure(
-        arbitrary_atoms, cubic_lattice, './', structure_properties=structure_attributes
-    )
+    structure = ExcitingStructure(arbitrary_atoms, cubic_lattice, './', **structure_attributes)
     xml_structure = structure.to_xml()
 
     mandatory = {'speciespath'}
@@ -187,7 +185,7 @@ def test_optional_structure_attributes_xml(lattice_and_atoms_CdS):
     assert xml_structure.tag == 'structure'
     assert set(xml_structure.keys()) == mandatory | optional, \
         'Should contain mandatory speciespath plus all optional attributes'
-    assert xml_structure.get('speciespath') == './', 'species path should be ./'
+    assert xml_structure.get('speciespath') == '.', 'species path should be .'
     assert xml_structure.get('autormt') == 'true'
     assert xml_structure.get('cartesian') == 'false'
     assert xml_structure.get('epslat') == '1e-06'
@@ -249,7 +247,7 @@ def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
     assert species_s_xml.get('rmt') == '4.0', 'S muffin tin radius differs from input'
 
 
-ref_dict = {'xml_string': '<structure speciespath="./"> <crystal> <basevect>1.0 0.0 0.0</basevect>'
+ref_dict = {'xml_string': '<structure speciespath="."> <crystal> <basevect>1.0 0.0 0.0</basevect>'
                           '<basevect>0.0 1.0 0.0</basevect><basevect>0.0 0.0 1.0</basevect></crystal>'
                           '<species speciesfile="Cd.xml"> <atom coord="0.0 0.0 0.0"> </atom></species>'
                           '<species speciesfile="S.xml"> <atom coord="1.0 0.0 0.0"> </atom></species></structure>'}
@@ -277,11 +275,10 @@ def test_from_dict(lattice_and_atoms_CdS):
     cubic_lattice, arbitrary_atoms = lattice_and_atoms_CdS
     structure = ExcitingStructure.from_dict(ref_dict)
 
-    print(arbitrary_atoms)
     assert structure.lattice == cubic_lattice
     assert structure.species == [d['species'] for d in arbitrary_atoms]
     assert structure.positions == [d['position'] for d in arbitrary_atoms]
-    assert structure.species_path == './'
+    assert structure.species_path.as_posix() == '.'
 
 
 @pytest.fixture
@@ -353,3 +350,10 @@ def test_class_exciting_structure_ase(ase_atoms_H20):
     # This just confirms the XML tree is built, not that it is correct.
     xml_structure = structure.to_xml()
     assert list(xml_structure.keys()) == ['speciespath'], 'Only expect speciespath in structure xml keys'
+
+
+def test_species_not_existing():
+    cubic_lattice = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]
+    atoms = [{'species': 'A', 'position': [0.00000, 0.75545, -0.47116]}]
+    with pytest.raises(ValueError, match="Species input keys are not valid: {'A'}"):
+        ExcitingStructure(atoms, cubic_lattice)

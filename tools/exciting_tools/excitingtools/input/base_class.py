@@ -1,17 +1,26 @@
 """Base class for exciting input classes.
 """
+import importlib
 from abc import ABC, abstractmethod
-from typing import Union, Set
-from xml.etree import ElementTree
 from pathlib import Path
+from typing import Union, List, Type
+from xml.etree import ElementTree
+
 import numpy as np
 
+from excitingtools.exciting_dict_parsers.input_parser import parse_element_xml
 from excitingtools.utils.dict_utils import check_valid_keys
 from excitingtools.utils.jobflow_utils import special_serialization_attrs
 
 
-class ExcitingInput(ABC):
+class AbstractExcitingInput(ABC):
     """Base class for exciting inputs."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """ Tag of the xml subelement. """
+        ...
 
     @abstractmethod
     def to_xml(self) -> ElementTree:
@@ -19,8 +28,9 @@ class ExcitingInput(ABC):
         ...
 
 
-class ExcitingXMLInput(ExcitingInput):
-    """Base class for exciting inputs that only consist of many attributes."""
+class ExcitingXMLInput(AbstractExcitingInput, ABC):
+    """Base class for exciting inputs, with exceptions being title, plan and qpointset,
+     because they are not passed as a dictionary. """
 
     # Convert python data to string, formatted specifically for
     _attributes_to_input_str = {int: lambda x: str(x),
@@ -32,24 +42,62 @@ class ExcitingXMLInput(ExcitingInput):
                                 list: lambda mylist: " ".join(str(x).lower() for x in mylist).strip(),
                                 tuple: lambda mylist: " ".join(str(x).lower() for x in mylist).strip()
                                 }
+    _valid_attributes = set()
+    _valid_subtrees = set()
+    # define the mandatory keys, should be a subset of all valid keys
+    _mandatory_keys = set()
+    # order allows to put subtrees in order, should be a list of all valid subtrees
+    _order: List = None
 
-    def __init__(self, name: str, valid_attributes: Set[str] = None, **kwargs):
+    def __init__(self, **kwargs):
         """Initialise class attributes with kwargs.
 
         Rather than define all options for a given method, pass as kwargs and directly
         insert as class attributes.
-
-        :param name: Method name.
         """
-        self.name = name
-        if valid_attributes is not None:
-            check_valid_keys(kwargs.keys(), valid_attributes, self.name)
+        # check the keys
+        missing_mandatory_keys = self._mandatory_keys - set(kwargs.keys())
+        if missing_mandatory_keys:
+            raise ValueError(f"Missing mandatory arguments: {missing_mandatory_keys}")
+        check_valid_keys(kwargs.keys(), self._valid_attributes | self._valid_subtrees, self.name)
+
+        # initialise the subtrees
+        class_list = self._class_list_from_module()
+        subtree_class_map = {cls.name: cls for cls in class_list}
+        subtrees = set(kwargs.keys()) - self._valid_attributes
+        for subtree in subtrees:
+            kwargs[subtree] = self._initialise_subelement_attribute(subtree_class_map[subtree], kwargs[subtree])
+
+        # Set attributes from kwargs
         self.__dict__.update(kwargs)
+
+    def _class_list_from_module(self) -> List[Type[AbstractExcitingInput]]:
+        """ Find all exciting input classes in own module and excitingtools.
+        """
+        excitingtools_contents = importlib.import_module("excitingtools").__dict__
+        module_contents = importlib.import_module(type(self).__module__).__dict__
+        all_contents = {**excitingtools_contents, **module_contents}.values()
+        return [cls for cls in all_contents if isinstance(cls, type) and issubclass(cls, AbstractExcitingInput)]
+
+    @staticmethod
+    def _initialise_subelement_attribute(XMLClass, element):
+        """ Initialize given elements to the ExcitingXSInput constructor. If element is already ExcitingXMLInput class
+        object, nothing happens. Else the class constructor of the given XMLClass is called. For a passed
+        dictionary the dictionary is passed as kwargs.
+        """
+        if isinstance(element, XMLClass):
+            return element
+        elif isinstance(element, dict):
+            # assume kwargs
+            return XMLClass(**element)
+        else:
+            # Assume the element type is valid for the class constructor
+            return XMLClass(element)
 
     def to_xml(self, **kwargs) -> ElementTree:
         """Put class attributes into an XML tree, with the element given by self.name.
 
-        Example ground state XML sub-tree:
+        Example ground state XML subtree:
            <groundstate vkloff="0.5  0.5  0.5" ngridk="2 2 2" mixer="msec" </groundstate>
 
         Note, kwargs preserve the order of the arguments, however the order does not appear to be
@@ -59,22 +107,47 @@ class ExcitingXMLInput(ExcitingInput):
 
         :return ElementTree.Element sub_tree: sub_tree element tree, with class attributes inserted.
         """
-        attributes = {key: self._attributes_to_input_str[type(value)](value) for key, value in vars(self).items()}
+        attributes = {key: self._attributes_to_input_str[type(value)](value) for key, value
+                      in vars(self).items() if not isinstance(value, AbstractExcitingInput)}
+        subtrees = [self.__dict__[key] for key in set(vars(self).keys()) - set(attributes.keys())]
 
-        sub_tree = ElementTree.Element(attributes.pop("name"), **attributes, **kwargs)
+        xml_tree = ElementTree.Element(self.name, **attributes, **kwargs)
+
+        if self._order:  # order subtrees
+            tag_subtree_map = {x.name: x for x in subtrees}
+            subtrees = [tag_subtree_map[x] for x in self._order if x in tag_subtree_map]
+
+        for subtree in subtrees:
+            xml_tree.append(subtree.to_xml())
 
         # Seems to want this operation on a separate line
-        sub_tree.text = ' '
+        xml_tree.text = ' '
 
-        return sub_tree
+        return xml_tree
 
     def to_xml_str(self) -> str:
         """ Convert attributes to XML tree string. """
         return ElementTree.tostring(self.to_xml(), encoding='unicode', method='xml')
 
     def as_dict(self) -> dict:
+        """ Convert attributes to dictionary. """
         serialise_attrs = special_serialization_attrs(self)
         return {**serialise_attrs, "xml_string": self.to_xml_str()}
+
+    @classmethod
+    def from_xml(cls, xml_string: str):
+        """ Initialise class instance from XML-formatted string.
+
+        Example Usage
+        --------------
+        xs_input = ExcitingXSInput.from_xml(xml_string)
+        """
+        return cls(**parse_element_xml(xml_string, tag=cls.name))
+
+    @classmethod
+    def from_dict(cls, d):
+        """ Recreates class instance from dictionary. """
+        return cls.from_xml(d["xml_string"])
 
 
 def query_exciting_version(exciting_root: Union[Path, str]) -> dict:
