@@ -35,7 +35,7 @@ rmfactor=0d0
 rmt=ratom(1:nrmt)
 
 vx_u=0d0
-write(*,*)"l=",l,"e=",e
+!write(*,*)"l=",l,"e=",e
 
 if(original)then
 
@@ -65,7 +65,6 @@ endif
 
 if( ex_coef.ne.0d0) then
 
-
 do iter=1, 40
   uold=u
   uatom=0d0
@@ -92,12 +91,12 @@ endif
 
   diff = sum((u-uold)**2)
 
-  write(*,*)"izmaiņa:",iter,diff
+!  write(*,*)"izmaiņa:",iter,diff
   if (abs(diff).lt.1e-15) exit
  
 enddo
 
-write(*,*)"gatavs"
+!write(*,*)"gatavs"
 endif !ex_coef.ne.0d0
 
 

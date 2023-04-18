@@ -58,9 +58,8 @@ Subroutine genlofr
 ! Andris.
 ! -------------------------------------
 !      allocate(dwf1(mtnr),dwf2(mtnr))
-      write(*,*)"TAGAD gatavos lo bāzi, spied pogu"
+write(*,*)"updating lo base"
 open (12, file = 'base_lo.dat', status = 'replace')
-write(12,*)"l order energy"
      
       if ((input%groundstate%lorecommendation).and.(tlast)) then
 !       energy=-6d0
@@ -166,6 +165,7 @@ write(12,*)"l order energy"
                Do io2 = 1, lorbord (ilo, is)
 !!!                  if (is.eq.2) write(*,*) l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
 ! integrate the radial Schrodinger equation
+               if (lorbe(io2, ilo, ias).gt.1e6) cycle
 
 write(12,*)l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
 if(.true.)then

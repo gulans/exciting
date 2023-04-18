@@ -41,9 +41,8 @@ Subroutine genapwfr
      & (apwordmax)
       Real (8) :: q0 (nrmtmax, apwordmax), q1 (nrmtmax, apwordmax)
       Real (8) :: hp0 (nrmtmax)
-      write(*,*)"TAGAD gatavos apw bāzi"
+      write(*,*)"updatinf apw base"
 open (12, file = 'base_apw.dat', status = 'replace')
-write(12,*)"l order energy"
 
 
       Do is = 1, nspecies
@@ -56,6 +55,7 @@ write(12,*)"l order energy"
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
             Do l = 0, input%groundstate%lmaxapw
                Do io1 = 1, apword (l, is)
+               if (apwe(io1, l, ias).gt.1e6) cycle
 ! integrate the radial Schrodinger equation
 write(12,*)l,apwdm(io1, l, is),apwe(io1, l, ias)
 if(.true.)then
