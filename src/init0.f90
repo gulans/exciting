@@ -268,9 +268,16 @@ Subroutine init0
 ! calculate advanced information on symmetry group
       Call setupsym
 #endif
+
 ! automatically determine the muffin-tin radii if required
-      If (input%structure%autormt) Call optimal_rmt(rmt, spzn, input%structure%crystal%basevect, atposc&
-                                          &,input%structure%autormtscaling, natoms, nspecies, 1)         
+      If (input%structure%autormt .and. (idx_species_fixed_rmt .gt. 0)) then 
+            Call optimal_rmt(rmt, spzn, input%structure%crystal%basevect, atposc,&
+                              &input%structure%autormtscaling, natoms, nspecies, 1, idx_species_fixed_rmt)         
+      else if (input%structure%autormt) then 
+            Call optimal_rmt(rmt, spzn, input%structure%crystal%basevect, atposc,&
+                              &input%structure%autormtscaling, natoms, nspecies, 1)         
+      end if 
+
 ! check for overlapping muffin-tins               
       Call checkmt  
 !

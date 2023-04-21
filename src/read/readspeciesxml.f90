@@ -6,7 +6,13 @@ Subroutine readspeciesxml
   Use modspdeflist
   Use FoX_dom
   Use modspdb
-  Use modmpi
+  Use modmpi, only: mpiglobal, rank, barrier, ierr
+  Use errors_warnings, only: terminate_if_true
+  Use mod_muffin_tin, only: idx_species_fixed_rmt
+#ifdef MPI
+  Use mpi, only: MPI_COMM_WORLD 
+#endif
+
 
   Implicit None
 ! local variables
@@ -16,12 +22,14 @@ Subroutine readspeciesxml
   character(2048) :: command
   character(256)  :: spfile_string
   character(256)  :: string
+! Number of fixed rmt cases as set in the input files
+  integer :: nr_fixrmt
+  logical, allocatable:: fixrmt_array(:)
 
   if (allocated(speziesdeflist)) deallocate(speziesdeflist)
   Allocate(speziesdeflist(nspecies))
   config => newDOMConfig ()
   parseerror = .False.
-
 ! parse xml and create derived type for species definitions  speziesdeflist
   Do is = 1, nspecies
     spfile_string=""
@@ -81,9 +89,20 @@ Subroutine readspeciesxml
     speziesdeflist(is)%sp => getstructsp (speciesnp)
     Call destroy (doc)
   End Do
-!
-!
-!
+
+  ! Count number of fixed rmt for automatic muffin-tin calculation
+  allocate(fixrmt_array(nspecies))
+  fixrmt_array = [(input%structure%speciesarray(is)%species%fixrmt, is = 1, nspecies)]
+  nr_fixrmt = count(fixrmt_array)
+
+  call terminate_if_true(mpiglobal, (nr_fixrmt > 1), &
+                        "Error(readspeciesxml): Input parameter fixrmt set to true for more than one species.")
+  call terminate_if_true(mpiglobal, (nr_fixrmt == 1) .and. (.not. input%structure%autormt), &
+                        "Error(readspeciesxml): To invoke usage of the input parameter fixrmt, &
+                        the input parameter autormt needs to be set to true.")
+                        
+  idx_species_fixed_rmt = 0
+
   Do is = 1, nspecies
      spsymb(is) = trim(speziesdeflist(is)%sp%chemicalSymbol)
      input%structure%speciesarray(is)%species%chemicalSymbol = spsymb (is)
@@ -92,9 +111,15 @@ Subroutine readspeciesxml
      spmass(is) = speziesdeflist(is)%sp%mass
      sprmin(is) = speziesdeflist(is)%sp%muffinTin%rmin
      rmt(is) = speziesdeflist(is)%sp%muffinTin%radius
-     If (input%structure%speciesarray(is)%species%rmt .Gt. 0) Then
+     if (input%structure%speciesarray(is)%species%rmt .Gt. 0) then
         rmt(is) = input%structure%speciesarray(is)%species%rmt
-     End If
+     end if
+     
+     ! If required, set index of species with fixed rmt
+     if (input%structure%speciesarray(is)%species%fixrmt .and. (input%structure%autormt)) then 
+         idx_species_fixed_rmt = is 
+     end if 
+
      sprmax(is) = speziesdeflist(is)%sp%muffinTin%rinf
      nrmt(is) = speziesdeflist(is)%sp%muffinTin%radialmeshPoints
      If (sprmin(is) .Le. 0.d0) Then
