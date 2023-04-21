@@ -356,10 +356,10 @@ subroutine checkinput
       end if
     end if
   end if
-  if (associated(input%groundstate)) then
+  if (associated(input%structure)) then
     if ((input%structure%autormtscaling.le.0.d0).or.(input%structure%autormtscaling.gt.1.d0)) then
       write(*,*)
-      write(*,'("Error(checkinput): /input/groundstate/@autormtscaling not in (0,1] : ",G18.10)') input%structure%autormtscaling
+      write(*,'("Error(checkinput): /input/structure/@autormtscaling not in (0,1] : ",G18.10)') input%structure%autormtscaling
       write(*,*)
       stop
     end if
