@@ -447,11 +447,26 @@ Subroutine init1
       If (allocated(apwfr)) deallocate (apwfr)
       Allocate (apwfr(nrmtmax, 2, apwordmax, &
      & 0:input%groundstate%lmaxapw, natmtot))
+
+
+      If (allocated(apwfr_old)) deallocate (apwfr_old)
+      Allocate (apwfr_old(nrmtmax, 2, apwordmax, &
+     & 0:input%groundstate%lmaxapw, natmtot))
+      Allocate (apwfr_new(nrmtmax, 2, apwordmax, &
+     & 0:input%groundstate%lmaxapw, natmtot))
+
+
       If (allocated(apwdfr)) deallocate (apwdfr)
       Allocate (apwdfr(apwordmax, 0:input%groundstate%lmaxapw, &
      & natmtot))
       If (allocated(lofr)) deallocate (lofr)
       Allocate (lofr(nrmtmax, 2, nlomax, natmtot))
+      If (allocated(lofr_old)) deallocate (lofr_old)
+      Allocate (lofr_old(nrmtmax, 2, nlomax, natmtot))
+      If (allocated(lofr_new)) deallocate (lofr_new)
+      Allocate (lofr_new(nrmtmax, 2, nlomax, natmtot))
+
+
 #ifdef XS
 10    Continue
 #endif

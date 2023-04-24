@@ -299,7 +299,7 @@ enddo
 
         call genapwfr()       
         call genlofr()  
-
+ call olprad  
 endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 

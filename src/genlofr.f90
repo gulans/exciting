@@ -241,8 +241,16 @@ if(.true.)then
                q1s (1:nr) = t1 * q1s (1:nr)
                Do ir = 1, nr
                  t1 = 1.d0 / spr (ir, is)
+
+                 lofr_old (ir, 1, ilo, ias) = lofr (ir, 1, ilo, ias)
+                 lofr_old (ir, 2, ilo, ias) = lofr (ir, 2, ilo, ias) 
                  lofr (ir, 1, ilo, ias) = t1 * p0s (ir)
                  lofr (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
+                 lofr_new (ir, 1, ilo, ias) = lofr (ir, 1, ilo, ias)
+                 lofr_new (ir, 2, ilo, ias) = lofr (ir, 2, ilo, ias)
+
+
+
                End Do
             End Do
          End Do

@@ -29,6 +29,9 @@ Module mod_APW_LO
       Logical :: apwve (maxapword, 0:maxlapw, maxspecies)
 ! APW radial functions
       Real (8), target, Allocatable :: apwfr (:, :, :, :, :)
+      Real (8), target, Allocatable :: apwfr_old (:, :, :, :, :)
+      Real (8), target, Allocatable :: apwfr_new (:, :, :, :, :)
+
 ! derivate of radial functions at the muffin-tin surface
       Real (8), Allocatable :: apwdfr (:, :, :)
 ! maximum number of local-orbitals
@@ -61,6 +64,10 @@ Module mod_APW_LO
       Logical :: lorbwfproj (maxlorb, maxspecies)
 ! local-orbital radial functions
       Real (8), target, Allocatable :: lofr (:, :, :, :)
+      Real (8), target, Allocatable :: lofr_old (:, :, :, :)
+      Real (8), target, Allocatable :: lofr_new (:, :, :, :)
+
+
 ! energy step size for locating the band energy
 !replaced by inputstructurereal(8)::deband
 ! minimum of the default linearisation energy over all APW and local-orbitals
