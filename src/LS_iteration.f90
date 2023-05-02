@@ -59,7 +59,7 @@ logical :: spin
 
 real(8) :: t1, vx_psi(Ngrid,nmax),vx_chi_sr(Ngrid,nmax),vx_psi_sr(Ngrid,nmax) 
 integer :: n1
-
+eigp=0d0
   do inn=1,nmax
     psi(:,inn)=u(:,inn)/r
   enddo
@@ -97,8 +97,8 @@ do iscl=1,maxscl
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Convergence check  !!
 !!!!!!!!!!!!!!!!!!!!!!!!
-!write(*,*)"is=",is,"Ngrid",Ngrid
-!write(*,*)l,eig,iscl,". eig-eigp: ",eig-eigp
+
+!write(*,*)l,iscl,". eig-eigp: ",eig-eigp
 !convergence check
 if((maxval(abs((eig-eigp)/(eig-1d0)))).lt.1d-14)then
         iner_loop=iscl-1

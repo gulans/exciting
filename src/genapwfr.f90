@@ -67,6 +67,8 @@ if(.true.)then
                  & l, ias), nr, spr(:, is), &
                  & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
  endif
+
+
  ! normalise radial functions
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io1) ** 2

@@ -40,7 +40,7 @@ real(8) :: Snn,Hnn
 real(8) :: S(nmax,nmax),H(nmax,nmax)
 real(8) :: Hevec(nmax,nmax),Hp(nmax,nmax), Sevec(nmax,nmax),Seval(nmax), s12(nmax,nmax)
 real(8) :: lambda_test(nmax,nmax),lambda(nmax)
-real(8) :: x(nmax,nmax),xp(nmax,nmax),W(nmax,nmax),Winv(nmax,nmax)
+real(8) :: x(nmax,nmax),W(nmax,nmax),Winv(nmax,nmax)
 real(8) :: psi_new(Ngrid,nmax)
 real(8) :: f(Ngrid),f1(Ngrid),f2(Ngrid),f3(Ngrid),f4(Ngrid),f5(Ngrid)
 
@@ -126,7 +126,6 @@ endif!print and stop
 
 !!!!!!!!! Make a substitution x=Wx' un H'=WHW
 call inver(W,Winv,nmax)
- xp=matmul(Winv,x)
  Hp=matmul(matmul(W,H),W)
  Hevec=Hp
 !!!!!!!! SOLVE H'x'=x'

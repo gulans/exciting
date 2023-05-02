@@ -1,4 +1,4 @@
-subroutine getu(m,is,ia,nrmt,v,l,e,u0,u,u1)
+subroutine getu(m,is,ia,nrmt,v,l,e,u0,u,u1,q0,q1)
 use modinteg
 Use mod_hybrids, only: ex_coef
 use modmain, only: spnr,spr        
@@ -8,8 +8,8 @@ real(8), intent(in) :: v(nrmt),e,u0(nrmt)
 real(8), intent(out) :: u(nrmt)
 real(8), intent(out) :: u1(nrmt)
 
-real(8) :: q0(nrmt)
-real(8) :: q1(nrmt)
+real(8), intent(out) :: q0(nrmt)
+real(8), intent(out) :: q1(nrmt)
 real(8) :: p0p(nrmt)
 
 

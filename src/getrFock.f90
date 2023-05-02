@@ -33,7 +33,6 @@ real(8),allocatable :: basis(:,:,:)
 integer,allocatable :: matmap(:,:)
 integer :: norb(0:input%groundstate%lmaxmat) 
 integer :: tempindex(0:input%groundstate%lmaxmat)
-complex(8),allocatable :: newmat(:,:)
 real(8) :: vx_u_part(Ngrid),occ
 
 
@@ -208,7 +207,6 @@ close(2)
 
 
 integ=0d0
-newmat=0d0
 do l1=0, input%groundstate%lmaxmat
  ioo=1
  do io1=1,norb(l1)
