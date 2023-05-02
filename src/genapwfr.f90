@@ -118,8 +118,14 @@ if(.true.)then
                   q1 (1:nr, io1) = t1 * q1 (1:nr, io1)
                   Do ir = 1, nr
                      t1 = 1.d0 / spr (ir, is)
+                     apwfr_old (ir, 1, io1, l, ias)=apwfr (ir, 1, io1, l, ias)
+                     apwfr_old (ir, 2, io1, l, ias)=apwfr (ir, 2, io1, l, ias)
+
                      apwfr (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
                      apwfr (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
+                     apwfr_new (ir, 1, io1, l, ias)=apwfr (ir, 1, io1, l, ias)
+                     apwfr_new (ir, 2, io1, l, ias)=apwfr (ir, 2, io1, l, ias)
+
                   End Do
                End Do
             End Do

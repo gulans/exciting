@@ -305,7 +305,20 @@ else ! Use oepvnl
         vxpsiir=zzero
         vxpsimt=zzero
         call timesec(ta)
+
+!!!!!!!veca baze!!!!!!!
+apwfr=apwfr_old
+lofr=lofr_old
+!!!!!!!!!!!!!!!!!!!!!!!
+
         call FockExchange (ik, sxs2*kiw(1,ik) ,vxnl(:, :, ik),vxpsiir,vxpsimt)
+
+!!!!!!!jauna baze!!!!!!!
+apwfr=apwfr_new
+lofr=lofr_new
+!!!!!!!!!!!!!!!!!!!!!!!
+
+
         call timesec(tb)
         if (rank==0) write(*,*) 'FockExchange',tb-ta
 
@@ -317,6 +330,7 @@ else ! Use oepvnl
         end do
 
         call timesec(ta)
+!!!!!jauna baze
         call calcACE (ik, vxnl(:, :, ik),vxpsiir,vxpsimt)
         call timesec(tb)
         if (rank==0) write(*,*) 'calcACE',tb-ta
