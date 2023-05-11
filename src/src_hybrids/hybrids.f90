@@ -255,7 +255,7 @@ real (8) :: e1
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/gencore
 
 
-if(.true.)then
+if(input%groundstate%Hybrid%updateRadial)then
 
 open (2, file = 'base_apw_hf.dat', status = 'old')
  Do is = 1, nspecies

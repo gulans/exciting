@@ -135,8 +135,8 @@ integer, intent(out) :: istart1(Ngrid)   !! array of grid point indexes for the 
 integer, intent(out) :: dstart1(Ngrid)   !! array of grid point indexes for the beginning of the range that is being used for
                                          !! interpolation during derivative calculation
 real(8), intent(out) :: icv(Ngrid)          !! array of weights to evaluate integral value
-real(8), intent(out) :: dcf(Ngrid,dNpoints) !! array of weights to evaluate derivative as a function
-real(8), intent(out) :: icf(Ngrid,iNpoints) !! array of weights to evaluate integral as a function
+real(8), intent(inout) :: dcf(Ngrid,dNpoints) !! array of weights to evaluate derivative as a function
+real(8), intent(inout) :: icf(Ngrid,iNpoints) !! array of weights to evaluate integral as a function
 
 
 real(8) :: w(iNpoints)
