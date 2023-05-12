@@ -58,8 +58,9 @@ write(12,*)"l order energy"
                if (apwe(io1, l, ias).gt.1e6) cycle
 ! integrate the radial Schrodinger equation
 write(12,*)l,apwdm(io1, l, is),apwe(io1, l, ias)
-if(input%groundstate%Hybrid%updateRadial) then
 
+!if Hybrid is not associated then updateRadial is not defined, but it does not give error:
+if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial) then
                   Call rschroddme2 (is,ia,apwdm(io1, l, is), l, 0, apwe(io1, &
                  & l, ias), nr, spr(:, is), &
                  & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))

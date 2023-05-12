@@ -168,8 +168,10 @@ write(12,*)"l order energy"
                if (lorbe(io2, ilo, ias).gt.1e6) cycle
 
 write(12,*)l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
-if(input%groundstate%Hybrid%updateRadial)then
-                  Call rschroddme2 (is,ia,lorbdm(io2, ilo, is), l, 0, &
+if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial) then
+
+
+        Call rschroddme2 (is,ia,lorbdm(io2, ilo, is), l, 0, &
                  & lorbe(io2, ilo, ias), nr, &
                  & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
                  & q1(:, io2))
