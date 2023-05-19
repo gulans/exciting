@@ -1153,6 +1153,11 @@
                 <xs:documentation>(experimental) Energy of the excited state for self-consistent BSE obtained with purely electronic screening. Note that with the k-grid densities currently feasible with exciting, this quantity is usually unconverged.</xs:documentation>
               </xs:annotation>
             </xs:attribute>       
+            <xs:attribute ex:importance="experimental" type="fortrandouble" ex:unit="Bohr" name="alat_qe"  use="required">
+              <xs:annotation>
+                <xs:documentation>(experimental) Lattice constant as assumed by Quantum Espresso. Needed to compare q-vectors written to file by QE.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>       
           </xs:complexType>
         </xs:element>
         <xs:element ex:importance="experimental" ex:unit="" name="expand_eps">

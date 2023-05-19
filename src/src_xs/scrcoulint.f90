@@ -520,14 +520,14 @@ subroutine scrcoulint(iqmt, fra)
   !---------------------------------------------------
   if( associated(input%xs%phonon_screening) ) then 
     n_phonon_modes = 3*natmtot  
-    allocate(scieffg_ph(ngqmax, ngqmax, n_phonon_modes, nqptr))
-    allocate (freq_ph(n_phonon_modes, nqptr))
+    allocate(scieffg_ph(ngqmax, ngqmax, n_phonon_modes, nqpt))
+    allocate (freq_ph(n_phonon_modes, nqpt))
 
     ! Read phonon screened Coulomb interaction (for all q and all phonon modes)
     ! and all phonon frequencies on rank 0 and broadcast afterwards
     if(mpiglobal%rank == mpiglobal%root) then
       call init_phonon_hamiltonian(n_phonon_modes,natoms,& 
-                              ngqr,vqcr, scieffg_ph, freq_ph)
+                              ngq,vqc, scieffg_ph, freq_ph)
     end if 
    
     Call xmpi_bcast(mpiglobal, freq_ph)
@@ -777,28 +777,13 @@ subroutine scrcoulint(iqmt, fra)
         call select_bse_energies(koulims(:,iknr),evalsv0_ik,evalsv0_jk,&
                                     &bse_scissor,eigvals_o,eigvals_u) 
 
-        ! Use phase factor if q-points were reduced
-        ! (previously generated for electronic part)
-        if(allocated(g_ids)) deallocate(g_ids)
-        allocate(g_ids(numgq))
-        if(allocated(phasefactors)) deallocate(phasefactors)
-        allocate(phasefactors(numgq, numgq))
-                                    
-        if(input%xs%reduceq) then
-          g_ids = igqmap
-          phasefactors = phf(:numgq, :numgq)
-        else
-          g_ids = [(i_run, i_run=1, numgq)]
-          phasefactors = 1._dp
-        end if         
         
         do imode = 1, n_phonon_modes
-           wfc_ph(:, :, imode) = phasefactors * &
-                               scieffg_ph(g_ids, g_ids, imode, iqr)
+           wfc_ph(:, :, imode) = scieffg_ph(:numgq,:numgq, imode, iq)
 
           ! Compute phonon contribution for given mode and (k,k')-combination
           call gen_phonon_hamiltonian(pref, wfc_ph(:,: , imode), cmuu, cmoo,& 
-              & eigvals_o, eigvals_u, freq_ph(imode, iqr), & 
+              & eigvals_o, eigvals_u, freq_ph(imode, iq), & 
               & eigen_exc, smap_rel, iaoff, jaoff, W_ph(:, :, imode))
         end do
 
