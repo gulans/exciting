@@ -1,4 +1,4 @@
-!> module with utility functions for simple os commands
+!> Module with utility functions for simple os commands.
 module os_utils
   use modmpi
 
@@ -8,7 +8,7 @@ module os_utils
   public :: system_cmd, &
             make_directory_command, remove_directory_command, &
             make_directory, remove_directory, &
-            path_exists
+            path_exists, join_paths
 
 contains
 
@@ -92,21 +92,64 @@ contains
     !> path name
     character(*), intent(in) :: path
     !> system dependent error code; `0` on success
-    integer, intent(out) :: ierr
+    integer, intent(out), optional :: ierr
     logical :: exists
 
+    integer :: ierr_local
     character(:), allocatable :: dir
 
 #ifdef IFORT
     dir = trim(path)
     if( dir(len(dir):len(dir)) == '/' ) then
-      inquire(directory=trim(path), exist=exists, iostat=ierr)
+      inquire(directory=trim(path), exist=exists, iostat=ierr_local)
     else
-      inquire(file=trim(path), exist=exists, iostat=ierr)
+      inquire(file=trim(path), exist=exists, iostat=ierr_local)
     end if
 #else
-    inquire(file=trim(path), exist=exists, iostat=ierr)
+    inquire(file=trim(path), exist=exists, iostat=ierr_local)
 #endif
+  if (present(ierr)) ierr = ierr_local
   end function path_exists
+
+  !> Join two paths following UNIX convention:
+  !>
+  !> - `join_paths('path/one/', 'path/two') --> 'path/one/path/two'
+  !>
+  !> - `join_paths('path/one', 'path/two') --> 'path/one/path/two'
+  !>
+  !> - `join_paths('path/one', '/path/two') --> 'path/one/path/two'
+  !>
+  !> - `join_paths('path/one/', '/path/two') --> 'path/one/path/two'
+  !>
+  !> - `join_paths('path/one////', '///path/two') --> 'path/one/path/two'
+  function join_paths(path1, path2) result(joined_path)
+    !> Paths to join.
+    character(*), intent(in) :: path1, path2 
+    character(:), allocatable :: joined_path
+    
+    character(:), allocatable :: path1_cleaned, path2_cleaned
+
+    character(1), parameter :: separator = '/'
+
+    integer :: last_char_index
+
+    ! Remove whitespaces on the left and right
+    path1_cleaned = adjustl(trim(path1))
+    path2_cleaned = adjustl(trim(path2))
+
+    ! Remove separator from the end and beginning of path1 and path2 respectively
+    last_char_index = len(path1_cleaned)
+    do while (path1_cleaned(last_char_index:last_char_index) == separator)  
+      path1_cleaned = path1_cleaned(:last_char_index - 1)
+      last_char_index = len(path1_cleaned)
+    end do
+
+    do while (path2_cleaned(1:1) == separator) 
+      path2_cleaned = path2_cleaned(2:)
+    end do
+
+    ! Join paths
+    joined_path = path1_cleaned // separator // path2_cleaned
+  end function join_paths
 
 end module os_utils
