@@ -129,7 +129,7 @@ def test_spin_input():
 
 
 def test_solver_input():
-    solver_attributes = {'ArpackImproveInverse': True, 'ArpackShift': 2.4}
+    solver_attributes = {'packedmatrixstorage': True, 'type': "Lapack"}
     solver_keys = list(solver_attributes)
     gs_input = ExcitingGroundStateInput(solver=solver_attributes)
 
@@ -143,5 +143,5 @@ def test_solver_input():
     solver_xml = elements[0]
     assert solver_xml.tag == "solver"
     assert solver_xml.keys() == solver_keys, 'Should contain all spin attributes'
-    assert solver_xml.get('ArpackImproveInverse') == 'true'
-    assert solver_xml.get('ArpackShift') == '2.4'
+    assert solver_xml.get('packedmatrixstorage') == 'true'
+    assert solver_xml.get('type') == 'Lapack'

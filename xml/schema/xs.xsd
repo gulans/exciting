@@ -1160,7 +1160,7 @@
             </xs:attribute>       
           </xs:complexType>
         </xs:element>
-        <xs:element ex:importance="experimental" ex:unit="" name="expand_eps">
+        <xs:element ex:importance="experimental" ex:unit="" name="expand_eps" minOccurs="0">
           <xs:complexType>
               <xs:attribute ex:unit="" name="supercell_1" type="integertriple"
               default="1 1 1">

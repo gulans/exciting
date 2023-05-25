@@ -48,7 +48,7 @@ def test_class_exciting_structure_xml(xml_structure_H2He):
     """
     assert xml_structure_H2He.tag == 'structure', 'XML root should be structure'
     assert xml_structure_H2He.keys() == ['speciespath'], 'structure defined to have only speciespath '
-    assert xml_structure_H2He.get('speciespath') == '.', 'species path set to .'
+    assert xml_structure_H2He.get('speciespath') == './', 'species path set to ./'
 
 
 def test_class_exciting_structure_crystal_xml(xml_structure_H2He):
@@ -120,7 +120,7 @@ def test_optional_atom_attributes_xml(xml_structure_CdS):
     """
     assert xml_structure_CdS.tag == 'structure'
     assert xml_structure_CdS.keys() == ['speciespath'], 'structure defined to have only speciespath '
-    assert xml_structure_CdS.get('speciespath') == '.', 'speciespath set to be .'
+    assert xml_structure_CdS.get('speciespath') == './', 'speciespath set to be ./'
 
     elements = list(xml_structure_CdS)
     assert len(elements) == 3, 'Expect structure tree to have 3 sub-elements'
@@ -185,7 +185,7 @@ def test_optional_structure_attributes_xml(lattice_and_atoms_CdS):
     assert xml_structure.tag == 'structure'
     assert set(xml_structure.keys()) == mandatory | optional, \
         'Should contain mandatory speciespath plus all optional attributes'
-    assert xml_structure.get('speciespath') == '.', 'species path should be .'
+    assert xml_structure.get('speciespath') == './', 'species path should be ./'
     assert xml_structure.get('autormt') == 'true'
     assert xml_structure.get('cartesian') == 'false'
     assert xml_structure.get('epslat') == '1e-06'
@@ -247,7 +247,7 @@ def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
     assert species_s_xml.get('rmt') == '4.0', 'S muffin tin radius differs from input'
 
 
-ref_dict = {'xml_string': '<structure speciespath="."> <crystal> <basevect>1.0 0.0 0.0</basevect>'
+ref_dict = {'xml_string': '<structure speciespath="./"> <crystal> <basevect>1.0 0.0 0.0</basevect>'
                           '<basevect>0.0 1.0 0.0</basevect><basevect>0.0 0.0 1.0</basevect></crystal>'
                           '<species speciesfile="Cd.xml"> <atom coord="0.0 0.0 0.0"> </atom></species>'
                           '<species speciesfile="S.xml"> <atom coord="1.0 0.0 0.0"> </atom></species></structure>'}
@@ -278,7 +278,7 @@ def test_from_dict(lattice_and_atoms_CdS):
     assert structure.lattice == cubic_lattice
     assert structure.species == [d['species'] for d in arbitrary_atoms]
     assert structure.positions == [d['position'] for d in arbitrary_atoms]
-    assert structure.species_path.as_posix() == '.'
+    assert structure.speciespath == './'  # pylint: disable=no-member
 
 
 @pytest.fixture
@@ -301,7 +301,7 @@ def test_group_atoms_by_species(lattice_and_atoms_H20):
     structure = ExcitingStructure(atoms, cubic_lattice, './')
     assert structure.species == ['H', 'O', 'H'], 'Species list differs from lattice_and_atoms_H20'
 
-    indices = structure._group_atoms_by_species()
+    indices = dict(structure._group_atoms_by_species())
     assert set(indices.keys()) == {'H', 'O'}, 'List unique species in structure'
     assert indices['H'] == [0, 2], "Expect atoms 0 and 2 to be H"
     assert indices['O'] == [1], "Expect atom 1 to be O"

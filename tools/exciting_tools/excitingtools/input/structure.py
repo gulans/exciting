@@ -1,15 +1,15 @@
 """Structure class, mirroring that of exciting's structure XML sub-tree.
 https://exciting.wikidot.com/ref:structure
 """
-from typing import Optional, Union, List, Dict
 from pathlib import Path
+from typing import Optional, Union, List, Dict
 from xml.etree import ElementTree
 
-from excitingtools.utils.utils import list_to_str
-from excitingtools.utils.dict_utils import check_valid_keys
-from excitingtools.structure.lattice import check_lattice, check_lattice_vector_norms
 from excitingtools.input.base_class import ExcitingXMLInput
-
+from excitingtools.structure.lattice import check_lattice, check_lattice_vector_norms
+from excitingtools.utils import valid_attributes
+from excitingtools.utils.dict_utils import check_valid_keys
+from excitingtools.utils.utils import list_to_str
 
 # Set of all elements
 all_species = {'Ni', 'La', 'K', 'Xe', 'Ag', 'Bk', 'Co', 'Md', 'Lu', 'Ar',
@@ -30,7 +30,6 @@ class ExcitingStructureCrystalInput(ExcitingXMLInput):
     Class for exciting structure crystal input.
     """
     name = "crystal"
-    _valid_attributes = {'scale', 'stretch'}
 
 
 class ExcitingStructureSpeciesInput(ExcitingXMLInput):
@@ -38,7 +37,6 @@ class ExcitingStructureSpeciesInput(ExcitingXMLInput):
     Class for exciting structure species input.
     """
     name = "species"
-    _valid_attributes = {'rmt'}
 
 
 class ExcitingStructure(ExcitingXMLInput):
@@ -55,9 +53,8 @@ class ExcitingStructure(ExcitingXMLInput):
     # Path type
     path_type = Union[str, Path]
 
-    # Mandatory attributes not specified
-    _valid_attributes = {'autormt', 'cartesian', 'epslat', 'primcell', 'tshift'}
-    _valid_atom_attributes = {'bfcmt', 'lockxyz', 'mommtfix'}
+    # Mandatory attribute "coord" taken out because it's specified inside the atoms
+    _valid_atom_attributes = set(valid_attributes.atom_valid_attributes) - {"coord"}
 
     def __init__(self,
                  atoms,
@@ -92,8 +89,10 @@ class ExcitingStructure(ExcitingXMLInput):
         {'species1': {'rmt': rmt_value}, 'species2': {'rmt': rmt_value}}
         :param kwargs: Optional structure properties. Passed as kwargs. See _valid_attributes
         """
-        super().__init__(**kwargs)
-        self.structure_attributes = kwargs
+        if isinstance(species_path, Path):
+            species_path = species_path.as_posix()
+        super().__init__(speciespath=species_path, **kwargs)
+        self.structure_attributes = {"speciespath": species_path, **kwargs}
 
         if isinstance(atoms, list) and lattice is None:
             raise ValueError("If atoms is a list, lattice must be passed as a separate argument.")
@@ -110,7 +109,6 @@ class ExcitingStructure(ExcitingXMLInput):
             self.lattice, self.species, self.positions = self._init_lattice_species_positions_from_ase_atoms(atoms)
             self.atom_properties = [{}] * len(self.species)
 
-        self.species_path = Path(species_path)
         self.unique_species = sorted(set(self.species))
 
         # Catch symbols that are not valid elements
@@ -119,7 +117,7 @@ class ExcitingStructure(ExcitingXMLInput):
         # Optional properties
         self.crystal_properties = self._initialise_subelement_attribute(ExcitingStructureCrystalInput,
                                                                         crystal_properties or {})
-        self.species_properties = self._init_species_properties(species_properties)
+        self.species_properties = dict(self._init_species_properties(species_properties))
 
     @staticmethod
     def _init_lattice_species_positions_from_ase_atoms(atoms) -> tuple:
@@ -180,9 +178,10 @@ class ExcitingStructure(ExcitingXMLInput):
         if species_properties is None:
             species_properties = {}
 
-        return {species: self._initialise_subelement_attribute(
-            ExcitingStructureSpeciesInput, species_properties.get(species) or {}
-        ) for species in self.unique_species}
+        for species in self.unique_species:
+            props = species_properties.get(species) or {}
+            props["speciesfile"] = species + '.xml'
+            yield species, self._initialise_subelement_attribute(ExcitingStructureSpeciesInput, props)
 
     def _group_atoms_by_species(self) -> dict:
         """Get the atomic indices for atoms of each species.
@@ -233,7 +232,7 @@ class ExcitingStructure(ExcitingXMLInput):
         structure_attributes = {
             key: self._attributes_to_input_str[type(value)](value) for key, value in self.structure_attributes.items()
         }
-        structure = ElementTree.Element(self.name, speciespath=self.species_path.as_posix(), **structure_attributes)
+        structure = ElementTree.Element(self.name, **structure_attributes)
         structure.text = ' '
 
         # Lattice vectors
@@ -245,7 +244,7 @@ class ExcitingStructure(ExcitingXMLInput):
         # Species tags
         atomic_indices = self._group_atoms_by_species()
         for x in self.unique_species:
-            species = self.species_properties[x].to_xml(speciesfile=x + '.xml')
+            species = self.species_properties[x].to_xml()
             structure.append(species)
             self._xml_atomic_subtree(x, species, atomic_indices)
 

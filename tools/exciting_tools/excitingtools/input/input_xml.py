@@ -28,9 +28,10 @@ class ExcitingInputXML(ExcitingXMLInput):
     """
     name = "input"
     _default_filename = "input.xml"
-    _order = ["title", "structure", "groundstate", "xs"]
-    _valid_subtrees = set(_order)
-    _mandatory_keys = {"structure", "groundstate", "title"}
+
+    def set_title(self, title: str):
+        """ Set a new title. """
+        self.__dict__["title"].title = title
 
     def to_xml_str(self) -> str:
         """Compose XML ElementTrees from exciting input classes to create an input xml string.

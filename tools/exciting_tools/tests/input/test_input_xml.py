@@ -49,7 +49,8 @@ def exciting_input_xml(exciting_structure: ExcitingStructure) -> ExcitingInputXM
                          qpointset=qpointset_input,
                          plan=plan_input)
 
-    return ExcitingInputXML(structure=exciting_structure, title='Test Case', groundstate=ground_state, xs=xs)
+    return ExcitingInputXML(sharedfs=True, structure=exciting_structure, title='Test Case', groundstate=ground_state,
+                            xs=xs)
 
 
 def test_exciting_input_xml_structure_and_gs_and_xs(exciting_input_xml: ExcitingInputXML):
@@ -59,7 +60,7 @@ def test_exciting_input_xml_structure_and_gs_and_xs(exciting_input_xml: Exciting
     input_xml_tree = exciting_input_xml.to_xml()
 
     assert input_xml_tree.tag == 'input'
-    assert input_xml_tree.keys() == []
+    assert input_xml_tree.keys() == ['sharedfs']
 
     subelements = list(input_xml_tree)
     assert len(subelements) == 4
@@ -144,7 +145,7 @@ def test_attribute_modification(exciting_input_xml: ExcitingInputXML):
     """Test the XML created for a ground state input is valid.
     Test SubTree composition using only mandatory attributes for each XML subtree.
     """
-    exciting_input_xml.title.title = "New Test Case"
+    exciting_input_xml.set_title("New Test Case")
     exciting_input_xml.structure.crystal_properties.scale = 2.3
     exciting_input_xml.groundstate.rgkmax = 9.0
     exciting_input_xml.xs.energywindow.points = 4000
@@ -175,7 +176,7 @@ def test_as_dict(exciting_input_xml: ExcitingInputXML, mock_env_jobflow_missing)
     dict_representation = exciting_input_xml.as_dict()
     assert set(dict_representation.keys()) == {"xml_string"}
     # check only that the xml string starts with the correct first lines:
-    assert dict_representation["xml_string"].startswith('<?xml version="1.0" ?>\n<input>\n\t \n\t'
+    assert dict_representation["xml_string"].startswith('<?xml version="1.0" ?>\n<input sharedfs="true">\n\t \n\t'
                                                         '<title>Test Case</title>\n\t<structure')
 
 
@@ -185,18 +186,19 @@ def test_as_dict_jobflow(exciting_input_xml: ExcitingInputXML, mock_env_jobflow)
     assert dict_representation == {'@class': 'ExcitingInputXML',
                                    '@module': 'excitingtools.input.input_xml'}
     # check only that the xml string starts with the correct first lines:
-    assert xml_string.startswith('<?xml version="1.0" ?>\n<input>\n\t \n\t<title>Test Case</title>\n\t<structure')
+    assert xml_string.startswith('<?xml version="1.0" ?>\n<input sharedfs="true">\n\t \n\t'
+                                 '<title>Test Case</title>\n\t<structure')
 
 
 def test_from_dict(exciting_input_xml: ExcitingInputXML, mock_env_jobflow_missing):
     new_input_xml = ExcitingInputXML.from_dict(exciting_input_xml.as_dict())
-    assert new_input_xml.title.title == "Test Case"
-    assert new_input_xml.groundstate.ngridk == [6, 6, 6]
+    assert new_input_xml.title.title == "Test Case"  # pylint: disable=no-member
+    assert new_input_xml.groundstate.ngridk == [6, 6, 6]  # pylint: disable=no-member
 
 
 def test_from_dict_jobflow(exciting_input_xml: ExcitingInputXML, mock_env_jobflow):
     new_input_xml = ExcitingInputXML.from_dict(exciting_input_xml.as_dict())
-    assert new_input_xml.title.title == "Test Case"
+    assert new_input_xml.title.title == "Test Case"  # pylint: disable=no-member
 
 
 def test_missing_structure():
@@ -207,6 +209,6 @@ def test_missing_structure():
 def test_from_gs_dict(exciting_structure):
     input_xml = ExcitingInputXML(structure=exciting_structure, title="Test Case",
                                  groundstate={"rgkmax": 7.0})
-    assert input_xml.title.title == "Test Case"
-    assert input_xml.groundstate.rgkmax == 7.0
-    assert input_xml.structure.species_path.as_posix() == "."
+    assert input_xml.title.title == "Test Case"  # pylint: disable=no-member
+    assert input_xml.groundstate.rgkmax == 7.0  # pylint: disable=no-member
+    assert input_xml.structure.speciespath == "."  # pylint: disable=no-member

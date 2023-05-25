@@ -6,7 +6,9 @@ import pytest
 from excitingtools.exciting_dict_parsers.input_parser import parse_element_xml, parse_structure, parse_input_xml
 
 reference_input_str = """<?xml version="1.0" encoding="UTF-8"?>
-<input>
+<input sharedfs="true" 
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+  xsi:noNamespaceSchemaLocation="https://xml.exciting-code.org/excitinginput.xsd">
   
   <title>Lithium Fluoride BSE</title>
   
@@ -25,6 +27,7 @@ reference_input_str = """<?xml version="1.0" encoding="UTF-8"?>
   </structure>
   
   <groundstate xctype="GGA_PBE" ngridk="4 4 4" epsengy="1d-7" outputlevel="high">
+   <spin bfieldc="0 0 0" fixspin="total FSM"/>
   </groundstate>
 
   <xs xstype="BSE" 
@@ -66,7 +69,8 @@ def test_parse_groundstate():
     ground_state = parse_element_xml(reference_input_str, tag="groundstate")
     assert ground_state == {
         'xctype': 'GGA_PBE', 'ngridk': [4, 4, 4],
-        'epsengy': 1e-7, 'outputlevel': 'high'
+        'epsengy': 1e-7, 'outputlevel': 'high',
+        'spin': {'bfieldc': [0, 0, 0], 'fixspin': 'total FSM'}
     }
 
 
@@ -117,16 +121,25 @@ def test_parse_xs():
     assert isinstance(xs["ngridq"][0], int)
 
 
+input_ref_parsed_keys = {'title', 'groundstate', 'structure', 'xs', 'sharedfs'}
+
+
 def test_parse_input_xml():
     parsed_data = parse_element_xml(reference_input_str)
-    assert set(parsed_data.keys()) == {'title', 'groundstate', 'structure', 'xs'}
+    assert set(parsed_data.keys()) == input_ref_parsed_keys
+    assert parsed_data['sharedfs']
 
 
 def test_parse_input_xml_directly():
     parsed_data = parse_input_xml(reference_input_str)
-    assert set(parsed_data.keys()) == {'title', 'groundstate', 'structure', 'xs'}
+    assert set(parsed_data.keys()) == input_ref_parsed_keys
 
 
 def test_parse_missing_tag():
     with pytest.raises(ValueError, match="Your specified input has no tag missing_tag"):
         parse_element_xml(reference_input_str, "missing_tag")
+
+
+def test_parse_input_xml_with_tag():
+    parsed_data = parse_element_xml(reference_input_str, tag="input")
+    assert set(parsed_data.keys()) == input_ref_parsed_keys
