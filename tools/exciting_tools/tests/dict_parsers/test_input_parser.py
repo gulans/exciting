@@ -83,17 +83,17 @@ def test_parse_structure():
     structure = parse_structure(reference_input_str)
     structure_ref = {
         'atoms': [{'species': 'Li', 'position': [0.0, 0.0, 0.0],
-                   'bfcmt': '0.0 0.0 0.0'},
+                   'bfcmt': [0.0, 0.0, 0.0]},
                   {'species': 'F', 'position': [0.5, 0.5, 0.5],
-                   'lockxyz': 'false true false'}],
+                   'lockxyz': [False, True, False]}],
         'lattice': [[3.80402, 3.80402, 0.0],
                     [3.80402, 0.0, 3.80402],
                     [0.0, 3.80402, 3.80402]],
         'species_path': '.',
-        'crystal_properties': {'scale': '1.0', 'stretch': '1.0'},
-        'species_properties': {'Li': {'rmt': '1.5'}, 'F': {}},
-        'autormt': 'false',
-        'epslat': '1.0d-6',
+        'crystal_properties': {'scale': 1.0, 'stretch': 1.0},
+        'species_properties': {'Li': {'rmt': 1.5}, 'F': {}},
+        'autormt': False,
+        'epslat': 1.0e-6,
     }
     assert structure_ref == structure
 

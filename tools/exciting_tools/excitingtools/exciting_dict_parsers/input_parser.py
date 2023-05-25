@@ -69,10 +69,10 @@ def parse_structure(root) -> dict:
          all additional keys are structure attributes}
     """
     structure = find_element(root, 'structure')
-    structure_properties = structure.attrib
+    structure_properties = convert_string_dict(copy.deepcopy(structure.attrib))
     species_path = structure_properties.pop('speciespath')
     crystal = structure.find('crystal')
-    crystal_properties = crystal.attrib
+    crystal_properties = convert_string_dict(copy.deepcopy(crystal.attrib))
     lattice = []
     for base_vect in crystal.findall('basevect'):
         lattice.append([float(x) for x in base_vect.text.split()])
@@ -80,14 +80,13 @@ def parse_structure(root) -> dict:
     atoms = []
     species_properties = {}
     for species in structure.findall('species'):
-        species_attributes = species.attrib
+        species_attributes = convert_string_dict(copy.deepcopy(species.attrib))
         species_file = species_attributes.pop('speciesfile')
         species_symbol = species_file[:-4]
         species_properties[species_symbol] = species_attributes
         for atom in species:
-            atom_attributes = atom.attrib
-            coord = [float(x) for x in atom_attributes.pop('coord').split()]
-            atom_dict = {'species': species_symbol, 'position': coord}
+            atom_attributes = convert_string_dict(copy.deepcopy(atom.attrib))
+            atom_dict = {'species': species_symbol, 'position': atom_attributes.pop('coord')}
             atom_dict.update(atom_attributes)
             atoms.append(atom_dict)
 
