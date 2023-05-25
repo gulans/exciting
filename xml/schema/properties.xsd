@@ -628,7 +628,7 @@
               </xs:element>
             </xs:sequence>
 
-	    <xs:attribute ex:importance="expert" ex:unit="" name="energyReference" default="false">
+	    <xs:attribute ex:importance="expert" ex:unit="" name="energyReference" default="none">
         <xs:annotation>
           <xs:documentation>If <pre>"efermi"</pre>, the input values for energies are given with respect to the Fermi energy.</xs:documentation>
         </xs:annotation>

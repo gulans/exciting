@@ -9,6 +9,7 @@ from xml.etree import ElementTree
 
 from excitingtools.parser_utils.parser_decorators import xml_root
 from excitingtools.parser_utils.parser_utils import find_element, convert_string_dict
+from excitingtools.utils.valid_attributes import input_valid_attributes
 
 
 @xml_root
@@ -20,6 +21,7 @@ def parse_input_xml(root):
 
 def get_root_from_tag(root: ElementTree.Element, tag: str = None) -> Tuple[ElementTree.Element, str]:
     """ Get the root from a tag.
+
     :param tag: tag of interest
     :param root: xml root containing the tag (or having the specified tag as tag)
     :returns: the tag and the found root, if tag was None returns the tag of the given root
@@ -38,11 +40,11 @@ def get_root_from_tag(root: ElementTree.Element, tag: str = None) -> Tuple[Eleme
 def parse_element_xml(root, tag: str = None) -> dict:
     """ Parse a xml element into dictionary. Can be input.xml root or a subelement of it.
     Put the attributes simply in dict and add recursively the subtrees and nested dicts.
-    Note: Parses all attributes into strings, would be nice to have as their actual data type but this
-     requires some more overhead. Maybe look at 'ast.literal_eval()'.
+
     :param tag: the tag to parse
     :param root: the xml root containing the tag
-    :returns: the parsed dictionary """
+    :returns: the parsed dictionary, data converted to actual data types
+    """
     root, tag = get_root_from_tag(root, tag)
 
     if tag in special_tags_to_parse_map.keys():
@@ -57,9 +59,27 @@ def parse_element_xml(root, tag: str = None) -> dict:
     return element_dict
 
 
+def _parse_input_tag(root) -> dict:
+    """ Parse special input tag. Necessary because exciting/xml allows arbitrary attributes at this level.
+    Only parses the explicitly named attributes in the schema.
+
+    :param root: the xml root containing the input tag
+    :returns: the parsed dictionary, data converted to actual data types
+    """
+    valid_attribs = {key: value for key, value in root.attrib.items() if key in input_valid_attributes}
+    element_dict = convert_string_dict(valid_attribs)
+
+    subelements = list(root)
+    for subelement in subelements:
+        element_dict[subelement.tag] = parse_element_xml(subelement)
+
+    return element_dict
+
+
 @xml_root
 def parse_structure(root) -> dict:
     """ Parse exciting input.xml structure element into python dictionary.
+
     :param root: Input for the parser.
     :returns: Dictionary containing the structure input element attributes and subelements. Looks like:
         {'atoms': List of atoms with atom positions in fractional coordinates,
@@ -102,7 +122,8 @@ def parse_structure(root) -> dict:
 
 # special tag to parse function map or lambda if one-liner
 # necessary for tags which doesn't contain simply xml attributes and subtrees
-special_tags_to_parse_map = {"title": lambda root: root.text,
+special_tags_to_parse_map = {"input": _parse_input_tag,
+                             "title": lambda root: root.text,
                              "structure": parse_structure,
                              "qpointset": lambda root: [[float(x) for x in qpoint.text.split()] for qpoint in root],
                              "plan": lambda root: [doonly.attrib['task'] for doonly in root]}

@@ -9,6 +9,7 @@ import numpy as np
 from excitingtools.input.base_class import AbstractExcitingInput, ExcitingXMLInput
 from excitingtools.utils.dict_utils import check_valid_keys
 from excitingtools.utils.utils import list_to_str
+from excitingtools.utils.valid_attributes import valid_plan_entries
 
 
 class ExcitingXSBSEInput(ExcitingXMLInput):
@@ -16,12 +17,6 @@ class ExcitingXSBSEInput(ExcitingXMLInput):
     Class for exciting BSE Input
     """
     name = "BSE"
-    _valid_attributes = {'aresbse', 'blocks', 'bsedirsing', 'bsetype', 'checkposdef', 'chibar0', 'chibar0comp',
-                         'chibarq', 'coupling', 'cuttype', 'distribute', 'econv', 'eecs', 'efind', 'fbzq',
-                         'iqmtrange', 'lmaxdielt', 'measure', 'nexc', 'ngridksub', 'nleblaik', 'nosym', 'nstlbse',
-                         'nstlxas', 'outputlevel', 'reducek', 'rgkmax', 'sciavbd', 'sciavqbd', 'sciavqhd',
-                         'sciavqwg', 'sciavtype', 'scrherm', 'vkloff', 'writehamhdf5', 'writepotential', 'xas',
-                         'xasatom', 'xasedge', 'xasspecies', 'xes'}
 
 
 class ExcitingXSScreeningInput(ExcitingXMLInput):
@@ -29,8 +24,6 @@ class ExcitingXSScreeningInput(ExcitingXMLInput):
     Class for exciting Screening Input
     """
     name = "screening"
-    _valid_attributes = {'do', 'intraband', 'nempty', 'ngridk', 'nosym', 'reducek', 'rgkmax', 'screentype',
-                         'tr', 'vkloff'}
 
 
 class ExcitingXSEnergywindowInput(ExcitingXMLInput):
@@ -38,7 +31,6 @@ class ExcitingXSEnergywindowInput(ExcitingXMLInput):
     Class for exciting Energywindow Input
     """
     name = "energywindow"
-    _valid_attributes = {'intv', 'points'}
 
 
 class ExcitingXSQpointsetInput(AbstractExcitingInput):
@@ -70,20 +62,13 @@ class ExcitingXSPlanInput(AbstractExcitingInput):
     Class for exciting Plan Input
     """
     name = "plan"
-    _valid_plan_elements = {'xsgeneigvec', 'tetcalccw', 'writepmatxs', 'writeemat', 'df', 'df2', 'idf', 'scrgeneigvec',
-                            'scrtetcalccw', 'scrwritepmat', 'screen', 'scrcoulint', 'exccoulint', 'bse', 'bsegenspec',
-                            'writebevec', 'writekpathweights', 'bsesurvey', 'kernxc_bse', 'writebandgapgrid',
-                            'write_wfplot', 'write_screen', 'writepmat', 'dielectric', 'writepmatasc', 'pmatxs2orig',
-                            'writeoverlapxs', 'writeematasc', 'writepwmat', 'emattest', 'x0toasc', 'x0tobin',
-                            'fxc_alda_check', 'kernxc_bse3', 'testxs', 'xsestimate', 'testmain', 'excitonWavefunction',
-                            'portstate(1)', 'portstate(2)', 'portstate(-1)', 'portstate(-2)'}
 
     def __init__(self, plan: List[str]):
         """
         Plan doonly elements are passed as a List of strings in the order exciting shall execute them:
             ['bse', 'xseigval', ...]
         """
-        check_valid_keys(plan, self._valid_plan_elements, self.name)
+        check_valid_keys(plan, valid_plan_entries, self.name)
         self.plan = plan
 
     def to_xml(self) -> ElementTree.Element:
@@ -101,9 +86,3 @@ class ExcitingXSInput(ExcitingXMLInput):
     # TODO(Fabian): Add all the other subelements, see http://exciting.wikidot.com/ref:xs
     # Issue 121: https://git.physik.hu-berlin.de/sol/exciting/-/issues/121
     name = "xs"
-    _valid_attributes = {'bfieldc', 'broad', 'dbglev', 'dfoffdiag', 'dogroundstate', 'emattype', 'emaxdf',
-                         'epsdfde', 'fastpmat', 'gqmax', 'gqmaxtype', 'lmaxapwwf', 'lmaxemat', 'maxscl', 'nempty',
-                         'ngridk', 'ngridq', 'nosym', 'pwmat', 'reducek', 'reduceq', 'rgkmax', 'scissor', 'skipgnd',
-                         'swidth', 'tappinfo', 'tevout', 'vkloff', 'writexsgrids', 'xstype'}
-    _valid_subtrees = {"screening", "BSE", "qpointset", "energywindow", "plan"}
-    _mandatory_keys = {"xstype"}

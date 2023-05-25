@@ -9,8 +9,11 @@ from xml.etree import ElementTree
 import numpy as np
 
 from excitingtools.exciting_dict_parsers.input_parser import parse_element_xml
+from excitingtools.utils import valid_attributes as all_valid_attributes
 from excitingtools.utils.dict_utils import check_valid_keys
 from excitingtools.utils.jobflow_utils import special_serialization_attrs
+
+path_type = Union[str, Path]
 
 
 class AbstractExcitingInput(ABC):
@@ -42,12 +45,6 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
                                 list: lambda mylist: " ".join(str(x).lower() for x in mylist).strip(),
                                 tuple: lambda mylist: " ".join(str(x).lower() for x in mylist).strip()
                                 }
-    _valid_attributes = set()
-    _valid_subtrees = set()
-    # define the mandatory keys, should be a subset of all valid keys
-    _mandatory_keys = set()
-    # order allows to put subtrees in order, should be a list of all valid subtrees
-    _order: List = None
 
     def __init__(self, **kwargs):
         """Initialise class attributes with kwargs.
@@ -55,16 +52,20 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
         Rather than define all options for a given method, pass as kwargs and directly
         insert as class attributes.
         """
+        valid_attributes = set(all_valid_attributes.__dict__.get(self.name + "_valid_attributes", set()))
+        valid_subtrees = all_valid_attributes.__dict__.get(self.name + "_valid_subtrees", [])
+        mandatory_keys = set(all_valid_attributes.__dict__.get(self.name + "_mandatory_attributes", set()))
+
         # check the keys
-        missing_mandatory_keys = self._mandatory_keys - set(kwargs.keys())
+        missing_mandatory_keys = mandatory_keys - set(kwargs.keys())
         if missing_mandatory_keys:
             raise ValueError(f"Missing mandatory arguments: {missing_mandatory_keys}")
-        check_valid_keys(kwargs.keys(), self._valid_attributes | self._valid_subtrees, self.name)
+        check_valid_keys(kwargs.keys(), valid_attributes | set(valid_subtrees), self.name)
 
         # initialise the subtrees
         class_list = self._class_list_from_module()
         subtree_class_map = {cls.name: cls for cls in class_list}
-        subtrees = set(kwargs.keys()) - self._valid_attributes
+        subtrees = set(kwargs.keys()) - valid_attributes
         for subtree in subtrees:
             kwargs[subtree] = self._initialise_subelement_attribute(subtree_class_map[subtree], kwargs[subtree])
 
@@ -94,7 +95,7 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
             # Assume the element type is valid for the class constructor
             return XMLClass(element)
 
-    def to_xml(self, **kwargs) -> ElementTree:
+    def to_xml(self) -> ElementTree:
         """Put class attributes into an XML tree, with the element given by self.name.
 
         Example ground state XML subtree:
@@ -103,21 +104,16 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
         Note, kwargs preserve the order of the arguments, however the order does not appear to be
         preserved when passed to (or perhaps converted to string) with xml.etree.ElementTree.tostring.
 
-        kwargs argument allows to specify additional attributes.
-
         :return ElementTree.Element sub_tree: sub_tree element tree, with class attributes inserted.
         """
         attributes = {key: self._attributes_to_input_str[type(value)](value) for key, value
                       in vars(self).items() if not isinstance(value, AbstractExcitingInput)}
-        subtrees = [self.__dict__[key] for key in set(vars(self).keys()) - set(attributes.keys())]
+        xml_tree = ElementTree.Element(self.name, **attributes)
 
-        xml_tree = ElementTree.Element(self.name, **attributes, **kwargs)
-
-        if self._order:  # order subtrees
-            tag_subtree_map = {x.name: x for x in subtrees}
-            subtrees = [tag_subtree_map[x] for x in self._order if x in tag_subtree_map]
-
-        for subtree in subtrees:
+        valid_subtrees = all_valid_attributes.__dict__.get(self.name + "_valid_subtrees", [])
+        subtrees = {key: self.__dict__[key] for key in set(vars(self).keys()) - set(attributes.keys())}
+        ordered_subtrees = [subtrees[x] for x in valid_subtrees if x in subtrees]
+        for subtree in ordered_subtrees:
             xml_tree.append(subtree.to_xml())
 
         # Seems to want this operation on a separate line
@@ -135,7 +131,7 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
         return {**serialise_attrs, "xml_string": self.to_xml_str()}
 
     @classmethod
-    def from_xml(cls, xml_string: str):
+    def from_xml(cls, xml_string: path_type):
         """ Initialise class instance from XML-formatted string.
 
         Example Usage
@@ -150,7 +146,7 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
         return cls.from_xml(d["xml_string"])
 
 
-def query_exciting_version(exciting_root: Union[Path, str]) -> dict:
+def query_exciting_version(exciting_root: path_type) -> dict:
     """Query the exciting version
     Inspect version.inc, which is constructed at compile-time.
 
