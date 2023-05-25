@@ -15,6 +15,8 @@ test-debian-buster-gcc8-smp-jupyter:
  script:
    - cd tools/excitingjupyter
    - source create_env.sh
+   - pip3 install pytest
+   - python3 -m pytest -vv ../excitingscripts/tests
    - cd excitingjupyter
    - jupyter nbconvert --execute 01_getting_started/tutorial_how_to_start_an_exciting_calculation.ipynb --to markdown
    - python3 01_getting_started/assertions_how_to_start_an_exciting_calculation.py
