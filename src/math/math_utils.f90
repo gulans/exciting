@@ -1454,16 +1454,22 @@ contains
 
   !> Check if a hermitian matrix is positive-definite. This is done by checking
   !> if all the eigenvalues are positive
-  logical function is_positive_definite( A )
+  logical function is_positive_definite( A, tol )
     !> Matrix to be checked
     complex(dp), intent(in)   :: A(:, :)
+    !> Tolerance
+    real(dp), intent(in), optional :: tol
 
     integer                   :: dim, info, lwork
     real(dp), allocatable     :: rwork(:), eigenvalues(:)
     complex(dp), allocatable  :: A_copy(:, :), work(:)
     character(200)            :: error_msg
+    real(dp)                  :: tolerance 
 
-    call assert( is_hermitian(A), 'A is not hermitian' )
+    tolerance = default_tol
+    if( present(tol) ) tolerance = tol
+
+    call assert( is_hermitian( A, tolerance ), 'A is not hermitian' )
     ! TODO Issue #25: Lapack wrapper for ZHEEV needed
     dim = size( A, 1 )
     allocate( A_copy(dim, dim), eigenvalues(dim), rwork(3*dim-2) )
@@ -1480,7 +1486,7 @@ contains
     call ZHEEV( 'N', 'U', dim, A_copy, dim, eigenvalues, work, lwork, rwork, info )
     write(error_msg,*) 'Error(is_positive_definite): ZHEEV returned info = ', info
     call assert( info==0, error_msg )
-    is_positive_definite = all( eigenvalues > 0._dp )
+    is_positive_definite = all( eigenvalues > tolerance )
   end function
 
 

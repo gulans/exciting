@@ -191,7 +191,7 @@ module matrix_exp_test
       & vectors=vectors_to_test, tol=tol)
     call test_report%assert( all_close( a=vectors_to_test, &
       & b= expected_result, tol=tol ) , &
-      & message='exphouston_hermitianmatrix_times_vectors does not return the &
+      & message='exphouston_hermitianmatrix_times_vectors does not return the&
       & expected result for given input.' )
 
   end subroutine test_exphouston_hermitianmatrix_times_vectors

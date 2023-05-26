@@ -13,6 +13,9 @@ module matrix_exp
   public :: exp_hermitianoperator_times_wavefunctions, &
             exphouston_hermitianoperator_times_wavefunctions
 
+  !> Default tolerance
+  real(dp), parameter :: tol_default = 1e-6_dp
+
 contains
   !> This subroutine obtains the exponential \( \exp(\alpha \hat{H}) \) applied
   !> to a set of vectors: \( \exp(\alpha \hat{H})| \Psi_{j\mathbf{k}} \rangle \).
@@ -36,51 +39,54 @@ contains
   !> The exponential here is approximated by a Taylor expansion
   !> up to the order defined by \( M \) (`order_taylor`)
   subroutine exp_hermitianoperator_times_wavefunctions( order_taylor, alpha, &
-    & H, S, vectors )
+    & H, S, vectors, tol )
     !> The order of the Taylor expansion
     integer, intent(in)           :: order_taylor
     !> Complex prefactor
     complex(dp), intent(in)       :: alpha
     !> Hermitian matrix \( H_{\mathbf{k}} \)
     complex(dp),intent(in)        :: H(:, :)
-    !> Overlap matrix \( S_{\mathbf{k}} \)
+    !> Overlap matrix \( S_{\mathbf{k}} \): must be positive definite
     complex(dp),intent(in)        :: S(:, :)
     !> On entry: the expansion coefficients of
     !> \( | \Psi_{j\mathbf{k}} \rangle \) in terms of (L)APW+lo.
     !> On exit: \( \exp [ \alpha S_{\mathbf{k}}^{-1}H_{\mathbf{k}} ] \;
     !>    C_{j\mathbf{k}}\)
     complex(dp),intent(inout)     :: vectors(:, :)
-
+    !> Tolerance to check if matrices are hermitian and positive definite
+    real(dp), intent(in), optional:: tol
     integer                       :: it, info
     integer                       :: dim, n_vectors
     complex(dp), allocatable      :: x(:, :), y(:, :), S_copy(:, :)
+    real(dp)                      :: tolerance
 
 
 
     ! Allocate arrays
     n_vectors = size( vectors, 2 )
     dim = size( H, 1 )
-    allocate( x(dim, n_vectors) )
+    allocate( x, source = vectors )
     allocate( y(dim, n_vectors) )
-    allocate( S_copy(dim, dim) )
+    allocate( S_copy, source=S )
+
+    ! Optional arguments
+    tolerance = tol_default
+    if( present(tol) ) tolerance = tol
+
     ! Sanity checks
     ! Check if H is hermitian
-    call assert( is_hermitian( H ), 'H is not hermitian' )
+    call assert( is_hermitian( H, tolerance ), 'H is not hermitian' )
     ! Check if H and vectors have compatible size
     call assert( size( H, 1 ) == size( vectors, 1 ), 'H and vectors have incompatible sizes.' )
     ! Check if S is positive definite
-    call assert( is_positive_definite( S ), 'S is not positive definite' )
+    call assert( is_positive_definite( S, tolerance ), 'S is not positive definite' )
     ! Check if S and vectors have compatible size
     call assert( size( S, 1 ) == size( vectors, 1 ), 'S and vectors have incompatible sizes.' )
-
-    ! Initializations
-    x = vectors
-    S_copy = S
 
     ! Taylor expansion
     do it = 1, order_taylor
       ! Matrix multiplication: y = H*x
-      call hermitian_matrix_multiply( H, x, y )
+      call hermitian_matrix_multiply( H, x, y, tol=tolerance )
       ! Obtain (S^(-1))*y for positive definite S (y will store the solution)
       call ZPOSV( 'U', dim, n_vectors, S_copy, dim, y, dim, info )
       ! Restores S_copy to its original value, after being modified by ZPOSV
@@ -152,11 +158,11 @@ contains
     complex(dp), intent(in)   :: alpha
     !> Hermitian matrix \( H_{\mathbf{k}} \)
     complex(dp),intent(in)    :: H(:, :)
-    !> Overlap matrix
+    !> Overlap matrix: must be positive definite
     complex(dp),intent(in)    :: S(:, :)
     !> Refer to [[exp_hermitianmatrix_times_vectors]]
     complex(dp),intent(inout) :: vectors(:, :)
-    !> Tolerance for the eigenvalue problem
+    !> Tolerance for checking if the matrices are hermitian
     real(dp), intent(in), optional :: tol
 
     integer                   :: i, lwork, info, n_eigvals_found
@@ -169,28 +175,26 @@ contains
     complex(dp), allocatable  :: eigvecs(:, :), proj(:, :), aux(:, :)
     complex(dp), allocatable  :: S_copy(:, :), H_copy(:, :)
 
-    tolerance = 1.0e-8_dp
+    tolerance = tol_default
     if( present(tol) ) tolerance = tol
     dim = size( H, 1 )
     n_vectors = size( vectors, 2 )
     allocate( eigvecs(dim, n_vectors), aux(dim, n_vectors) )
     allocate( proj(n_vectors, n_vectors) )
-    allocate( S_copy(dim, dim), H_copy(dim, dim) )
+    allocate( S_copy, source=S ) 
+    allocate( H_copy, source=H )
     allocate( ifail(dim), iwork(5*dim), eigvals(dim), rwork(7*dim) )
 
-    dim = size( H, 1 )
     ! Sanity checks
     ! Check if H is hermitian
-    call assert( is_hermitian( H ), 'H is not hermitian' )
+    call assert( is_hermitian( H, tolerance ), 'H is not hermitian' )
     ! Check if H and vectors have compatible size
     call assert( size( H, 1 ) == size( vectors, 1 ), 'H and vectors have incompatible sizes.' )
     ! Check if S is positive definite
-    call assert( is_positive_definite( S ), 'S is not positive definite' )
+    call assert( is_positive_definite( S, tolerance ), 'S is not positive definite' )
     ! Check if S and vectors have compatible size
     call assert( size( S, 1 ) == size( vectors, 1 ), 'S and vectors have incompatible sizes.' )
 
-    S_copy = S
-    H_copy = H
     vl = 0._dp
     vu = 0._dp
 
@@ -215,7 +219,7 @@ contains
       & with ZHEGVX, info not zero' )
 
     ! Project vectors onto the eigenvectors
-    call hermitian_matrix_multiply( S, vectors, aux )
+    call hermitian_matrix_multiply( S, vectors, aux, tol=tolerance )
     call matrix_multiply( eigvecs, aux, proj, 'C')
 
     ! Now, scale each eigenvector by the exponential of alpha*eigvals

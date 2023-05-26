@@ -72,9 +72,8 @@ contains
       ! Dimension of the Hamiltonian and Overlap matrices for the current k-point
       nmatp = nmat(1,ik)
 
-      allocate(overl(nmatp,nmatp))
+      allocate(overl(nmatp,nmatp), source=overlap(1:nmatp,1:nmatp,ik))
       allocate(ham(nmatp,nmatp))
-      overl(1:nmatp,1:nmatp) = overlap(1:nmatp,1:nmatp,ik)
 
       select case(method)
         ! SE (simple exponential)
