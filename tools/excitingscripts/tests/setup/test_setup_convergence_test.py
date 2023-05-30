@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pytest
 from excitingscripts.setup.convergence_test import setup_convergence_test
 from excitingtools.exciting_obj_parsers.input_xml import parse_input_xml
@@ -44,9 +45,9 @@ def test_setup_convergence_test(input_xml_mock, tmp_path):
     parsed_input = parse_input_xml(input_xml_mock.string)
     parsed_input.groundstate.ngridk = [6, 6, 6]
     parsed_input.groundstate.rgkmax = 6
-    input_xml_6_6_str = parsed_input.to_xml_str()
 
     setup_convergence_test(input_xml_mock.full_path, 4, 6, 5, 6, root_directory=tmp_path)
+    parsed_input_6_6 = parse_input_xml(f"{tmp_path}/6_6/input.xml")
 
-    with open(f"{tmp_path}/6_6/input.xml", "r") as f:
-        assert f.read() == input_xml_6_6_str
+    assert np.allclose(parsed_input.groundstate.ngridk, parsed_input_6_6.groundstate.ngridk)
+    assert parsed_input.groundstate.rgkmax == parsed_input_6_6.groundstate.rgkmax

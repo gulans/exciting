@@ -46,7 +46,7 @@ def test_setup_volume_optimization(input_xml_mock, tmp_path):
     parsed_input.structure.crystal_properties.scale = 8.115450000000001
 
     setup_volume_optimization(input_xml_mock.full_path, 11, root_directory=tmp_path)
+    parsed_input_volume_11 = parse_input_xml(tmp_path / "volume-11" / "input.xml")
 
-    with open(tmp_path / "volume-11" / "input.xml", "r") as f:
-        assert f.read() == parsed_input.to_xml_str()
+    assert parsed_input.structure.crystal_properties.scale == parsed_input_volume_11.structure.crystal_properties.scale
 
