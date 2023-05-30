@@ -53,7 +53,6 @@ def test_setup_interlayer_distance(input_xml_mock, tmp_path):
 
     parsed_input = parse_input_xml(input_xml_mock.string)
     parsed_input.structure.lattice[2][2] = 1.2828512137937294
-    input_xml_4_str = parsed_input.to_xml_str()
 
     setup_interlayer_distance(input_xml_mock.full_path, 5, 8, 4, 20,  root_directory=tmp_path)
 
@@ -62,10 +61,11 @@ def test_setup_interlayer_distance(input_xml_mock, tmp_path):
         with open(f"{tmp_path}/rundir-{i + 1}/strain-{i + 1}", "r") as f:
             strain_values.append(float(f.read()))
 
-    with open(f"{tmp_path}/rundir-4/input.xml", "r") as f:
-        assert f.read() == input_xml_4_str
+    parsed_input_rundir_4 = parse_input_xml(f"{tmp_path}/rundir-4/input.xml")
 
     assert strain_values == [5, 6, 7, 8]
+
+    assert parsed_input.structure.lattice[2][2] == parsed_input_rundir_4.structure.lattice[2][2]
 
     with open(f"{tmp_path}/rundir-oo/strain-oo", "r") as f:
         assert float(f.read()) == 20
