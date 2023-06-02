@@ -1,13 +1,13 @@
 """General utility functions. Typically, conversion/type-checking.
 """
 import pathlib
-from typing import Union, List, Optional, Callable
 import re
+from typing import Union, List, Optional, Callable
 
 
 def get_excitingtools_root() -> pathlib.Path:
     """ Get the root directory of excitingtools. """
-    return pathlib.Path(__file__).parent.parent.parent
+    return pathlib.Path(__file__).parents[2]
 
 
 def can_be_float(value) -> bool:

@@ -145,3 +145,41 @@ def test_solver_input():
     assert solver_xml.keys() == solver_keys, 'Should contain all spin attributes'
     assert solver_xml.get('packedmatrixstorage') == 'true'
     assert solver_xml.get('type') == 'Lapack'
+
+
+def test_dfthalf_input():
+    dfthalf_attributes = {"printVSfile": True}
+    dfthalf_keys = list(dfthalf_attributes)
+    gs_input = ExcitingGroundStateInput(dfthalf=dfthalf_attributes)
+
+    gs_xml = gs_input.to_xml()
+    assert gs_xml.tag == 'groundstate'
+    assert set(gs_xml.keys()) == set()
+
+    elements = list(gs_xml)
+    assert len(elements) == 1
+
+    dfthalf_xml = elements[0]
+    assert dfthalf_xml.tag == "dfthalf"
+    assert dfthalf_xml.keys() == dfthalf_keys, 'Should contain all dfthalf attributes'
+    assert dfthalf_xml.get('printVSfile') == 'true'
+
+
+def test_OEP_input():
+    oep_attributes = {"convoep": 1e-5, "maxitoep": 200, "tauoep": [1, 2, 3]}
+    oep_keys = list(oep_attributes)
+    gs_input = ExcitingGroundStateInput(OEP=oep_attributes)
+
+    gs_xml = gs_input.to_xml()
+    assert gs_xml.tag == 'groundstate'
+    assert set(gs_xml.keys()) == set()
+
+    elements = list(gs_xml)
+    assert len(elements) == 1
+
+    oep_xml = elements[0]
+    assert oep_xml.tag == "OEP"
+    assert oep_xml.keys() == oep_keys, 'Should contain all dfthalf attributes'
+    assert oep_xml.get('convoep') == '1e-05'
+    assert oep_xml.get('maxitoep') == '200'
+    assert oep_xml.get('tauoep') == '1 2 3'

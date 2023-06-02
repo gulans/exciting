@@ -1,7 +1,7 @@
 """Test ExcitingStructure, python API that generates exciting's structure XML.
 
 NOTE:
-All attribute tests should assert on the XML tree content,s as the attribute
+All attribute tests should assert on the XML tree content, as the attribute
 order is not preserved by the ElementTree.tostring method. Elements appear to
 be fine.
 
@@ -18,8 +18,9 @@ or
 
 """
 import sys
-import pytest
+
 import numpy as np
+import pytest
 
 try:
     import ase
@@ -203,7 +204,7 @@ def test_optional_crystal_attributes_xml(lattice_and_atoms_CdS):
         arbitrary_atoms,
         cubic_lattice,
         './',
-        crystal_properties={'scale': 1.00, 'stretch': 1.00}
+        crystal_properties={'scale': 1.00, 'stretch': [1.00, 1.00, 1.00]}
     )
     xml_structure = structure.to_xml()
 
@@ -214,7 +215,7 @@ def test_optional_crystal_attributes_xml(lattice_and_atoms_CdS):
     assert crystal_xml.tag == "crystal", 'First subtree is crystal'
     assert crystal_xml.keys() == ['scale', 'stretch'], 'Optional crystal properties'
     assert crystal_xml.get('scale') == '1.0', 'scale value inconsistent with input'
-    assert crystal_xml.get('stretch') == '1.0', 'stretch value inconsistent with input'
+    assert crystal_xml.get('stretch') == '1.0 1.0 1.0', 'stretch value inconsistent with input'
 
 
 def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
@@ -222,7 +223,9 @@ def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
     Test optional species attributes.
     """
     cubic_lattice, arbitrary_atoms = lattice_and_atoms_CdS
-    species_attributes = {'Cd': {'rmt': 3.0}, 'S': {'rmt': 4.0}}
+    species_attributes = {'Cd': {'rmt': 3.0, "LDAplusU": {"J": 1.5, "U": 2.4, "l": 2}},
+                          'S': {'rmt': 4.0, "dfthalfparam": {"ampl": 1.2, "cut": 1.9, "exponent": 5,
+                                                             "shell": {"ionization": 0.8, "number": 1}}}}
 
     structure = ExcitingStructure(
         arbitrary_atoms, cubic_lattice, './', species_properties=species_attributes
@@ -242,9 +245,38 @@ def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
     assert species_cd_xml.get('speciesfile') == 'Cd.xml', 'speciesfile differs from expected'
     assert species_cd_xml.get('rmt') == '3.0', 'Cd muffin tin radius differs from input'
 
+    species_cd_elements = list(species_cd_xml)
+    assert len(species_cd_elements) == 2
+    ldaplusu_xml = species_cd_elements[0]
+    assert ldaplusu_xml.tag == "LDAplusU"
+
+    assert set(ldaplusu_xml.keys()) == {'J', 'U', 'l'}
+    assert ldaplusu_xml.get("J") == "1.5"
+    assert ldaplusu_xml.get("U") == "2.4"
+    assert ldaplusu_xml.get("l") == "2"
+
     assert set(species_s_xml.keys()) == {'speciesfile', 'rmt'}, "species attributes differ from expected"
     assert species_s_xml.get('speciesfile') == 'S.xml', 'speciesfile differs from expected'
     assert species_s_xml.get('rmt') == '4.0', 'S muffin tin radius differs from input'
+
+    species_s_elements = list(species_s_xml)
+    assert len(species_s_elements) == 2
+    dfthalfparam_xml = species_s_elements[0]
+    assert dfthalfparam_xml.tag == "dfthalfparam"
+
+    assert set(dfthalfparam_xml.keys()) == {'ampl', 'cut', 'exponent'}
+    assert dfthalfparam_xml.get("ampl") == "1.2"
+    assert dfthalfparam_xml.get("cut") == "1.9"
+    assert dfthalfparam_xml.get("exponent") == "5"
+
+    dfthalfparam_elements = list(dfthalfparam_xml)
+    assert len(dfthalfparam_elements) == 1
+    shell_xml = dfthalfparam_elements[0]
+    assert shell_xml.tag == "shell"
+
+    assert set(shell_xml.keys()) == {'ionization', 'number'}
+    assert shell_xml.get('ionization') == '0.8'
+    assert shell_xml.get('number') == '1'
 
 
 ref_dict = {'xml_string': '<structure speciespath="./"> <crystal> <basevect>1.0 0.0 0.0</basevect>'
@@ -344,7 +376,7 @@ def test_class_exciting_structure_ase(ase_atoms_H20):
                        [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]), \
         'Expect lattice vectors to match input values'
 
-    assert np.allclose(structure.positions, atoms.positions), 'Expect positions to match input values.'
+    assert np.allclose(structure.positions, atoms.get_scaled_positions()), 'Expect positions to match input values.'
 
     # TODO(Alex) Issue 117. Compare xml_structure built with and without ASE - should be consistent
     # This just confirms the XML tree is built, not that it is correct.
@@ -352,8 +384,24 @@ def test_class_exciting_structure_ase(ase_atoms_H20):
     assert list(xml_structure.keys()) == ['speciespath'], 'Only expect speciespath in structure xml keys'
 
 
-def test_species_not_existing():
+def test_using_non_standard_species_symbol():
     cubic_lattice = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]
-    atoms = [{'species': 'A', 'position': [0.00000, 0.75545, -0.47116]}]
-    with pytest.raises(ValueError, match="Species input keys are not valid: {'A'}"):
-        ExcitingStructure(atoms, cubic_lattice)
+    atoms = [{'species': 'C_molecule', 'position': [0.00000, 0.75545, -0.47116]}]
+    structure = ExcitingStructure(atoms, cubic_lattice)
+
+    structure_xml = structure.to_xml()
+    assert structure_xml.tag == 'structure', 'XML root should be structure'
+    assert structure_xml.keys() == ['speciespath'], 'structure defined to have only speciespath '
+    assert structure_xml.get('speciespath') == './', 'species path set to ./'
+
+    elements = list(structure_xml)
+    assert len(elements) == 2, 'Expect structure tree to have 2 sub-elements'
+
+    species_c_xml = elements[1]
+    assert species_c_xml.tag == "species", 'Second subtree is species'
+
+    assert species_c_xml.items() == [('speciesfile', 'C_molecule.xml')], 'species is inconsistent'
+
+    atoms_h = list(species_c_xml)
+    assert len(atoms_h) == 1
+    assert atoms_h[0].items() == [('coord', '0.0 0.75545 -0.47116')]

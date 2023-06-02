@@ -51,6 +51,9 @@ class ExcitingXMLInput(AbstractExcitingInput, ABC):
 
         Rather than define all options for a given method, pass as kwargs and directly
         insert as class attributes.
+
+        Valid attributes, subtrees and mandatory attributes are taken automatically from
+        the parsed schema, see [valid_attributes.py](excitingtools/utils/valid_attributes.py).
         """
         valid_attributes = set(all_valid_attributes.__dict__.get(self.name + "_valid_attributes", set()))
         valid_subtrees = all_valid_attributes.__dict__.get(self.name + "_valid_subtrees", [])
