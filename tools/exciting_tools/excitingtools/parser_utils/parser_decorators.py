@@ -1,9 +1,8 @@
 """Decorators and wrappers for parser functions.
 """
-from typing import Callable, Union
-import os
-import xml.etree.ElementTree as ET
 import pathlib
+import xml.etree.ElementTree as ET
+from typing import Callable, Union
 
 
 def return_file_string(file_name: Union[str, pathlib.Path]) -> str:
@@ -72,7 +71,7 @@ def xml_root(func: Callable):
         try:
             root = ET.fromstring(input)
             return function_selection[type(tag)](root, tag)
-        except ET.ParseError:
+        except (ET.ParseError, TypeError):
             raise ValueError(f'Input string neither an XML file, '
                              f'nor valid XML: {input}')
 

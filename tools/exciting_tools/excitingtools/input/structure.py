@@ -8,21 +8,8 @@ from xml.etree import ElementTree
 from excitingtools.input.base_class import ExcitingXMLInput
 from excitingtools.structure.lattice import check_lattice, check_lattice_vector_norms
 from excitingtools.utils import valid_attributes
-from excitingtools.utils.dict_utils import check_valid_keys
 from excitingtools.utils.utils import list_to_str
-
-# Set of all elements
-all_species = {'Ni', 'La', 'K', 'Xe', 'Ag', 'Bk', 'Co', 'Md', 'Lu', 'Ar',
-               'Bi', 'Cm', 'H', 'Yb', 'Zn', 'Te', 'I', 'Cl', 'As', 'Mg',
-               'No', 'Ta', 'N', 'Ac', 'Y', 'At', 'Tb', 'Tc', 'Au', 'O',
-               'Lr', 'In', 'Ge', 'Re', 'Pm', 'Gd', 'Kr', 'Po', 'Sc', 'Rf',
-               'Sb', 'Rb', 'Ru', 'Dy', 'Ho', 'Ra', 'Se', 'Sr', 'Fr', 'Ga',
-               'Fe', 'Es', 'Si', 'Pr', 'Pd', 'Er', 'Rn', 'Ir', 'He', 'Eu',
-               'Pt', 'Pu', 'Sn', 'Pb', 'Hf', 'Fm', 'Rh', 'Sm', 'Pa', 'Hg',
-               'Os', 'B', 'U', 'Zr', 'Cf', 'C', 'Na', 'Li', 'Mo', 'Cs',
-               'Al', 'V', 'Cd', 'Tm', 'Tl', 'Ba', 'Ce', 'W', 'Am', 'Cr',
-               'Nb', 'Mn', 'S', 'Ca', 'Be', 'Br', 'Th', 'Ti', 'Np', 'Ne',
-               'P', 'Cu', 'F', 'Nd'}
+from excitingtools.constants.units import angstrom_to_bohr
 
 
 class ExcitingStructureCrystalInput(ExcitingXMLInput):
@@ -39,15 +26,29 @@ class ExcitingStructureSpeciesInput(ExcitingXMLInput):
     name = "species"
 
 
+class ExcitingStructureLDAplusUInput(ExcitingXMLInput):
+    """
+    Class for exciting structure LDAplusU input.
+    """
+    name = "LDAplusU"
+
+
+class ExcitingStructureDfthalfparamInput(ExcitingXMLInput):
+    """
+    Class for exciting structure dfthalfparam input.
+    """
+    name = "dfthalfparam"
+
+
+class ExcitingStructureShellInput(ExcitingXMLInput):
+    """
+    Class for exciting structure shell input.
+    """
+    name = "shell"
+
+
 class ExcitingStructure(ExcitingXMLInput):
     """ Class allowing exciting XML structure to be written from python data.
-
-    TODO(Fabian/Alex) 117. Implement all remaining attributes:
-     All elements are species-specific. They should be passed like:
-     species_properties = {'S': {'LDAplusU':{'J': J, 'U': U, 'l': l}} }
-     Element: LDAplusU: J, U, l
-     Element: dfthalfparam: ampl, cut, exponent
-     Element: shell: ionization, number
     """
     name = "structure"
     # Path type
@@ -68,9 +69,8 @@ class ExcitingStructure(ExcitingXMLInput):
         TODO(Alex) Issue 117. Create our own class with a subset of methods common to ASE' Atom()
           Then we can have a single API for this init. If ASE is used, xAtom() is just a wrapper of
           Atom(), else we have some light methods.
-        TODO(Alex/Fabian) Issue 117.
-          structure_attributes and crystal_attributes could equally be kwargs.
-          Consider changing or extending before the first major version.
+
+        All valid attributes can be found in the module valid_attributes.py
 
         :param atoms: Atoms object of type ase.atoms.Atoms or of the form List[dict], for example:
          atoms = [{'species': 'X', 'position': [x, y, z]}, ...].
@@ -80,14 +80,17 @@ class ExcitingStructure(ExcitingXMLInput):
         If atoms are defined with ASE, optional atomic_properties cannot be specified.
         Eventually, the list of atoms will be replaced with our custom class, which will extend ase.Atoms()
         with the additional, optional attributes.
+        Species value can be a file_name without the suffix '.xml', which will be added automatically.
 
         :param lattice [a, b, c], where a, b and c are lattice vectors with 3 components.
          For example, a = [ax, ay, az]. Only required if one does not pass an ase Atoms object.
         :param species_path: Optional path to the location of species file/s.
-        :param crystal_properties: Optional crystal properties. See _valid_crystal_attributes
+        :param crystal_properties: Optional crystal properties.
         :param species_properties: Optional species properties, defined as:
         {'species1': {'rmt': rmt_value}, 'species2': {'rmt': rmt_value}}
-        :param kwargs: Optional structure properties. Passed as kwargs. See _valid_attributes
+        and with subtrees as:
+        {'species1': {'rmt': rmt_value, 'LDAplusU': {'J': J, 'U': U, 'l': l}}, species2: ... }
+        :param kwargs: Optional structure properties. Passed as kwargs.
         """
         if isinstance(species_path, Path):
             species_path = species_path.as_posix()
@@ -111,16 +114,12 @@ class ExcitingStructure(ExcitingXMLInput):
 
         self.unique_species = sorted(set(self.species))
 
-        # Catch symbols that are not valid elements
-        check_valid_keys(self.unique_species, all_species, name='Species input')
-
         # Optional properties
         self.crystal_properties = self._initialise_subelement_attribute(ExcitingStructureCrystalInput,
                                                                         crystal_properties or {})
         self.species_properties = dict(self._init_species_properties(species_properties))
 
-    @staticmethod
-    def _init_lattice_species_positions_from_ase_atoms(atoms) -> tuple:
+    def _init_lattice_species_positions_from_ase_atoms(self, atoms) -> tuple:
         """ Initialise lattice, species and positions from an ASE Atoms Object.
 
         Duck typing for atoms, such that ASE is not a hard dependency.
@@ -131,9 +130,13 @@ class ExcitingStructure(ExcitingXMLInput):
         try:
             cell = atoms.get_cell()
             # Convert to consistent form, [a, b, c], where a = [ax, ay, az]
-            lattice = [list(cell[i, :]) for i in range(0, 3)]
+            # Additionally, ASE works in Angstrom, whereas exciting expects atomic units
+            lattice = [list(angstrom_to_bohr * cell[i, :]) for i in range(0, 3)]
             species = [x.capitalize() for x in atoms.get_chemical_symbols()]
-            positions = atoms.get_positions()
+            if self.structure_attributes.get("cartesian"):
+                positions = angstrom_to_bohr * atoms.get_positions()
+            else:
+                positions = atoms.get_scaled_positions()
             return lattice, species, positions
         except AttributeError:
             message = "atoms must either be an ase.atoms.Atoms object or List[dict], of the form" \

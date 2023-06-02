@@ -1,6 +1,12 @@
 """ Units.
+
+Physical constants, defined according to [CODATA 2018])(http://physics.nist.gov/constants)
+One could also consider importing them from scipy
 """
 import enum
+
+bohr_to_angstrom = 0.529177210903
+angstrom_to_bohr = 1. / bohr_to_angstrom
 
 
 class Unit(enum.Enum):

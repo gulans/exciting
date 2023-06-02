@@ -1,9 +1,9 @@
 """Utilities to aid in writing and formatting XML
 """
+import re
 from typing import Union, List
 from xml.dom import minidom
 from xml.etree import ElementTree
-import re
 
 
 def xml_tree_to_pretty_str(elem: ElementTree.Element) -> str:

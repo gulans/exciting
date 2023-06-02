@@ -1,5 +1,5 @@
 """Module for class of exciting xs (excited states).
-http://exciting.wikidot.com/ref:xs
+https://exciting.wikidot.com/ref:xs
 """
 from typing import Optional, List, Union
 from xml.etree import ElementTree
