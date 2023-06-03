@@ -70,21 +70,20 @@ test-debian-buster-Intel2019-mpiandsmp:
     # - Disable GW test and run with the default mpiandsmp test settings
     - cd $CI_PROJECT_DIR/test
     - cp tests_config.yml orig_tests_config.yml
-    - >-
-     sed -i '/GW\/ZnO-PBESOL\:/a\'$'\n''   group: NORUN' tests_config.yml
     - |-
-      if [[cmp --silent -- tests_config.yml orig_tests_config.yml]]; then
-        echo "sed failed to add 'group: NORUN' to app test GW/ZnO-PBESOL"
-        echo "This test is expected to fail for Intel MPISMP in the CI, so the CI is bailing now"
-        exit 1
+      if sed -i '/GW\/ZnO-PBESOL\:/a\'$'\n''   group: !Group NORUN' tests_config.yml && [ $? -eq 0 ]; then
+          echo "Disabled GW test for initial app test run."
+      else
+          echo "sed failed to add 'group: !Group NORUN' to app test GW/ZnO-PBESOL"
+          echo "This test is expected to fail for Intel MPISMP in the CI, so the CI is bailing now"
       fi
     - python3 runtest.py -e exciting_mpismp -repeat-tests 2
 
-    # Run the GW test, only
-    - cp orig_tests_config.yml tests_config.yml 
+    # Run the GW test, only (using specific parallel settings)
+    - cp orig_tests_config.yml tests_config.yml
     - export MKL_NUM_THREADS=2 && python3 runtest.py -e exciting_mpismp -omp 1 -np 2 -repeat-tests 2 -t GW
 
-    # Profile the code
+    # Profile the code  Note, this may need to be moved above the GW test
     - cd $CI_PROJECT_DIR/docs/profiling && profmerge
     - codecov -prj test_suite
   artifacts:
