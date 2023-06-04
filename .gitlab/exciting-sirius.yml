@@ -1,12 +1,17 @@
 # exciting calling Sirius C++ library
 #
-# The build chain is based on Ubuntu focal as it's not clear
-# if GCC8 (default on debian buster) C++ compiler supports the 
-# standard used by Sirius, and it was much faster to build the dependencies
-# using a mix of apt-get and spack, rather than purely spack.
+# Sirius builds in the pipeline to allow continuious integration of
+# upstream API changes. Docker image contains all dependencies.
+#
+# Unlike the other CI build chains, this is based on Ubuntu focal.
+# GCC8 (default on debian buster) C++ compiler is (probably) too old
+# to support the C++ features required by Sirius.
+# One could have used debian buster + install all dependencies with spack,
+# but using a mix of apt-get (for GCC and MPICH) and spack results in faster
+# built times.
 
 build:ubuntu-focal-sirius-gcc9-mpich-3.3.2-mkl:
-  image: gitdocker.physik.hu-berlin.de/sol/exciting:sirius-gcc9-mpich-3.3.2-mkl
+  image: gitdocker.physik.hu-berlin.de/sol/exciting:sirius-cpu-dependencies-may2023
   stage: build
   except:
    changes:
@@ -14,9 +19,15 @@ build:ubuntu-focal-sirius-gcc9-mpich-3.3.2-mkl:
   tags:
     - docker
   script:
-    - cp build/platforms/make.inc.sirius_ci build/make.inc
-    # SPEC VAR defined in the docker image
-    - echo "Compiling exciting in the spack env defined by the SPEC ${SPEC}"
+    # Use spack env (in this mode, exports variables)
+    - eval /spack/bin/spack env activate --sh $SIRIUS_ENV
+    # Check expected docker env vars are defined from the base image
+    - echo "Compiling exciting in the spack env, defined in ${SIRIUS_ENV}"
+    - echo "Sirius built with the specification ${SPEC}"
+    # Build sirius
+    - /spack/bin/spack compiler find && /spack/bin/spack -e $SIRIUS_ENV install $SPEC
+    # Build exciting, linked to sirius
+    - cp build/platforms/make.inc.sirius build/make.inc
     - /spack/bin/spack build-env ${SPEC} -- make mpiandsmp -j 4
   artifacts:
     paths:
@@ -25,7 +36,7 @@ build:ubuntu-focal-sirius-gcc9-mpich-3.3.2-mkl:
     expire_in: 5 hrs
 
 test-ubuntu-focal-sirius-gcc9-mpich-3.3.2-mkl:
-  image: gitdocker.physik.hu-berlin.de/sol/exciting:sirius-gcc9-mpich-3.3.2-mkl
+  image: gitdocker.physik.hu-berlin.de/sol/exciting:sirius-cpu-dependencies-may2023
   stage: test
   except:
    changes:
@@ -45,6 +56,4 @@ test-ubuntu-focal-sirius-gcc9-mpich-3.3.2-mkl:
     # In this case, ONLY run tests with GROUPS tag: SIRIUS
     - python3 set_groups.py -file defaults_config.yml -groups SIRIUS
     # Run exciting-SIRIUS application tests
-    # Note, the test suite has no means with which to pass command line args
-    # to exciting, therefore kptgroups is always the default
     - python3 runtest.py -e exciting_mpismp

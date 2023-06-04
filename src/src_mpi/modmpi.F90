@@ -1805,7 +1805,6 @@ subroutine find_2d_grid(n_processes, n_groups, rows_per_group, cols_per_group, g
   !> Error message
   character(len=100) :: error_message
 
-  !TODO(Alex/Peter) Issue 79. SIRUS Integration.
   ! Is this the correct behaviour, or should the routine throw an error?
   if (n_groups < 1) then
     ! One process per group
