@@ -37,7 +37,8 @@ Subroutine init0
       Use modxs
 #endif
       use sirius_init, only: sirius_options
-      use sirius_api, only: setup_sirius, get_mpi_comm_sirius, gengvec_sirius, warn_array_sizes_sirius
+      use sirius_api, only: setup_sirius, get_mpi_comm_sirius, gengvec_sirius, warn_array_sizes_sirius,&
+                            set_periodic_function_ptr_sirius
 
       Implicit None
 
@@ -481,6 +482,10 @@ call allocate_coulomb_potentials(lmmaxvr, nrmtmax, natmtot, ngrtot, vclmt, vclir
       Allocate (veffig(ngvec))
 !      If (allocated(vrefig)) deallocate (vrefig)
 !      Allocate (vrefig(ngvec))
+
+      if ( associated(input%groundstate%sirius) ) then
+        call set_periodic_function_ptr_sirius(rhomt, veffmt, magmt, lmmaxvr, nrmtmax, natmtot)
+      end if
 
 ! allocate muffin-tin charge and moment arrays
       If (allocated(chgmt)) deallocate (chgmt)

@@ -335,7 +335,7 @@ subroutine scf_cycle(verbosity)
 !-----------------------------------------------
         if (associated(input%groundstate%sirius) .and. sirius_options%use_density ) then
           call generate_density_sirius()
-          call get_periodic_function_sirius(rhoir, ngrtot)
+          call get_periodic_function_sirius(rhoir, ngrid)
           call timesec(ts0)
         else
           call generate_density_and_magnetization()
