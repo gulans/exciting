@@ -573,6 +573,17 @@
 		            </xs:documentation>
               </xs:annotation>
             </xs:attribute>
+            <xs:attribute ex:importance="expert" ex:unit="" name="forcePmatHermitian"
+              type="xs:boolean"  default="false">
+              <xs:annotation>
+                <xs:documentation> When <pre>"true"</pre>,
+                the <inlinemath>x</inlinemath>, <inlinemath>y</inlinemath> and
+                <inlinemath>z</inlinemath> components of the momentum matrix
+                are forced to be Hermitian. This may be useful to avoid numerical
+                noise.
+		            </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
             <xs:attribute ex:importance="expert" ex:unit=""
               name="calculateTotalEnergy" type="xs:boolean"
               default="false">

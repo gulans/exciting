@@ -16,7 +16,7 @@ module rttddft_GlobalVariables
   private
   ! List of the many global variables can be used publicly
   public :: fileavec, filejind, filetime, filepvec, filenexc, fileetot, &
-    & filepmat, fileinfortddft, formatTime, &
+    & formatTime, &
     & nsteps, time, tstep, tend, &
     & maxstepsPredictorCorrector, predictorCorrector, &
     & printTimesGeneral, printTimesDetailed, calculateTotalEnergy, calculateNexc, &
@@ -99,12 +99,6 @@ module rttddft_GlobalVariables
   !> number of the unit to write to the file `ETOT_RTTDDFT.OUT`, where the 
   !> total energy is printed  
   integer                   :: fileetot
-  !> number of the unit to write to the file `PMATBASIS.OUT`, where the momentum
-  !> matrix elements are stored (in binary format)
-  integer                   :: filepmat
-  !> number of the unit to write to the file `RTTDDFT_INFO.OUT`, with general
-  !> information about the RT-TDDFT calculation
-  integer                   :: fileinfortddft
   !> number of the unit to write to the file `TIMING_RTTDDFT.OUT`, where timings
   !> are printed
   integer                   :: filetime
