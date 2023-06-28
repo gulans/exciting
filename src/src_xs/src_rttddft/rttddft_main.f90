@@ -15,6 +15,8 @@ module rttddft_main
   use rttddft_GlobalVariables
   use precision, only: dp
   use rttddft_Energy, only: TotalEnergy, obtain_energy_rttddft
+  use rttddft_io, only: open_file_info, write_file_info, write_file_info_header, &
+    close_file_info, write_wavefunction
   use mod_kpoint, only: nkpt
 #ifdef MPI
   use mpi, only: MPI_BARRIER
@@ -45,7 +47,6 @@ contains
   !> desired time step. </li>
   !> </ol>
   subroutine coordinate_rttddft_calculation()
-    use mod_misc, only: versionname, githash
     use rttddft_init, only: initialize_rttddft
     use rttddft_HamiltonianOverlap, only: UpdateHam
     use rttddft_CurrentDensity, only: UpdateCurrentDensity
@@ -62,10 +63,6 @@ contains
     use errors_warnings, only: terminate_if_false
     use modmpi, only: mpiglobal
 
-    implicit none
-
-    ! counter for the k-points
-    integer                 :: ik
     ! counter for the number of iterations of real-time
     integer                 :: it
     ! prints data every nprint steps of the counter "it"
@@ -74,15 +71,8 @@ contains
     integer                 :: ipredcorr
     ! indexes of the first and the last k-points
     integer                 :: first_kpt, last_kpt
-#ifdef MPI
-    integer                 :: count
-#else
-    integer                 :: recl
-#endif
 
     character(50)           :: string
-    ! Strings to print the date and time in the file RTTDDFT_INFO
-    character(10)           :: dat, tim
 
     real(dp)                :: timesave, timeiter
     real(dp)                :: timehml, timerest
@@ -125,26 +115,8 @@ contains
         call getunit(filetime)
         open(filetime,file='TIMING_RTTDDFT'//trim(filext),status='replace')
       end if
-      call getunit(fileinfortddft)
-      open(fileinfortddft,file='RTTDDFT_INFO'//trim(filext),status='replace')
-      write(fileinfortddft,*) 'Real-time TDDFT calculation started'
-      write(fileinfortddft,'("EXCITING ", a, " started")') trim(versionname)
-      if (len(trim(githash)) > 0) then
-          write(fileinfortddft,'("version hash id: ",a)') githash
-      end if
-#ifdef MPI
-      write (fileinfortddft,'("MPI version using ",i6," processor(s)")') procs
-#ifndef MPI1
-      write (string,'("|  using MPI-2 features")')
-      call printtext(fileinfortddft,"=",string)
-#endif
-#endif
-      call date_and_time (date=dat, time=tim)
-      write (fileinfortddft,'("Date (DD-MM-YYYY) : ", A2, "-", A2, "-", A4)') &
-      &  dat (7:8), dat (5:6), dat (1:4)
-      write (fileinfortddft,'("Time (hh:mm:ss)   : ", A2, ":", A2, ":", A2)') &
-      &  tim (1:2), tim (3:4), tim (5:6)
-      write (fileinfortddft,'("All units are atomic (Hartree, Bohr, etc.)")')
+      call open_file_info
+      call write_file_info_header
     end if
 
     ! Allocate variables to be stored and printed only after nprint steps
@@ -404,34 +376,18 @@ contains
       close(fileavec)
       close(filejind)
       close(filepvec)
-      write(fileinfortddft,*) 'Real-time TDDFT calculation finished'
-      close(fileinfortddft)
+      call write_file_info( 'Real-time TDDFT calculation finished' )
+      call close_file_info
       if( calculateTotalEnergy ) close(fileetot)
       if( calculateNexc ) close(filenexc)
       if( printTimesGeneral ) close(fileTime)
     end if
 
-    !----
-    ! write wavefunction
-    ! First, add _RTTDDFT to the end of these files
+    ! write wavefunction, and potential and density with _RTTDDFT.OUT as suffix
     string = filext
     filext = '_RTTDDFT'//trim(filext)
-    ! now, write the charge density
+    call write_wavefunction( first_kpt, evecfv_time )
     if ( rank == 0 ) call writestate
-#ifdef MPI
-    do count = 1, procs
-      if ( rank == count-1 ) then
-        do ik = first_kpt, last_kpt
-          call putevecfv( ik, evecfv_time(:,:,ik) )
-        end do
-      end if
-      call MPI_BARRIER( mpi_env_k%comm, ierr )
-    end do
-#else
-    do ik = 1,nkpt
-      call putevecfv( ik, evecfv_time(:,:,ik) )
-    end do
-#endif
     filext = string
 
     !----

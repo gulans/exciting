@@ -34,8 +34,9 @@ contains
   !> Here, we calculate the momentum matrix elements considering as basis 
   !> (L)APW+lo. We copied most of the code from `/src/src_xs/genpmatxs.F90`, 
   !> but there the basis are the KS-wavefunctions
-  subroutine Obtain_Pmat_LAPWLOBasis
-    implicit none
+  subroutine Obtain_Pmat_LAPWLOBasis( make_hermitian )
+    !> If .True., for each `ik`, force the x, y, and z components of `pmat` to be hermitian
+    logical,intent(in)        :: make_hermitian
 
     integer :: ik
     integer :: first_kpt, last_kpt
@@ -59,11 +60,12 @@ contains
     call distribute_loop(mpi_env_k, nkpt, first_kpt, last_kpt)
     
 #ifdef USEOMP
-!$OMP PARALLEL DEFAULT(NONE), PRIVATE(ik) SHARED(first_kpt,last_kpt,rank,apwalm,pmat,ripaa,ripalo,riploa,riplolo)
+!$OMP PARALLEL DEFAULT(NONE), PRIVATE(ik) &
+!$OMP& SHARED(make_hermitian,first_kpt,last_kpt,rank,apwalm,pmat,ripaa,ripalo,riploa,riplolo)
 !$OMP DO
 #endif
     do ik = first_kpt, last_kpt
-      call genpmatbasisik(ik,apwalm(:,:,:,:,ik),pmat(:,:,:,ik))
+      call genpmatbasisik(ik,apwalm(:,:,:,:,ik),make_hermitian,pmat(:,:,:,ik))
     end do
 #ifdef USEOMP
 !$OMP END DO NOWAIT
@@ -80,15 +82,15 @@ contains
   end subroutine Obtain_Pmat_LAPWLOBasis
 
   !> Obtain the momentum matrix elements for a given a `k-point`
-  subroutine genpmatbasisik( ik, apwalmk, pmatk )
-    implicit none
-
+  subroutine genpmatbasisik( ik, apwalmk, make_hermitian, pmatk )
     !> Index of the `k-point` considered
     integer, intent(in)       :: ik
     !> Matching coefficients of the (L)APWs for this given `k-point`. These are
     !> coefficients that smoothly connect (L)APW's and their MT counterparts.
     !> Dimensions: `ngkmax`, `apwordmax`, `lmmaxapw`, `natmtot` 
     complex(dp), intent(in)   :: apwalmk(:, :, :, :)
+    !> If .True., force the x, y, and z components of `pmatk` to be hermitian
+    logical,intent(in)        :: make_hermitian
     !> Momentum matrix elements for this given `k-point`. 
     !> Dimensions: `nmatmax`, `nmatmax`, `3`.
     complex(dp), intent(out)  :: pmatk(:, :, :)
@@ -218,6 +220,17 @@ contains
         end do
       end do
     end do
+
+    ! This forces the matrix to be hermitian
+    if( make_hermitian ) then
+      do j = 1, 3 
+        do ig1 = 1, nmatp
+          do ig2 = ig1+1, nmatp
+            pmatk(ig2,ig1,j) = conjg(pmatk(ig1,ig2,j))
+          end do
+        end do
+      end do
+    end if
 
   end subroutine genpmatbasisik
 
