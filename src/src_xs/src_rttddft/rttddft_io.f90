@@ -102,12 +102,12 @@ contains
   !> \(\mathbf{P}\), or the vector potential \(\mathbf{A}\)
   subroutine write_jpa_multiple_lines( times, first, second, label )
     !> Array with the values of time \( t \)
-    real(8), intent(in) :: times(:)
+    real(dp), intent(in) :: times(:)
     !> Array with the \( x, y, z \) components of \(\mathbf{J}\) , 
     !> \(\mathbf{P}\) or \(\mathbf{A}\) for each time \( t \)
-    real(8), intent(in) :: first(:, :)
+    real(dp), intent(in) :: first(:, :)
     !> Same as before, but for the second array - usually \(\mathbf{A}\)
-    real(8), intent(in), optional :: second(:, :)
+    real(dp), intent(in), optional :: second(:, :)
     !> String used to select the unit, where the data is printed out
     character(len=*), intent(in) :: label
 
@@ -135,12 +135,12 @@ contains
   !> \(\mathbf{P}\), or the vector potential \(\mathbf{A}\)
   subroutine write_jpa_single_line( time, first, second, label )
     !> time \( t \)
-    real(8), intent(in) :: time
+    real(dp), intent(in) :: time
     !> Array with the \( x, y, z \) components of \(\mathbf{J}\) , 
     !> \(\mathbf{P}\) or \(\mathbf{A}\) for each time \( t \)
-    real(8), intent(in) :: first(:)
+    real(dp), intent(in) :: first(:)
     !> Same as before, but for the second array - usually \(\mathbf{A}\)
-    real(8), intent(in), optional :: second(:)
+    real(dp), intent(in), optional :: second(:)
     !> String used to select the unit, where the data is printed out
     character(len=*), intent(in) :: label
 

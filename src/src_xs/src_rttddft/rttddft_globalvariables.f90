@@ -15,7 +15,7 @@ module rttddft_GlobalVariables
 
   private
   ! List of the many global variables can be used publicly
-  public :: fileavec, filejind, filetime, filepvec, filenexc, fileetot, &
+  public :: filetime, filenexc, fileetot, &
     & formatTime, &
     & nsteps, time, tstep, tend, &
     & maxstepsPredictorCorrector, predictorCorrector, &
@@ -83,16 +83,6 @@ module rttddft_GlobalVariables
     real(dp) :: t_iteration
   end type TimingRTTDDFT
 
-  ! Global variables related to the output files
-  !> number of the unit to write to the file `AVEC.OUT`, where the vector 
-  !> potential is printed
-  integer                   :: fileavec
-  !> number of the unit to write to the file `PVEC.OUT`, where the polarization
-  !> field is printed
-  integer                   :: filepvec
-  !> number of the unit to write to the file `JIND.OUT`, where the current 
-  !> density is printed
-  integer                   :: filejind
   !> number of the unit to write to the file `NEXC.OUT`, where the number of 
   !> excited electrons (per unit cell) is printed
   integer                   :: filenexc
