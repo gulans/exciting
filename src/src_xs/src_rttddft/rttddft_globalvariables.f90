@@ -15,7 +15,7 @@ module rttddft_GlobalVariables
 
   private
   ! List of the many global variables can be used publicly
-  public :: filetime, filenexc, fileetot, &
+  public :: filetime, &
     & formatTime, &
     & nsteps, time, tstep, tend, &
     & maxstepsPredictorCorrector, predictorCorrector, &
@@ -83,12 +83,6 @@ module rttddft_GlobalVariables
     real(dp) :: t_iteration
   end type TimingRTTDDFT
 
-  !> number of the unit to write to the file `NEXC.OUT`, where the number of 
-  !> excited electrons (per unit cell) is printed
-  integer                   :: filenexc
-  !> number of the unit to write to the file `ETOT_RTTDDFT.OUT`, where the 
-  !> total energy is printed  
-  integer                   :: fileetot
   !> number of the unit to write to the file `TIMING_RTTDDFT.OUT`, where timings
   !> are printed
   integer                   :: filetime

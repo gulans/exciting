@@ -408,7 +408,7 @@ contains
     !> wavefunction coefficients
     complex(dp), intent(in)   :: wavefunction(:, :, first_kpt:)
     
-    integer(i32) :: count, ik, last_kpt, ierr
+    integer(i32) :: count, ik, last_kpt
 
     last_kpt = ubound( wavefunction, 3 )
     do count = 1, procs
