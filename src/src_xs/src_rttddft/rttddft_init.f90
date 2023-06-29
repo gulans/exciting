@@ -157,12 +157,6 @@ subroutine initialize_rttddft
   ! PVEC (polarization vector), and, if it is the case, ETOT_RTTDDFT (total energy),
   ! NEXC (number of excited electrons)
   if ( rank == 0 ) then
-    call getunit(fileavec)
-    open(fileavec,file='AVEC'//trim(filext),status='replace')
-    call getunit(filejind)
-    open(filejind,file='JIND'//trim(filext),status='replace')
-    call getunit(filepvec)
-    open(filepvec,file='PVEC'//trim(filext),status='replace')
     if( calculateTotalEnergy ) then
       call getunit(fileetot)
       open(fileetot,file='ETOT_RTTDDFT'//trim(filext),status='replace')

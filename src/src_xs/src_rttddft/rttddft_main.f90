@@ -16,7 +16,8 @@ module rttddft_main
   use precision, only: dp
   use rttddft_Energy, only: TotalEnergy, obtain_energy_rttddft
   use rttddft_io, only: open_file_info, write_file_info, write_file_info_header, &
-    close_file_info, write_wavefunction
+    close_file_info, write_wavefunction, open_files_jpa, close_files_jpa, &
+    write_jpa
   use mod_kpoint, only: nkpt
 #ifdef MPI
   use mpi, only: MPI_BARRIER
@@ -32,7 +33,7 @@ module rttddft_main
   type(TimingRTTDDFT),&
               allocatable :: timingstore(:)
 
-  private :: print_total_energy, print_nexc, print_jpa, uprho, uppot, printTiming
+  private :: print_total_energy, print_nexc, uprho, uppot, printTiming
   public :: coordinate_rttddft_calculation
 
 contains
@@ -132,16 +133,13 @@ contains
     call initialize_rttddft
 
 
-    ! Print the vector potential, the current density and the polarization vector
-    ! at t=0
-    timestore(1) = time ! Trick: we need an array to call the subroutine print_jpa
-    ! vector potential
-    call print_jpa( fileavec, 1, timestore(1), aind(:), &
-      & atot(:)  )
-    ! current density
-    call print_jpa( filejind, 1, timestore(1), jind(:) )
-    ! polarization vector
-    call print_jpa( filepvec, 1, timestore(1), pvec(:) )
+    ! Print the vector potential, the current density and the polarization vector at t=0
+    if( rank == 0 ) then
+      call open_files_jpa
+      call write_jpa( time, aind, atot, label='avec' )
+      call write_jpa( time, pvec, label='pvec' )
+      call write_jpa( time, jind, label='jind' )
+    end if
 
     ! Initialize integers that contain the first and last k-point
     call distribute_loop(mpi_env_k, nkpt, first_kpt, last_kpt)
@@ -338,14 +336,11 @@ contains
 
       ! Print relevant information, every 'nprint' steps
       if ( iprint == nprint ) then
-        ! Print the vector potential
-        call print_jpa( fileavec, nprint, timestore(:), aindstore(:,:), &
-          & atotstore(:,:)  )
-        ! Print the current density
-        call print_jpa( filejind, nprint, timestore(:), jindstore(:,:) )
-        ! Print the polarization vector
-        call print_jpa( filepvec, nprint, timestore(:), pvecstore(:,:) )
-        ! Print Total Energy - if requested
+        if( rank == 0 ) then
+          call write_jpa( timestore, aindstore, atotstore, label='avec' )
+          call write_jpa( timestore, pvecstore, label='pvec' )
+          call write_jpa( timestore, jindstore, label='jind' )
+        end if
         if ( calculateTotalEnergy ) then
           call print_total_energy( fileetot, .False., nprint, timestore(:), &
             & etotstore(:) )
@@ -373,9 +368,7 @@ contains
     end do ! do it = 1, nsteps
 
     if ( rank == 0 ) then
-      close(fileavec)
-      close(filejind)
-      close(filepvec)
+      call close_files_jpa
       call write_file_info( 'Real-time TDDFT calculation finished' )
       call close_file_info
       if( calculateTotalEnergy ) close(fileetot)
@@ -489,47 +482,6 @@ contains
       end do
     end if
   end subroutine print_nexc
-
-
-  !> Prints the current density \(\mathbf{J}\), or the polarization 
-  !> \(\mathbf{P}\), or the vector potential \(\mathbf{A}\)
-  subroutine print_jpa( fileUnitNumber, nArrayElements, timeArray, &
-    & firstArray, secondArray )
-
-    implicit none
-   
-    !> The unit-number of the output file
-    integer, intent(in) :: fileUnitNumber
-    !> Number of lines to printed = number of elements of the arrays:
-    !> `timeArray`, `firstArray`, and eventually the second dimension of `secondArray`.
-    integer, intent(in)   :: nArrayElements
-    !> Array with the values of time \( t \)
-    real(8), intent(in) :: timeArray(nArrayElements)
-    !> Array with the \( x, y, z \) components of \(\mathbf{J}\) , 
-    !> \(\mathbf{P}\) or \(\mathbf{A}\) for each time \( t \)
-    real(8), intent(in) :: firstArray(3, nArrayElements)
-    !> Same as before, but for the second array - usually \(\mathbf{A}\)
-    real(8), intent(in), optional :: secondArray(3, nArrayElements)
-
-    integer :: i
-    logical :: twoArraysPresent
-
-    twoArraysPresent = present( secondArray )
-
-    if ( rank == 0 ) then
-      do i = 1, nArrayElements
-        if( twoArraysPresent ) then
-          write( fileUnitNumber, '(F9.3,6F20.12)' ) timeArray(i), &
-            & firstArray(1, i), secondArray(1, i), firstArray(2, i), &
-            & secondArray(2, i), firstArray(3, i), secondArray(3, i)
-        else
-          write( fileUnitNumber, '(F9.3,3F20.12)' ) timeArray(i), &
-            & firstArray(1, i), firstArray(2, i), firstArray(3, i)
-        end if
-      end do
-    end if
-  end subroutine print_jpa
-
 
   !> This is just an interface to call the subroutine `[[UpdateDensity]]`, which
   !> updates the charge density
