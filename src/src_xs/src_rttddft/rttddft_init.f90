@@ -153,21 +153,6 @@ subroutine initialize_rttddft
   aind(:) = 0._dp
   atot(:) = 0._dp
 
-  ! Open files: AVEC (where the vector potential is written), JIND (current density)
-  ! PVEC (polarization vector), and, if it is the case, ETOT_RTTDDFT (total energy),
-  ! NEXC (number of excited electrons)
-  if ( rank == 0 ) then
-    if( calculateTotalEnergy ) then
-      call getunit(fileetot)
-      open(fileetot,file='ETOT_RTTDDFT'//trim(filext),status='replace')
-    end if
-    if( calculateNexc ) then
-      call getunit(filenexc)
-      open(filenexc,file='NEXC'//trim(filext),status='replace')
-    end if
-  end if
-
-
   ! Hamiltonian at time t=0
   call UpdateHam( predcorr=.False., calculateOverlap=.True. )
   ham_past = ham_time

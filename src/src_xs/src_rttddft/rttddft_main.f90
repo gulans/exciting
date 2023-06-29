@@ -28,7 +28,8 @@ module rttddft_main
   use rttddft_Energy, only: TotalEnergy, obtain_energy_rttddft
   use rttddft_io, only: open_file_info, write_file_info, write_file_info_header, &
     close_file_info, write_wavefunction, open_files_jpa, close_files_jpa, &
-    write_jpa
+    write_jpa, open_file_etot, close_file_etot, write_total_energy, &
+    open_file_nexc, close_file_nexc, write_nexc
   use rttddft_VectorPotential, only: Calculate_Vector_Potential, Evolve_A_ind => Solve_ODE_Vector_Potential
   use rttddft_Wavefunction, only: UpdateWavefunction
 
@@ -41,7 +42,7 @@ module rttddft_main
   type(TimingRTTDDFT),&
               allocatable :: timingstore(:)
 
-  private :: print_total_energy, print_nexc, uprho, uppot, printTiming
+  private :: uprho, uppot, printTiming
   public :: coordinate_rttddft_calculation
 
 contains
@@ -140,7 +141,10 @@ contains
       call obtain_energy_rttddft( first_kpt, last_kpt, ham_time, evecfv_gnd, etotstore(1) )
       ! Trick: we need an array to call the subroutine print_total_energy
       timestore(1) = time
-      call print_total_energy( fileetot, .True., 1, timestore(1), etotstore(1) )
+      if( rank == 0 ) then
+        call open_file_etot
+        call write_total_energy( .True., 1, timestore(1), etotstore(1) )
+      end if
     end if
 
     ! Number of excitations
@@ -150,7 +154,10 @@ contains
         & evecfv_time, overlap, nex(1), ngs(1), nt(1) )
       ! Trick: we need an array to call the subroutine print_nexc
       timestore(1) = time
-      call print_nexc( filenexc, .True., 1, timestore(1), nex(1), ngs(1), nt(1) )
+      if( rank == 0 ) then
+        call open_file_nexc
+        call write_nexc( .True., 1, timestore(1), nex(1), ngs(1), nt(1) )
+      end if
     end if
 
     ! Screenshot
@@ -280,15 +287,10 @@ contains
           call write_jpa( timestore, pvecstore, label='pvec' )
           call write_jpa( timestore, jindstore, label='jind' )
         end if
-        if ( calculateTotalEnergy ) then
-          call print_total_energy( fileetot, .False., nprint, timestore(:), &
-            & etotstore(:) )
-        end if
-        ! Print number of excitations - if requested
-        if ( calculateNexc ) then
-          call print_nexc( filenexc, .False., nprint, timestore(:), nex(:), &
-            & ngs(:), nt(:) )
-        end if
+        if ( calculateTotalEnergy ) call write_total_energy( .False., nprint, &
+            timestore(:), etotstore(:) )
+        if ( calculateNexc ) call write_nexc( .False., nprint, timestore(:), &
+          nex(:), ngs(:), nt(:) )
         ! Update the counter
         iprint = 1
         if( printTimesGeneral ) then
@@ -307,8 +309,8 @@ contains
       call close_files_jpa
       call write_file_info( 'Real-time TDDFT calculation finished' )
       call close_file_info
-      if( calculateTotalEnergy ) close(fileetot)
-      if( calculateNexc ) close(filenexc)
+      if( calculateTotalEnergy ) call close_file_etot
+      if( calculateNexc ) call close_file_nexc
       if( printTimesGeneral ) close(fileTime)
     end if
 
@@ -323,86 +325,10 @@ contains
 
   end subroutine coordinate_rttddft_calculation
 
-  !> Prints the total energy
-  subroutine print_total_energy( fileUnitNumber, printHeader, nArrayElements, &
-    & timeArray, etotArray )
-
-    implicit none
-
-    !> The unit-number of the output file
-    integer, intent(in) :: fileUnitNumber
-    !> Number of lines to printed = number of elements of the arrays:
-    !> `timeArray` and `etotArray`.
-    integer, intent(in) :: nArrayElements
-    !> Tells if a header must be printed (useful when the file is opened for 
-    !> the 1st time)
-    logical, intent(in) :: printHeader
-    !> Array with the values of time \( t \)
-    real(8), intent(in) :: timeArray(nArrayElements)
-    !> Array with the energies (total energy, XC, Madelung, etc.)
-    type(TotalEnergy), intent(in) :: etotArray(nArrayElements)
-
-    integer :: i
-
-    if ( rank == 0 ) then
-      if ( printHeader ) then
-        write(fileUnitNumber,'(A9,8A20)') 'Time','ETOT','Madelung','Eigenvalues-Core',&
-          & 'Eigenvalues-Valence','Exchange','Correlation','XC-potential',&
-          & 'Coulomb pot. energy'
-      end if
-      do i = 1, nArrayElements
-        write(fileUnitNumber,'(F9.3,8F20.10)') timeArray(i), &
-          & etotArray(i)%total_energy, etotArray(i)%madelung, &
-          & etotArray(i)%eigenvalues_core, etotArray(i)%hamiltonian,&
-          & etotArray(i)%exchange, etotArray(i)%correlation, &
-          & etotArray(i)%integral_vxc_times_density, etotArray(i)%Coulomb
-      end do
-    end if
-  end subroutine print_total_energy
-
-  !> Prints the number of excitations
-  subroutine print_nexc( fileUnitNumber, printHeader, nArrayElements, &
-    & timeArray, nex, ngs, ntot )
-
-    implicit none
-
-    !> The unit-number of the output file
-    integer, intent(in) :: fileUnitNumber
-    !> Number of lines to printed = number of elements of the arrays:
-    !> `nex`, `ngs` and `ntot`.
-    integer, intent(in)   :: nArrayElements
-    !> printHeader: If we need to print a header (useful when we open the file for the 1st time)
-    logical, intent(in)   :: printHeader
-    !> timeArray         array with the values of time \( t \)
-    real(dp), intent(in)  :: timeArray(nArrayElements)
-    !> nex               Number of electrons which were excited
-    real(dp), intent(in)  :: nex(nArrayElements)
-    !> ngs               Number of electrons on the groundstate
-    real(dp), intent(in)  :: ngs(nArrayElements)
-    !> ntot              Sum of ngs and nex
-    real(dp), intent(in)  :: ntot(nArrayElements)
-
-    integer :: i
-
-    if ( rank == 0 ) then
-      if ( printHeader ) then
-        write( fileUnitNumber,'(A9,3A20)' ) 'Time','N.Elec.GS', &
-          & 'N.XS', 'Sum'
-      end if
-      do i = 1, nArrayElements
-        write( fileUnitNumber, '(F9.3,3F20.10)' ) timeArray(i), &
-          & ngs(i), nex(i), ntot(i)
-      end do
-    end if
-  end subroutine print_nexc
-
   !> This is just an interface to call the subroutine `[[UpdateDensity]]`, which
   !> updates the charge density
   subroutine uprho( iteration_counter, computeTiming )
     use rttddft_Density, only: UpdateDensity
-
-    implicit none
-
     !> Tells how many time steps have already been executed
     integer, intent(in) :: iteration_counter
     !> Tells if we want to measure/store timings
@@ -430,8 +356,6 @@ contains
 
   !> This is just an interface to call the subroutines that updates the KS potential
   subroutine uppot(computeTiming)
-
-    implicit none
     !> Tells if we want to measure/store timings
     logical, intent(in) :: computeTiming
 
