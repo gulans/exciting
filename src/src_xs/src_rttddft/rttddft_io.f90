@@ -323,7 +323,7 @@ contains
   end subroutine
 
   !> Subroutine to output the timings into `TIMING_RTTDDFT.OUT`
-  subroutine write_timing_RTTDDFT_steps( itNumber, n, timing )
+  subroutine write_timing_RTTDDFT_steps( itNumber, n, timing, screenshot_was_taken )
     !> itNumber: The actual number of the counter that tells how many time steps 
     !> have already been executed
     integer, intent(in)             :: itNumber
@@ -332,6 +332,8 @@ contains
     !> timing: Array of timings. Each elements contains information
     !>   about how many seconds (timings) were spent in different parts of code
     type(TimingRTTDDFT), intent(in) :: timing(n)
+    !> if `.True.`, a screenshot was taken at `itNumber`
+    logical, intent(in)             :: screenshot_was_taken(n)
 
     integer                         :: ip, shift
 
@@ -367,7 +369,7 @@ contains
           & write(file_time,format_timing) 'All cycles of predcorr:',timing(ip)%t_predcorr
         if ( calculateTotalEnergy .and. printTimesDetailed ) write(file_time,format_timing) 'Total Energy:',timing(ip)%t_toten
         if ( calculateNexc .and. printTimesDetailed ) write(file_time,format_timing)'nexc:',timing(ip)%t_nexc
-        if ( associated(input%xs%realTimeTDDFT%screenshots) ) write(file_time,format_timing) 'Screenshots:',timing(ip)%t_screenshot
+        if ( screenshot_was_taken(ip) ) write(file_time,format_timing) 'Screenshots:',timing(ip)%t_screenshot
         write(file_time,format_timing) 'time per iteration:',timing(ip)%t_iteration
       end do
     end if
