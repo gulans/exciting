@@ -15,9 +15,7 @@ module rttddft_GlobalVariables
 
   private
   ! List of the many global variables can be used publicly
-  public :: filetime, &
-    & formatTime, &
-    & nsteps, time, tstep, tend, &
+  public :: nsteps, time, tstep, tend, &
     & maxstepsPredictorCorrector, predictorCorrector, &
     & printTimesGeneral, printTimesDetailed, calculateTotalEnergy, calculateNexc, &
     & method, tolPredCorr, &
@@ -82,12 +80,6 @@ module rttddft_GlobalVariables
     !> timing: time of each RT-TDDFT iteration
     real(dp) :: t_iteration
   end type TimingRTTDDFT
-
-  !> number of the unit to write to the file `TIMING_RTTDDFT.OUT`, where timings
-  !> are printed
-  integer                   :: filetime
-  !> Format of the timing outputs in RT-TDDFT
-  character(50),parameter   :: formatTime = '(A30,F12.6)'
 
   !> Number of time steps \( \Delta t \) required to reach `tend`
   integer                   :: nsteps
