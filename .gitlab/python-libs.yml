@@ -44,3 +44,27 @@ python:regressionframework-python-3.7:
   artifacts:
     paths:
       - test/testframework_testcov.txt
+
+# Tokens and passwords should be stored as ENV VARs on Gitlab, not in readable form in the repo.
+variables:
+  PYPI_TOKEN: $excitingtools_pypi
+
+deploy:excitingtools-pypi:
+  image: gitdocker.physik.hu-berlin.de/sol/exciting:debian-buster-GCC8-April2022
+  stage: deploy
+  tags:
+    - docker
+  script:
+    - cd tools/exciting_tools
+    - >
+      if [[ -n $(git diff origin/development HEAD -- pyproject.toml | grep '+version') ]]; then
+        echo "excitingtools version has been bumped. Pushing to pypi"
+        pip3 install -U pip build twine
+        python3 -m build
+        twine upload --skip-existing --non-interactive --username __token__ --password $PYPI_TOKEN dist/*
+      else
+        echo "pyproject.toml has changed but the version number has not, so do not push to pypi"
+      fi
+  rules:
+    # Only deploy when a feature is merged, not each time the pipeline passes
+    - if: '$CI_COMMIT_REF_NAME == "development"'

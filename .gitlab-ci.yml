@@ -11,6 +11,7 @@ stages:
   - build
   - python
   - test
+  - deploy
 
 # Split configurations into separate files
 include:
