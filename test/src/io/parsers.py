@@ -3,7 +3,6 @@ Wrapper module to expose exciting parsers
 
 For other codes, please replace with your own parser module/s.
 """
-import sys
 import os
 import warnings
 from typing import Union
@@ -13,22 +12,6 @@ from excitingtools.parser_utils.grep_parser import grep
 from ..runner.profile import compiler_enum_map, Compiler
 from ..tester.failure import Failure, Failure_code
 
-
-def install_excitingtools():
-    """
-    Install excitingtools to provide the exciting parsers
-    """
-    import subprocess
-
-    if 'excitingtools' in sys.modules:
-        return
-    else:
-        print("Running pip install for exciting_tools. "
-              "See <EXCITINGROOT>/test/tools/parsers.py for more info")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "../tools/exciting_tools/"])
-        # Restart script such that package is found following installation
-        os.execv(sys.executable, [sys.executable] + sys.argv)
-
 try:
     __import__('excitingtools')
 except ModuleNotFoundError:
@@ -36,11 +19,11 @@ except ModuleNotFoundError:
     message = """excitingtools must be installed for the test suite to run.
 To install excitingtools, from the test directory, type:
 
-  pip3 install -e ../tools/exciting_tools
+  python3 -m pip install ../tools/exciting_tools
 
 excitingtools can be uninstalled by typing:
 
-  pip3 uninstall excitingtools  
+  pip uninstall excitingtools  
     """
     warnings.warn(message)
 finally:
