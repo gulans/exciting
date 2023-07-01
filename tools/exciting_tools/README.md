@@ -30,20 +30,44 @@ making it is possible to define a calculation, run it, and parse the relevant ou
 
 ## Installation
 If one wishes to import <span style="font-family:american typewriter; font-size:1em;">**excitingtools**</span> in their own scripts, it can be installed from this project's root directory 
-(`$EXCITING_ROOT/tools/exciting_tools`) with:
+(`$EXCITING_ROOT/tools/exciting_tools`).
+
+Although not strictly necessary, it is strongly recommended to use a virtual environment to manage Python packages. 
+There are several solutions available, including [venv](https://docs.python.org/3/library/venv.html), (mini)[conda](https://docs.conda.io/en/latest/miniconda.html)
+and [pipx](https://pypa.github.io/pipx/). 
+
+To set up a venv:
 
 ```bash
-pip install -e .
+# Create a directory `excitingvenv` containing our venv
+python3 -m venv excitingvenv
+# Activate the environment
+source excitingvenv/bin/activate
 ```
 
-or downloaded directly from pip:
+Before installing excitingtools, you should upgrade `pip` and `setuptools`:
+```bash
+python3 -m pip install --upgrade --force pip
+pip install --upgrade setuptools
+```
+
+No matter which type of environment or none is used, it should always be verified that the Python version is compatible with <span style="font-family:american typewriter; font-size:1em;">**excitingtools**</span> (>=3.6) and that `pip` is up-to-date (>=22.0) and also points to the same Python version.
+
+Now you can proceed to install <span style="font-family:american typewriter; font-size:1em;">**excitingtools**</span>
+from <span style="font-family:american typewriter; font-size:1em;">**exciting's**</span>'s root:
+
+```bash
+python3 -m pip install tools/exciting_tools
+```
+
+Alternatively, you can download it directly from PyPI:
 
 ```bash
 pip install excitingtools
 ```
 
 ## External Package Dependencies
-If a new external dependency is introduced to the package, this also requires adding to `setup.py` such that pip is aware 
+If a new external dependency is introduced to the package, this also requires adding to `pyproject.toml` such that pip is aware 
 of the new dependency.
 
 ## Basic File Structure 
