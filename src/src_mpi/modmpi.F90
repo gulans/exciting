@@ -165,6 +165,7 @@ contains
       if(mpi_env%rank == 0) then
          if(present(message)) write(error_unit, *) trim(adjustl(message))
       end if
+      call barrier( mpi_env )
       call mpi_abort(mpi_env%comm, error_code, mpi_env%ierr)
 #else
       if(present(message)) write(error_unit, *) trim(adjustl(message))
