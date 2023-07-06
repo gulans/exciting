@@ -40,8 +40,8 @@ contains
   !> loop
   subroutine UpdateWavefunction( predcorr )
     use matrix_exp, only: &
-      & exp_propagator => exp_hermitianoperator_times_wavefunctions, & 
-      & exphouston_propagator => exphouston_hermitianoperator_times_wavefunctions
+      & exp_propagator => exp_hermitian_matrix_times_vectors, & 
+      & exphouston_propagator => exphouston_hermitian_matrix_times_vectors
     use normalize, only: normalizeWF => normalize_vectors
     use integration, only: rk4 => ODESolver_RungeKutta4thOrder
 
