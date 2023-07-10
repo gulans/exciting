@@ -351,7 +351,7 @@ module to_char_conversion
     integer, intent(in) :: size_vec
     !> Number of **character**s needed to represent the **type** as string 
     integer, intent(in) :: len_var
-    !> Number of **character**s that represent the separator between the vectors elements (_i.e._ `"," -> 1`)
+    !> Number of **character**s that represent the delimiter between the vectors elements (_i.e._ `"," -> 1`)
     integer, intent(in) :: len_sep
     !> Number of **character**s that represent the start indicator of the vector (_i.e._ `"[" -> 1`)
     integer, intent(in) :: len_arr_start

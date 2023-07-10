@@ -26,7 +26,7 @@ src_dir: ../src/src_gw
          ../src/simplified_input
          ../src/structure
          ../src/wavefunctions
-         ../src/char_utils
+         ../src/xstring
          ../src/writers
          ../src/potential
          ../src/matrix_elements

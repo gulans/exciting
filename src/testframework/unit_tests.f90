@@ -36,7 +36,7 @@ module unit_tests
       logical :: xc = .false.
       logical :: xs = .false.
 
-      logical :: char = .false.
+      logical :: xstring = .false.
       logical :: lapack = .false.
       logical :: math = .false.
       logical :: simplified_input = .false.
@@ -147,8 +147,8 @@ contains
 
 
          ! Modern directory conventions
-      case ('char')
-         run%char = .true.
+      case ('xstring')
+         run%xstring = .true.
       case ('lapack')
          run%lapack = .true.
       case ('math')
