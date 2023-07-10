@@ -23,7 +23,7 @@ module regular_mesh
     !> - `2 --> [2, 1, 1]`
     !>
     !> `multi_index` is returned in the limits between `[1, 1, 1]' and `sampling`. The next point in a certain
-    !> direction is than obtained by adding `1` to the respective integer coordinate. If it is greater than the
+    !> direction is obtained by adding `1` to the respective integer coordinate. If it is greater than the
     !> number of mesh points in that dimension, the counting restarts at 1 and the next integer coordinate is increased
     !> by 1. The relation 'next integer coordinate' is cyclic and follows
     !> `index_1 -> index_2 -> index_3 -> index_1 - index_2 -> ...`.
@@ -104,21 +104,21 @@ module regular_mesh
     end function composite_index_single
 
     !> Map an array of `multi_indices` to array of `composite_indices`.
-    function composite_index_array(this, multi_indizes) result(composite_indices)
+    function composite_index_array(this, multi_indices) result(composite_indices)
       class(regular_mesh_type), intent(in) :: this
-      integer, intent(in) :: multi_indizes(:, :)
+      integer, intent(in) :: multi_indices(:, :)
 
       integer, allocatable :: composite_indices(:)
 
       integer :: number_of_points, i
 
-      call assert(size(multi_indizes, 1) == 3, 'size(multi_indizes, 1) /= 3.')
+      call assert(size(multi_indices, 1) == 3, 'size(multi_indices, 1) /= 3.')
 
-      number_of_points = size(multi_indizes, 2)
-      composite_indices = [(this%composite_index(multi_indizes(:, i)), i = 1, number_of_points)]
+      number_of_points = size(multi_indices, 2)
+      composite_indices = [(this%composite_index(multi_indices(:, i)), i = 1, number_of_points)]
     end function composite_index_array
 
-    !> Return all composite indizes of the grid.
+    !> Return all composite indices of the grid.
     function all_composite_indices(this) result(composite_indices)
       class(regular_mesh_type), intent(in) :: this
 
@@ -146,29 +146,29 @@ module regular_mesh
     end function multi_index_single
 
     !> Map array of `composite_indices` to array of `multi_indices`.
-    function multi_index_array(this, composite_indices) result(multi_indizes)
+    function multi_index_array(this, composite_indices) result(multi_indices)
       class(regular_mesh_type), intent(in) :: this
       integer, intent(in) :: composite_indices(:)
 
-      integer, allocatable :: multi_indizes(:, :)
+      integer, allocatable :: multi_indices(:, :)
 
       integer :: number_of_points, i
 
       number_of_points = size(composite_indices)
-      allocate(multi_indizes(3, number_of_points))
+      allocate(multi_indices(3, number_of_points))
 
       do i=1, number_of_points
-        multi_indizes(:, i) = this%multi_index(composite_indices(i))
+        multi_indices(:, i) = this%multi_index(composite_indices(i))
       end do
     end function multi_index_array
 
-    !> Return all multi indizes of the grid
-    function all_multi_indices(this) result(multi_indizes)
+    !> Return all multi indices of the grid
+    function all_multi_indices(this) result(multi_indices)
       class(regular_mesh_type), intent(in) :: this
 
-      integer, allocatable :: multi_indizes(:, :)
+      integer, allocatable :: multi_indices(:, :)
 
-      multi_indizes = this%multi_index(mesh_1d(1, this%number_of_points()))
+      multi_indices = this%multi_index(mesh_1d(1, this%number_of_points()))
     end function all_multi_indices
 
 end module regular_mesh
