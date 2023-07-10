@@ -4,7 +4,7 @@ module math_utils
   use, intrinsic :: ISO_C_BINDING
 
   use precision, only: sp, dp
-  use constants, only: pi, zzero, zone, zi, fourpi
+  use constants, only: pi, zzero, zone, zi, fourpi, twopi
   use asserts, only: assert
   use seed_generation, only: set_seed
 
@@ -34,6 +34,7 @@ module math_utils
             is_positive_definite, &
             fractional_part, &
             integer_part, &
+            random_units, &
             plane_wave_in_spherical_harmonics, &
             get_degeneracies
 
@@ -1250,15 +1251,19 @@ contains
 
 ! random_order
 
-  !> Return an integer vector of length N with all numbers between 1 and N randomly ordered.
-  function random_order(N) result (p)
+    !> Return an integer vector of length N with all numbers between 1 and N randomly ordered.
+  function random_order(N, N_out) result(p)
     !> length of the permutation
     integer, intent(in) :: N
+    !> Length of the out put array
+    integer, intent(in), optional :: N_out
 
-    integer :: p(N)
+    integer, allocatable :: p(:)
 
-    integer :: j, k
+    integer :: j, k 
     real(sp) :: u
+
+    allocate(p(N))
 
     p = 0
     do j = 1, N
@@ -1267,6 +1272,11 @@ contains
       p(j) = p(k)
       p(k) = j
     end do
+
+    if (present(N_out)) then
+      call assert(N_out <= N, 'N_out > N.')
+      p = p(: N_out)
+    end if
   end function random_order
 
 ! round down
@@ -1299,7 +1309,6 @@ contains
     real(dp), intent(out), contiguous :: all_vector_distances(:, :)
 
     integer :: i, j, k, l, m, n
-    real(dp) :: vector2(3)
 
     k = size(vector_set1, 1)
     l = size(vector_set1, 2)
@@ -1309,12 +1318,13 @@ contains
     call assert(k == m, 'vector_set1 and vector_set2 have not the same number of rows.')
     call assert(all(shape(all_vector_distances) == [l, n]), "all_vector_distances has the wrong shape.")
 
+    !$OMP parallel do shared(vector_set1, vector_set2, all_vector_distances) private(i)
     do j = 1, n
-      vector2 = vector_set2(:, j)
       do i = 1, l
-        all_vector_distances(i, j) = norm2(vector_set1(:, i) - vector2)
+        all_vector_distances(i, j) = norm2(vector_set1(:, i) - vector_set2(:, j))
       end do
     end do
+    !$OMP end parallel do
 
   end subroutine calculate_all_vector_distances
 
@@ -1336,12 +1346,16 @@ contains
     call assert(k == m, 'vector_set1 and vector_set2 have not the same number of rows.')
     call assert(all(shape(all_vector_differences) == [k, l, n]), 'all_vector_differences has not the correct shape.')
 
+    !$OMP parallel default(shared) private(vector2, i)
+    !$OMP do
     do j = 1, n
       vector2 = vector_set2(:, j)
       do i = 1, l
         all_vector_differences(:, i, j) = vector_set1(:, i) - vector2
       end do
     end do
+    !$OMP end do
+    !$OMP end parallel
 
   end subroutine calculate_all_vector_differences
 
@@ -1630,6 +1644,19 @@ contains
     X = reshape(X_in, [M * N])
     I_out = reshape(integer_part_scalar(X, C, tol_), [M, N])
   end function integer_part_matrix
+
+  !> Setup a complex array filled with numbers of lengths 1 (L2 norm) but a random phase.
+  function random_units(n) result(rand_units)
+    integer, intent(in) :: n
+
+    complex(dp) :: rand_units(n)
+    real(dp) :: rand_phases(n)
+
+    call random_number(rand_phases)
+    
+    rand_phases = twopi * rand_phases
+    rand_units = cmplx(cos(rand_phases), sin(rand_phases), dp)
+  end function   
 
   !> Get the spherical harmonics expansion of a plane wave.
   !>
