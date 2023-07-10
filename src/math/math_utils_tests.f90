@@ -17,7 +17,6 @@ module math_utils_test
                         permanent, &
                         mod1, &
                         random_order, &
-                        round_down, &
                         boundary_mask, &
                         round_down, &
                         calculate_all_vector_distances, &
