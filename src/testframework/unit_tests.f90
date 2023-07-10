@@ -44,6 +44,7 @@ module unit_tests
       logical :: testframework = .false.
       logical :: file_io = .false.
       logical :: matrix_elements = .false.
+      logical :: xgrid = .false.
 
    contains
       procedure :: init => set_unit_tests
@@ -162,6 +163,8 @@ contains
          run%file_io = .true.
       case ('matrix_elements')
          run%matrix_elements = .true.
+      case ('xgrid')
+         run%xgrid = .true.
 
       case default
          call terminate_mpi_env(mpi_env, 'Unrecognised unit test name: '&
