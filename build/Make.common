@@ -13,14 +13,13 @@ SOURCEDIRS=	\
         ../../src/lapack_wrappers/diagonalization \
   	    ../../src/lapack_wrappers/utils \
 		../../src/lapack_wrappers/tensor_contraction \
-    ../../src/char_utils \
+    ../../src/xstring \
     ../../src/writers \
   ../../src/structure \
 	../../src/src_advanced/ \
 	../../src/constants \
 	../../src/src_eigensystem/ \
 	../../src/errors_warnings \
-	../../src/char_utils \
     ../../src/src_fermisurfdx/ \
 	../../src/src_gw/ \
 	../../src/src_gw/src_vxc \

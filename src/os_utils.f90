@@ -129,7 +129,7 @@ contains
     
     character(:), allocatable :: path1_cleaned, path2_cleaned
 
-    character(1), parameter :: separator = '/'
+    character(1), parameter :: delimiter = '/'
 
     integer :: last_char_index
 
@@ -137,19 +137,19 @@ contains
     path1_cleaned = adjustl(trim(path1))
     path2_cleaned = adjustl(trim(path2))
 
-    ! Remove separator from the end and beginning of path1 and path2 respectively
+    ! Remove delimiter from the end and beginning of path1 and path2 respectively
     last_char_index = len(path1_cleaned)
-    do while (path1_cleaned(last_char_index:last_char_index) == separator)  
+    do while (path1_cleaned(last_char_index:last_char_index) == delimiter)  
       path1_cleaned = path1_cleaned(:last_char_index - 1)
       last_char_index = len(path1_cleaned)
     end do
 
-    do while (path2_cleaned(1:1) == separator) 
+    do while (path2_cleaned(1:1) == delimiter) 
       path2_cleaned = path2_cleaned(2:)
     end do
 
     ! Join paths
-    joined_path = path1_cleaned // separator // path2_cleaned
+    joined_path = path1_cleaned // delimiter // path2_cleaned
   end function join_paths
 
 end module os_utils
