@@ -16,6 +16,7 @@ module unit_test_drivers
    use simplified_input_test_drivers, only: simplified_input_test_driver
    use hybrids_test_drivers, only: hybrids_test_driver
    use matrix_elements_test_drivers, only: matrix_elements_test_driver
+   use xgrid_test_drivers, only: xgrid_test_driver
 
    implicit none
    private
@@ -80,10 +81,6 @@ contains
          ! Placeholder
          !call gw_test_driver(mpiglobal, kill_on_failure)
       end if
-      
-      if (run%structure .or. run%all) then
-         call structure_test_driver(mpiglobal, kill_on_failure)
-      end if
 
       if (run%char .or. run%all) then
          call char_utils_test_driver(mpiglobal, kill_on_failure) 
@@ -107,6 +104,10 @@ contains
 
       if (run%hybrids .or. run%all) then         
          call hybrids_test_driver(mpiglobal, kill_on_failure) 
+      end if
+
+      if (run%xgrid .or. run%all) then
+         call xgrid_test_driver(mpiglobal, kill_on_failure)
       end if
 
    end subroutine unit_test_driver

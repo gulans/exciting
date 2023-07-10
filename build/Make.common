@@ -15,7 +15,7 @@ SOURCEDIRS=	\
 		../../src/lapack_wrappers/tensor_contraction \
     ../../src/char_utils \
     ../../src/writers \
-    ../../src/structure \
+  ../../src/structure \
 	../../src/src_advanced/ \
 	../../src/constants \
 	../../src/src_eigensystem/ \
@@ -56,7 +56,8 @@ SOURCEDIRS=	\
     ../../src/potential \
     ../../src/file_io \
     ../../src/matrix_elements \
-    ../../src/dfpt
+    ../../src/dfpt \
+		../../src/xgrid
 	
 GeneratedFiles = ../../src/src_inputparser/inputmodules.f90 ../../src/src_inputparser/speciesmodules.f90
 
