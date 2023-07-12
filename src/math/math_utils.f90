@@ -25,7 +25,7 @@ module math_utils
             permanent, &
             mod1, &
             random_order, &
-            round_down, &
+            round_towards_zero, &
             calculate_all_vector_distances, &
             calculate_all_vector_differences, &
             outer_sum, &
@@ -1279,19 +1279,19 @@ contains
     end if
   end function random_order
 
-! round down
+! round towards zero
 
-  !> Rounds a real number down to the nth decimal place, e.g.
+  !> Rounds a real number towards zero to the nth decimal place, e.g.
   !>
-  !> If n is greater than 0, then number is rounded down to the specified number of decimal places.
-  !> 1123.234523 -> 1123.234 for n = 3.
+  !> If n is greater than 0, then the number is rounded towards zero to the specified number of decimal places.
+  !> 1123.234523 -> 1123.234 for n = 3, and -1123.234523 -> -1123.234 for n = 3.
   !>
-  !> If n is 0, then number is rounded down to the nearest integer.
-  !> -2123.77963 -> -2123 for n = 0
+  !> If n is 0, then the number is truncated, i.e., rounded towards zero to the nearest integer.
+  !> 2123.77963 -> 2123 for n = 0, and -2123.77963 -> -2123 for n = 0.
   !>
-  !> If n is less than 0, then number is rounded down to the left of the decimal point.
-  !> 2123.77963 -> 2100 for n = -2.
-  elemental function round_down(x, n) result(x_rounded)
+  !> If n is less than 0, then the number is rounded towards zero to the left of the decimal point.
+  !> 2123.77963 -> 2100 for n = -2, and -2123.77963 -> -2100 for n = -2.
+  elemental function round_towards_zero(x, n) result(x_rounded)
     !> Real number to round down
     real(dp), intent(in) :: x
     !> Number of decimal digits to round down to
@@ -1299,7 +1299,7 @@ contains
 
     real(dp) :: x_rounded
     x_rounded = dble(int(x*(10.0_dp**n)))/(10.0_dp**n)
-  end function round_down
+  end function round_towards_zero
 
   !> Given two sets of vectors with the same dimension, calculate the Eucledian distances between all vectors of the sets.
   subroutine calculate_all_vector_distances(vector_set1, vector_set2, all_vector_distances)

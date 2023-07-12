@@ -3,7 +3,7 @@ module init_autormt_test
     use precision, only: dp
     use modmpi, only: mpiinfo
     use unit_test_framework, only : unit_test_type
-    use math_utils, only: all_close, round_down
+    use math_utils, only: all_close, round_towards_zero
     use autormt, only: get_initial_rmt_rgkmax, &
                             scale_rmt_lattice, & 
                             optimal_rmt
@@ -101,7 +101,7 @@ contains
         atomic_pos1 = reshape([0.0_dp, 0.0_dp, 0.0_dp, &
                                0.25_dp, 0.25_dp, 0.25_dp], [3,1,2])
         bond_length = sqrt(3.0_dp)*0.25_dp
-        reference1 = [round_down(0.5_dp * bond_length, 4), round_down(0.5_dp * bond_length, 4)]
+        reference1 = [round_towards_zero(0.5_dp * bond_length, 4), round_towards_zero(0.5_dp * bond_length, 4)]
         call optimal_rmt(rmt1, spzn, lattice_vect, atomic_pos1, scale_global_rmt, natoms, nspecies, init_rad_version)
         call test_report%assert(all_close(rmt1, reference1), & 
                                 'Tests that correct muffin-tin radius is returned. &
@@ -110,7 +110,7 @@ contains
         
         ! Case 2: Test on different initial rmt values
         spzn = [1, 2] ! This gives initial rgkmax values: [5.835430, 8.226318]
-        reference2 = [round_down(bond_length / (8.226318_dp / 5.835430_dp + 1), 4), round_down(bond_length / (5.835430_dp / 8.226318_dp + 1), 4)]
+        reference2 = [round_towards_zero(bond_length / (8.226318_dp / 5.835430_dp + 1), 4), round_towards_zero(bond_length / (5.835430_dp / 8.226318_dp + 1), 4)]
         call optimal_rmt(rmt2, spzn, lattice_vect, atomic_pos1, scale_global_rmt, natoms, nspecies, init_rad_version)
         call test_report%assert(all_close(rmt2, reference2), & 
                                 'Tests that correct muffin-tin radius is returned. &
