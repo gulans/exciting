@@ -1,6 +1,5 @@
 import os
 import pathlib
-import xml.etree.ElementTree as ET
 from argparse import ArgumentParser
 from typing import Union
 
@@ -45,19 +44,15 @@ def determine_functional(input_file: Union[str, pathlib.Path]) -> str:
 
     parsed_input = ExcitingInputXML.from_xml(input_file)
 
-    root = ET.parse(input_file).getroot()
-    libxc = root.findall('groundstate/libxc')
-
-    if len(libxc) == 1:
-        for tag in libxc:
-            try:
-                functional = tag.get("correlation") + "+" + tag.get("exchange")
-            except:
-                functional = tag.get("xc")
+    if hasattr(parsed_input.groundstate, "libxc"):
+        try:
+                functional = parsed_input.groundstate.libxc.correlation + "+" + parsed_input.groundstate.libxc.exchange
+        except AttributeError:
+                functional = parsed_input.groundstate.libxc.xc
     else:
         try:
-            functional = parsed_input["groundstate"].xctype
-        except:
+            functional = parsed_input.groundstate.xctype
+        except AttributeError:
             functional = "GGA_PBE_SOL"
 
     return functional

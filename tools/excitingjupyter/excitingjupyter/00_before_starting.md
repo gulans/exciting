@@ -50,6 +50,8 @@ python3 -m pip install --upgrade --force pip
 pip3 install --upgrade setuptools
 # Install excitingtools 
 pip3 install -e ../exciting_tools
+# Install excitingscripts
+pip3 install -e ../excitingscripts
 # Install excitingjupyter
 pip3 install .
 # Install local kernal for jupyter

@@ -1,7 +1,6 @@
 import os
 import pathlib
 from argparse import ArgumentParser
-from typing import Union
 
 from excitingtools.runner.runner import BinaryRunner
 
@@ -18,7 +17,6 @@ def run_exciting(root_directory=os.getcwd(), excitingroot=os.getenv("EXCITINGROO
             "If using bash please type: `export EXCITINGROOT=<path-to-exciting_smp>`")
 
     binary = pathlib.Path(excitingroot) / "bin/exciting_smp"
-
     runner = BinaryRunner(binary, ['./'], omp_num_threads=4, time_out=200, directory=root_directory)
     result = runner.run()
 
@@ -32,7 +30,6 @@ def main() -> None:
     parser = ArgumentParser(description="""Execute a single exciting calculation in a given running directory.""")
 
     parser.add_argument("--root-directory", "-r",
-                        type=Union[str, pathlib.Path],
                         default=[os.getcwd()],
                         nargs=1,
                         dest="root_directory",
