@@ -43,6 +43,7 @@ def option_parser():
         max_ticks_y
         legend_label
         grid
+        show
          
     :return input_options: Dictionary of parsed command line arguments 
     """
@@ -461,7 +462,7 @@ def main(input_options):
         elist = np.genfromtxt(infile[i])[:,0]*conversion_factor
         dlist = np.genfromtxt(infile[i])[:,1]/conversion_factor
         if ( spin[i] ):
-            ndos = len(elist)/2
+            ndos = int(len(elist)/2)
             edown = [elist[j] for j in range(ndos,2*ndos)]
             ddown = [dlist[j] for j in range(ndos,2*ndos)]
             elist = [elist[j] for j in range(ndos)] 

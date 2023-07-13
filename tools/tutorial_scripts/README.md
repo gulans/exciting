@@ -174,7 +174,7 @@ Run a single **exciting** calculation.
 Located at `tools/excitingscripts/excitingscripts/execute/single.py`. Call as:
 
 ```bash
-python3 -m excitingscripts.execute.single rundir
+python3 -m excitingscripts.execute.single -r rundir
 ```
 Where <code>rundir</code> is an optional parameter which specifies the running directory.
 If <code>rundir</code> is not specified, the calculation will run in the directory where the

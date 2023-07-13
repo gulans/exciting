@@ -50,6 +50,7 @@ def option_parser():
         invert_plots
         max_ticks_y
         legend_label
+        show
 
     :return input_options: Dictionary of parsed command line arguments 
     """
@@ -377,7 +378,7 @@ def read_electronic_band(kvec,band,band_spin,spin,infile,eunit):
     for j in range(0,len(k_list),steps): kvec[-1].append(k_list[j:j + steps])   
     for j in range(0,len(e_list),steps): band[-1].append(e_list[j:j + steps]) 
     if spin:
-        nbands=len(band[-1])/2
+        nbands=int(len(band[-1])/2)
         kspin = [] ; band_up = []  ;  band_down = []
         for j in range(nbands): kspin.append(kvec[-1][j])
         for j in range(nbands): band_up.append(band[-1][j])
