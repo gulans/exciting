@@ -92,6 +92,7 @@ tol_file_name = {'groundstate': 'tolerance_ground_state.json',
                  'electric_properties': 'tolerance_electric.json',
                  'core_properties': 'tolerance_core.json',
                  'spin_properties': 'tolerance_spin.json',
+                 'wfplot': 'tolerance_wfplot.json',
                  }
 
 methods = list(tol_file_name.keys())

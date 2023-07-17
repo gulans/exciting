@@ -61,7 +61,7 @@ Subroutine propertylauncher
                call wfplot(.false.)
             case('new')
                do i = 1, size(input%properties%wfplot%kstlist%pointstatepair,2)
-                  call wfplot_new(input%properties%wfplot%kstlist%pointstatepair(1,i), &
+                  call properties_wfplot(input%properties%wfplot%kstlist%pointstatepair(1,i), &
                   &               input%properties%wfplot%kstlist%pointstatepair(2,i))
                end do
             case default

@@ -99,7 +99,7 @@ module wfplot_hdf5
           if (nv < 1) then
             if (rank==0) then
               write (*,*)
-              write (*,*) "Error(wfplot_new): Wrong plot specification!"
+              write (*,*) "Error(properties_wfplot): Wrong plot specification!"
               write (*,*)
             end if
             stop
@@ -109,7 +109,7 @@ module wfplot_hdf5
           If (np < nv) then
             if (rank==0) then
               write (*,*)
-              write (*,*) "Error(wfplot_new): Wrong plot specification!"
+              write (*,*) "Error(properties_wfplot): Wrong plot specification!"
               write (*,*)
             end if
             stop
