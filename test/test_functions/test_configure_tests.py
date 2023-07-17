@@ -82,7 +82,8 @@ tolerance_transport.json
 tolerance_optical.json
 tolerance_electric.json
 tolerance_core.json
-tolerance_spin.json"""
+tolerance_spin.json
+tolerance_wfplot.json"""
 
     with pytest.raises(KeyError) as error_info:
         method = get_method_from_tolerance_file(test_name.as_posix(), subdirectory='')

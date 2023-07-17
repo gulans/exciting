@@ -25,33 +25,28 @@
 
   <properties>
 
-    <chargedensityplot>
-      <plot3d>
-        <box grid="10 10 10">
-          <origin coord="0.0 0.0 0.0"/>
-          <point  coord="1.0 0.0 0.0"/>
-          <point  coord="0.0 1.0 0.0"/>
-          <point  coord="0.0 0.0 1.0"/>
-        </box>
-      </plot3d>
-    </chargedensityplot>
-    
-    <exccplot>
-      <plot3d>
-        <box grid="10 10 10">
-          <origin coord="0.0 0.0 0.0"/>
-          <point  coord="1.0 0.0 0.0"/>
-          <point  coord="0.0 1.0 0.0"/>
-          <point  coord="0.0 0.0 1.0"/>
-        </box>
-      </plot3d>
-    </exccplot>
-    
     <wfplot
-      version="old">
+      version="new">
       <kstlist>
         <pointstatepair>1 1</pointstatepair>
+        <pointstatepair>3 1</pointstatepair>
       </kstlist>
+
+      <plot1d>
+        <path steps="10">
+          <point coord="0.000   0.000   0.000" label="GAMMA"/>
+          <point coord="0.500   0.500   0.000" label="X"    />
+        </path>
+      </plot1d>
+      
+      <plot2d>
+        <parallelogram grid="10 10">
+          <origin coord="0.0 0.0 0.0"/>
+          <point  coord="1.0 0.0 0.0"/>
+          <point  coord="0.0 1.0 0.0"/>
+        </parallelogram>
+      </plot2d>
+      
       <plot3d>
         <box grid="10 10 10">
           <origin coord="0.0 0.0 0.0"/>
@@ -62,29 +57,6 @@
       </plot3d>
     </wfplot>
 
-    <elfplot>
-      <plot3d>
-        <box grid="10 10 10">
-          <origin coord="0.0 0.0 0.0"/>
-          <point  coord="1.0 0.0 0.0"/>
-          <point  coord="0.0 1.0 0.0"/>
-          <point  coord="0.0 0.0 1.0"/>
-        </box>
-      </plot3d>
-    </elfplot>    
-    
-    <electricfield>
-      <plot3d>
-        <box grid="10 10 10">
-          <origin coord="0.0 0.0 0.0"/>
-          <point  coord="1.0 0.0 0.0"/>
-          <point  coord="0.0 1.0 0.0"/>
-          <point  coord="0.0 0.0 1.0"/>
-        </box>
-      </plot3d>
-    </electricfield>
-
-    
   </properties>
 
 </input>

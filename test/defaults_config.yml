@@ -67,6 +67,12 @@ default_files_under_test:
    core_properties:
       - "ELNES.OUT"
       - "mossbauer.xml"
+   wfplot:
+      - "wf1d-????-????.dat"
+      - "wf2d-????-????.xsf"
+      - "wf3d-????-????.xsf"
+      - "wf3d-????-????.cube"
+
 
 # Specify each new group.
 # Any test without a group is assigned NONE

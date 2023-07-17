@@ -122,7 +122,15 @@ _file_to_parser = {
     'NEXC.OUT': RT_TDDFT_parser.parse_nexc,
     'ETOT_RTTDDFT.OUT': RT_TDDFT_parser.parse_etot,
     'EIGVAL_': RT_TDDFT_parser.parse_eigval_screenshots,
-    'PROJ_': RT_TDDFT_parser.parse_proj_screenshots
+    'PROJ_': RT_TDDFT_parser.parse_proj_screenshots,
+    'wf1d-0001-0001.dat': properties_parser.parse_wf1d,
+    'wf1d-0003-0001.dat': properties_parser.parse_wf1d,
+    'wf2d-0001-0001.xsf': properties_parser.parse_wf2d,
+    'wf2d-0003-0001.xsf': properties_parser.parse_wf2d,
+    'wf3d-0001-0001.xsf': properties_parser.parse_wf3d,
+    'wf3d-0003-0001.xsf': properties_parser.parse_wf3d,
+    'wf3d-0001-0001.cube': properties_parser.parse_cube,
+    'wf3d-0003-0001.cube': properties_parser.parse_cube
 }
 
 

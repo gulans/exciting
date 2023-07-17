@@ -287,6 +287,8 @@ properties/PBE_SOL-core_overlap-BN:
    files_under_test:
       - "coreoverlap.xml"
 
+properties/LDA_PW-wfplot-Si:
+  
 RT-TDDFT/LDA_PW-C-kick:
 
 RT-TDDFT/LDA_PW-Si-sinSq:
