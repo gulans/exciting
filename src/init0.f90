@@ -561,6 +561,11 @@ call allocate_coulomb_potentials(lmmaxvr, nrmtmax, natmtot, ngrtot, vclmt, vclir
       If (allocated(dpp1d)) deallocate (dpp1d)
       Allocate (dpp1d(npp1d))
 !
+
+! initialisation for the Davidson solver
+      nsingular=-1
+      mine0=input%groundstate%solver%minenergy
+
       Call timesec (ts1)
 !!      timeinit = timeinit + ts1 - ts0
 !

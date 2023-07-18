@@ -56,7 +56,8 @@ SOURCEDIRS=	\
     ../../src/file_io \
     ../../src/matrix_elements \
     ../../src/dfpt \
-		../../src/xgrid \
+    ../../src/src_iterative \
+    ../../src/xgrid \
     ../../src/wfplot
 	
 GeneratedFiles = ../../src/src_inputparser/inputmodules.f90 ../../src/src_inputparser/speciesmodules.f90
