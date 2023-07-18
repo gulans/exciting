@@ -121,6 +121,19 @@ groundstate/PBE-libxc-Al:
 groundstate/PBE-libxc-spin-Al:
    group: !Group LIBXC
 
+
+groundstate/LDA_PW-davidson-wo-matrix-CO:
+
+groundstate/LDA_PW-davidson-w-matrix-CO:
+
+groundstate/LDA_PW-lapack-CO:
+
+groundstate/LDA_PW-davidson-wo-matrix-BN:
+
+groundstate/LDA_PW-davidson-w-matrix-BN:
+
+groundstate/LDA_PW-lapack-BN:
+
 BSE/PBE_SOL-LiF:
 
 BSE/PBE-LiF-phononscreening:

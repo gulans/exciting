@@ -265,6 +265,11 @@ subroutine scf_cycle(verbosity)
                 Allocate (evecfv(nmatmax, nstfv, nspnfv))
                 Allocate (evecsv(nstsv, nstsv))
 
+                if (iscl.le.1) then
+                  evecfv=0d0
+                elseif (input%groundstate%solver%type.eq.'Davidson') then
+                  Call getevecfv (vkl(:, ik), vgkl(:, :, :, ik), evecfv)
+                endif
 !! TIME - seceqn does not belong to IO
 
                 call timesec(ts1)
