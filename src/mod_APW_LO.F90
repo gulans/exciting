@@ -45,6 +45,10 @@ Module mod_APW_LO
       Integer :: lorbord (maxlorb, maxspecies)
 ! local-orbital angular momentum
       Integer :: lorbl (maxlorb, maxspecies)
+! local-orbital relativistic quantum number kappa = (l-j)(2j+1)                                                                                         
+      Integer :: lorbk (maxlorb,maxspecies)
+! wave-function relativistic quantum number kappa = (l-j)(2j+1)     
+      Integer :: wfkappa (maxlorbord, maxlorb, maxspecies)
 ! maximum lorbl over all species
       Integer :: lolmax
 ! (lolmax+1)^2
@@ -88,20 +92,20 @@ Contains
       Use mod_muffin_tin
       Use mod_atoms
 ! !DESCRIPTION:
-! Initialises storage for basis functions in the muffin-tin region.
+! Initialises storage for basis functions in the muffin-tin region. 
 !
 ! !REVISION HISTORY:
 !   Created June 2019 (Andris)
 !EOP
 !BOC
-      implicit none
+      implicit none 
       type (apw_lo_basis_type) :: mt_basis
 
       nullify(mt_basis%apwfr)
       allocate (mt_basis%apwfr(nrmtmax, 2, apwordmax, 0:input%groundstate%lmaxapw, natmtot))
       nullify(mt_basis%lofr)
       allocate (mt_basis%lofr(nrmtmax, 2, nlomax, natmtot))
-
+      
       end subroutine MTBasisInit
 
 !
@@ -115,7 +119,7 @@ Contains
       subroutine MTBasisRelease(mt_basis)
 ! !USES:
 ! !DESCRIPTION:
-! Releases storage for basis functions in the muffin-tin region.
+! Releases storage for basis functions in the muffin-tin region. 
 !
 ! !REVISION HISTORY:
 !   Created June 2019 (Andris)

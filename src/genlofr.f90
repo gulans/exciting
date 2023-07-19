@@ -15,14 +15,18 @@ Subroutine genlofr
       Use modinput
       Use modmain
 ! !DESCRIPTION:
-!   Generates the local-orbital radial functions. This is done by integrating
-!   the scalar relativistic Schr\"{o}dinger equation (or its energy deriatives)
-!   at the current linearisation energies using the spherical part of the
-!   effective potential. For each local-orbital, a linear combination of
-!   {\tt lorbord} radial functions is constructed such that its radial
-!   derivatives up to order ${\tt lorbord}-1$ are zero at the muffin-tin radius.
-!   This function is normalised and the radial Hamiltonian applied to it. The
-!   results are stored in the global array {\tt lofr}.
+!> Generates the local-orbital radial functions. This is done by integrating
+!> the scalar relativistic Schr\"{o}dinger equation or Dirac equation
+!> (or its energy deriatives) at the current linearisation energies using the
+!> spherical part of the effective potential. Dirac-type local orbitals are
+!> useful in the context of spin-orbit coupling, but should only be used along
+!> with second variation with local orbitals. For more details see:
+!> arXiv:2306.02965 [cond-mat.mtrl-sci].
+!> For each local-orbital, a linear combination of {\tt lorbord} radial functions is
+!> constructed such that its radial derivatives up to order ${\tt lorbord}-1$ are zero
+!> at the muffin-tin radius.This function is normalised and the radial Hamiltonian applied
+!> to it. The results are stored in the global array {\tt lofr}.
+!
 !
 ! !REVISION HISTORY:
 !   Created March 2003 (JKD)
@@ -159,12 +163,19 @@ Subroutine genlofr
             Do ilo = 1, nlorb (is)
                l = lorbl (ilo, is)
                Do io2 = 1, lorbord (ilo, is)
-!!!                  if (is.eq.2) write(*,*) l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
-! integrate the radial Schrodinger equation
-                  Call rschroddme (lorbdm(io2, ilo, is), l, 0, &
-                 & lorbe(io2, ilo, ias), nr, &
-                 & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
-                 & q1(:, io2))
+                  if (wfkappa(io2, ilo, is) /= 0) then
+                     ! integrate the radial Dirac equation                                                                                                           
+                     Call rdiracdme (lorbdm(io2, ilo, is), wfkappa(io2, ilo, is), &
+                          & lorbe(io2, ilo, ias), nr, &
+                          & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
+                          & q1(:, io2), .false.)
+                  else
+                     ! integrate the radial Schrodinger equation
+                     Call rschroddme (lorbdm(io2, ilo, is), l, 0, &
+                          & lorbe(io2, ilo, ias), nr, &
+                          & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
+                          & q1(:, io2))
+                  endif
 ! normalise radial functions
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io2) ** 2

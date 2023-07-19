@@ -89,7 +89,6 @@ Subroutine readspeciesxml
     speziesdeflist(is)%sp => getstructsp (speciesnp)
     Call destroy (doc)
   End Do
-
   ! Count number of fixed rmt for automatic muffin-tin calculation
   allocate(fixrmt_array(nspecies))
   fixrmt_array = [(input%structure%speciesarray(is)%species%fixrmt, is = 1, nspecies)]
@@ -114,7 +113,7 @@ Subroutine readspeciesxml
      if (input%structure%speciesarray(is)%species%rmt .Gt. 0) then
         rmt(is) = input%structure%speciesarray(is)%species%rmt
      end if
-     
+
      ! If required, set index of species with fixed rmt
      if (input%structure%speciesarray(is)%species%fixrmt .and. (input%structure%autormt)) then 
          idx_species_fixed_rmt = is 
@@ -380,8 +379,9 @@ Subroutine readspeciesxml
 !         lo in APW+lo method
 !
           if (string .eq. 'apw+lo') then
-            nlo = nlo+1
-            lorbl(nlo, is) = lx
+             nlo = nlo+1
+             lorbl(nlo, is) = lx
+             lorbk(nlo, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%kappa
 	    !custom defined APW+lo orbitals are not used for Wannier-projection yet
             lorbwfproj(nlo, is) = .FALSE.
             if (lorbl(nlo, is) .Gt. input%groundstate%lmaxmat) then
@@ -392,11 +392,24 @@ Subroutine readspeciesxml
               write (*,*)
               stop
             end if
+            if ( (lorbk(nlo, is) /= 0) .and. (lorbk(nlo, is) /= lorbl(nlo, is)) &
+                 .and. (lorbk(nlo, is) /= -lorbl(nlo, is)-1) ) then 
+               write(*,*)
+               write(*,'("Error(readinput): kappa and l do not match : ")')
+               write(*,'(" l = ", I3, " kappa = ", I3)') lorbl(nlo, is), lorbk(nlo, is)
+               write(*, '(" for species ", I4)') is
+               Write (*, '(" and exception number ", I4),"."') nlo
+               write(*, '("A valid kappa must be either equal to l or to -(l+1).")')
+               write(*, '("It can be calculated as follows: kappa = (l-j)(2j+1)")')
+               write (*,*)
+               stop
+             end if
             lorbord(nlo, is) = 2
             do io = 1, lorbord(nlo, is)
               lorbe0(io, nlo, is) = apwe0(1, lx, is)
               lorbdm(io, nlo, is) = io-1
               lorbve(io, nlo, is) = apwve(1, lx, is)
+              wfkappa(io, nlo, is) = lorbk(nlo, is)
             end do
             mine0=min(lorbe0(io,nlo,is),mine0)
           end if
@@ -461,6 +474,7 @@ Subroutine readspeciesxml
            lorbe0(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%trialEnergy
            lorbdm(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%matchingOrder
            lorbve(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%searchE
+           wfkappa(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%kappa
            If (lorbdm(io, ilo, is) .Lt. 0) Then
               Write (*,*)
               Write (*, '("Error(readinput): lorbdm < 0 : ", I8)') lorbdm(io, ilo, is)
@@ -470,6 +484,19 @@ Subroutine readspeciesxml
               Write (*,*)
               Stop
            End If
+           if ( (wfkappa(io, ilo, is) /= 0) .and. (wfkappa(io, ilo, is) /= lorbl(ilo, is)) &
+           .and. (wfkappa(io, ilo, is) /= -lorbl(ilo, is)-1) ) then 
+               write(*,*)
+               write(*,'("Error(readinput): kappa and l do not match : ")') 
+               write(*,'(" l = ", I3, " kappa = ", I3)') lorbl(ilo, is), wfkappa(io, ilo, is)
+               write(*, '(" for species ", I4)') is
+               Write (*, '(" local-orbital ", I4)') ilo
+               Write (*, '(" and order ", I4, ".")') io
+               write(*, '("A valid kappa must be either equal to l or to -(l+1).")')
+               write(*, '("It can be calculated as follows: kappa = (l-j)(2j+1)")')
+               write (*,*)
+               stop
+            end if
            mine0=min(lorbe0(io,ilo,is),mine0)
         End Do
      End Do
