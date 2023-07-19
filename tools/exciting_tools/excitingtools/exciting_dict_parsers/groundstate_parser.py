@@ -26,8 +26,8 @@ def parse_info_out(name: str) -> dict:
     # Get line numbers for SCF iteration blocks
     for i, line in enumerate(lines):
         # stores the number of the first and last line of every iteration into a list
-        if ('SCF iteration number' in line) or ('Hybrids iteration number'
-                                                in line):
+        if ('SCF iteration number' in line) or ('Hybrids iteration number'in line) \
+           or ('Reached self-consistent loops maximum' in line):
             nscl.append(i)
         if ('Convergence criteria checked for the last 2 iterations'
             in line) or ('Self-consistent loop stopped' in line):
