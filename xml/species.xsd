@@ -56,7 +56,7 @@
     <xs:attribute name="kappa" type="xs:integer" use="required">
     <xs:annotation>
     <xs:documentation>
-    Relativistic quantum number.
+    Relativistic quantum number.    
     </xs:documentation>
     </xs:annotation>
     </xs:attribute>
@@ -111,6 +111,16 @@
         </xs:documentation>
         </xs:annotation>
       </xs:attribute>
+      <xs:attribute name="kappa" type="xs:integer" default="0">
+        <xs:annotation>
+        <xs:documentation>
+          Specifies the relativistic quantum number kappa = (l-j)(2j+1). If it is not equal to zero, the radial functions
+	        are calculated with the Dirac equation instead of the Schrodinger equation. This is useful for calculations with 
+          spin-orbit coupling and should be used along with the second variation with local orbitals (svlo), a method to 
+          be added soon.
+	      </xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
   </xs:complexType>
 </xs:element>
 
@@ -124,6 +134,7 @@
   </xs:annotation>                                            
   <xs:complexType>
 
+    
     <xs:attribute name="l" type="xs:integer" use="required">
       <xs:annotation>
       <xs:documentation>
@@ -131,6 +142,17 @@
       </xs:documentation>
       </xs:annotation>
     </xs:attribute>
+
+     <xs:attribute name="kappa" type="xs:integer" default="0">
+       <xs:annotation>
+       <xs:documentation>                               
+          Specifies the relativistic quantum number kappa = (l-j)(2j+1). If it is not equal to zero, the radial functions
+	        are calculated with the Dirac equation instead of the Schrodinger equation. This is useful for calculations with 
+          spin-orbit coupling and should be used along with the second variation with local orbitals (svlo), a method to 
+          be added soon. 
+       </xs:documentation>
+       </xs:annotation>
+     </xs:attribute>
     
     <xs:attribute name="type" type="xs:string" default="apw+lo">
       <xs:annotation>
