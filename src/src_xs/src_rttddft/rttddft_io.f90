@@ -26,6 +26,7 @@ module rttddft_io
             write_file_info_header, write_file_info_fill_line_with_char, &
             open_file_timing, close_file_timing, write_timing, &
             file_pmat_exists, read_pmat, write_pmat, &
+            file_pmat_mt_exists, read_pmat_mt, write_pmat_mt, &
             write_wavefunction
 
   !> Number of the unit to print timings
@@ -381,9 +382,9 @@ contains
 
   !> Read the momentum matrix elements from file
   subroutine read_pmat( first_kpt, pmat, mpi_env )
-    !> index of the first `k-point` to be considered
+    !> Index of the first `k-point` to be considered
     integer,intent(in)        :: first_kpt
-    !> momentum matrix elements
+    !> Momentum matrix elements
     complex(dp), intent(out)  :: pmat(:, :, :, first_kpt:)
     !> MPI environment (needed to write in parallel over MPI procs.)
     type(mpiinfo), intent(in) :: mpi_env
@@ -393,9 +394,9 @@ contains
 
   !> Write the momentum matrix elements to file
   subroutine write_pmat( first_kpt, pmat, mpi_env )
-    !> index of the first `k-point` to be considered in the sum
+    !> Index of the first `k-point` to be considered in the sum
     integer,intent(in)        :: first_kpt
-    !> momentum matrix elements
+    !> Momentum matrix elements
     complex(dp), intent(in)   :: pmat(:, :, :, first_kpt:)
     !> MPI environment (needed to write in parallel over MPI procs.)
     type(mpiinfo), intent(in) :: mpi_env
@@ -403,7 +404,35 @@ contains
     call write_array(add_default_extension( filename_pmat ), first_kpt, pmat, mpi_env )
   end subroutine
 
-  !> Wrapper to call `putevecfv`
+  !> Check if file with `pmat_mt` exists
+  logical function file_pmat_mt_exists()
+    inquire( file=trim(add_default_extension(filename_pmat_mt)), exist=file_pmat_mt_exists )
+  end function
+
+  !> Read the muffin-tin part of the momentum matrix (`pmat_mt`) from file
+  subroutine read_pmat_mt( first_kpt, pmat_mt, mpi_env )
+    !> Index of the first `k-point` to be considered in the sum
+    integer,intent(in)        :: first_kpt
+    !> Muffin-tin part of the momentum matrix
+    complex(dp), intent(out)  :: pmat_mt(:, :, :, :, first_kpt:)
+    !> MPI environment (needed to write in parallel over MPI procs.)
+    type(mpiinfo), intent(in) :: mpi_env
+
+    call read_array( add_default_extension( filename_pmat_mt ), first_kpt, pmat_mt, mpi_env )
+  end subroutine
+
+  !> Write the muffin-tin part of the momentum matrix (`pmat_mt`) to file
+  subroutine write_pmat_mt( first_kpt, pmat_mt, mpi_env )
+    !> Index of the first `k-point` to be considered in the sum
+    integer,intent(in)        :: first_kpt
+    !> Muffin-tin part of the momentum matrix
+    complex(dp), intent(in)   :: pmat_mt(:, :, :, :, first_kpt:)
+    !> MPI environment (needed to write in parallel over MPI procs.)
+    type(mpiinfo), intent(in) :: mpi_env
+    
+    call write_array( add_default_extension( filename_pmat_mt ), first_kpt, pmat_mt, mpi_env )
+  end subroutine
+
   subroutine write_wavefunction( first_kpt, wavefunction )
     !> index of the first `k-point` to be considered in the sum
     integer,intent(in)        :: first_kpt

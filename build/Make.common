@@ -56,6 +56,7 @@ SOURCEDIRS=	\
     ../../src/file_io \
     ../../src/matrix_elements \
     ../../src/dfpt \
+	  ../../src/molecular_dynamics \
     ../../src/src_iterative \
     ../../src/xgrid \
     ../../src/wfplot
