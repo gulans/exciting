@@ -27,7 +27,7 @@
                 outputlevel="high"
                 nempty="20"
                 useDensityMatrix="false"
-                radialgridtype="cubic-2"
+                radialgridtype="cubic"
                 xctype="LDA_PW">
         </groundstate>
         <xs
@@ -41,14 +41,14 @@
 
 
           <realTimeTDDFT
-            propagator="AETRS"
+            propagator="CFM4"
             timeStep="0.25d0"
             endTime="10.0d0"
             readPmatBasis="false"
             printTimingGeneral="true"
             printTimingDetailed="true"
-            calculateTotalEnergy="false"
-            calculateNExcitedElectrons="false"
+            calculateTotalEnergy="true"
+            calculateNExcitedElectrons="true"
             printAfterIterations="1"
             vectorPotentialSolver="improvedeuler">
             <laser fieldType="total">
