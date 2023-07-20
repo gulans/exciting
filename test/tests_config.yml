@@ -302,13 +302,18 @@ properties/PBE_SOL-core_overlap-BN:
 
 properties/LDA_PW-wfplot-Si:
   
-RT-TDDFT/LDA_PW-C-kick:
+RT-TDDFT/LDA_PW-C-kick-RK4:
 
-RT-TDDFT/LDA_PW-Si-sinSq:
+RT-TDDFT/LDA_PW-Si-sinSq-CFM4:
    files_under_test:
+      - "atoms.xml"
+      - "eigval.xml"
+      - "evalcore.xml"
       - "JIND.OUT"
+      - "NEXC.OUT"
+      - "ETOT_RTTDDFT.OUT"
 
-RT-TDDFT/LDA_PW-SiC-trapCos:
+RT-TDDFT/LDA_PW-SiC-trapCos-AETRS:
    files_under_test:
       - "JIND.OUT"
       - "NEXC.OUT"
