@@ -2,11 +2,13 @@
 !> Module for reading/writing binary files in parallel mode (using MPI subroutines)
 module rttddft_io_parallel
   use asserts, only: assert
+  use errors_warnings, only: terminate_if_false
   use mod_mpi_env, only: mpiinfo
   ! Remark(Ronaldo): using mpi instead of mpi_f08 leads to a seg. fault with openmpi
   use mpi_f08, only: mpi_file_open, mpi_file_iread_at, mpi_file_iwrite_at, mpi_wait, &
     MPI_DATATYPE, MPI_COMM, MPI_DOUBLE_COMPLEX, MPI_FILE, MPI_REQUEST, MPI_OFFSET_KIND, &
-    MPI_STATUS, MPI_INFO_NULL, MPI_MODE_CREATE, MPI_MODE_RDONLY, MPI_MODE_WRONLY
+    MPI_STATUS, MPI_INFO_NULL, MPI_MODE_CREATE, MPI_MODE_RDONLY, MPI_MODE_WRONLY, &
+    MPI_SUCCESS
   use precision, only: i32, dp
   use rttddft_arrays_utils, only: map_array_to_pointer
   
@@ -69,7 +71,7 @@ contains
     !> array to be read from binary file
     complex(dp), intent(out) :: array(:, :, :, first:)
     !> MPI environment. The corresponding MPI processes will read from file
-    type(mpiinfo), intent(in):: mpi_env    
+    type(mpiinfo), intent(inout):: mpi_env    
     
     integer(i32) :: i, last, ierr
     integer(MPI_OFFSET_KIND), allocatable :: offset(:)
@@ -84,7 +86,7 @@ contains
     call mpi_file_close( unit, ierr )
   end subroutine
 
-  !> Remap an array of rank5 to an array of rank 4 using a pointer
+  !> Remap an array of rank 5 to an array of rank 4 using a pointer
   subroutine read_array_rank5( file_name, first, array, mpi_env )
     !> Name of the file where the array is stored
     character(len=*), intent(in) :: file_name
@@ -93,7 +95,7 @@ contains
     !> Array to be read from binary file
     complex(dp), contiguous, target, intent(out) :: array(:, :, :, :, first:)
     !> MPI environment. The corresponding MPI processes will read from file
-    type(mpiinfo), intent(in):: mpi_env    
+    type(mpiinfo), intent(inout):: mpi_env    
     ! Local variables
     complex(dp), contiguous, pointer :: ptr_rank4(:, :, :, :)
 
@@ -110,7 +112,7 @@ contains
     !> array to be written to binary file
     complex(dp), intent(in) :: array(:, :, :, first:)
     !> MPI environment. The corresponding MPI processes will read from file
-    type(mpiinfo), intent(in):: mpi_env 
+    type(mpiinfo), intent(inout):: mpi_env 
 
     integer(i32) :: i, last, ierr
     integer(MPI_OFFSET_KIND), allocatable :: offset(:)
@@ -134,7 +136,7 @@ contains
     !> Array to be written to binary file
     complex(dp), contiguous, target, intent(in) :: array(:, :, :, :, first:)
     !> MPI environment. The corresponding MPI processes will read from file
-    type(mpiinfo), intent(in):: mpi_env 
+    type(mpiinfo), intent(inout):: mpi_env 
     ! Local variables
     complex(dp), contiguous, pointer :: ptr_rank4(:, :, :, :)
     
@@ -171,7 +173,7 @@ contains
 
   subroutine mpi_open_file( file_name, mpi_env, unit, mode )
     character(len=*), intent(in) :: file_name
-    type(mpiinfo), intent(in) :: mpi_env
+    type(mpiinfo), intent(inout) :: mpi_env
     type(MPI_FILE), intent(out) :: unit
     character(len=*), intent(in) :: mode
 
@@ -189,6 +191,7 @@ contains
         call mpi_file_open( handle, trim(file_name), &
           MPI_MODE_WRONLY + MPI_MODE_CREATE, MPI_INFO_NULL, unit, ierr )
     end select
+    call terminate_if_false( mpi_env, ierr == MPI_SUCCESS, "Error opening file"//trim(file_name) )
   end subroutine
 
 end module 
