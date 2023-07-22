@@ -17,6 +17,7 @@ class Compiler(enum.Enum):
 
 
 compiler_enum_map = {'ifort': Compiler.intel, 'gfortran': Compiler.gcc}
+compiler_version_identifier_map = {'ifort': Compiler.intel, 'GNU': Compiler.gcc}
 
 
 class BuildType(enum.Enum):
