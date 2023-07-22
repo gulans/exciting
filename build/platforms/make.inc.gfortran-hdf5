@@ -5,9 +5,9 @@
 # See here for more details: https://gcc.gnu.org/gcc-10/porting_to.html
 
 # Compiler, flags and preprocessing variables
-F90 = gfortran
+F90 = h5fc
 F90_OPTS = -O3 -march=native -ffree-line-length-0 
-CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC
+CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC -D_HDF5_
 F77 = $(F90)
 F77_OPTS = -O3
 # Required for compilation of LibXC 
@@ -32,7 +32,7 @@ LIB_BZINT = libbzint.a
 LIBS = $(LIB_LPK) $(LIB_FFT) $(LIB_BZINT)
 
 # SMP and MPI compilers, flags and preprocessing variables
-MPIF90 = mpif90
+MPIF90 = h5pfc
 MPIF90_OPTS = -DMPI
 MPI_LIBS =
 
