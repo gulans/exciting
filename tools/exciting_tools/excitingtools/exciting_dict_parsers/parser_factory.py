@@ -123,6 +123,11 @@ _file_to_parser = {
     'ETOT_RTTDDFT.OUT': RT_TDDFT_parser.parse_etot,
     'EIGVAL_': RT_TDDFT_parser.parse_eigval_screenshots,
     'PROJ_': RT_TDDFT_parser.parse_proj_screenshots,
+    'ATOM_': RT_TDDFT_parser.parse_atom_position_velocity_force,
+    'FCR_': RT_TDDFT_parser.parse_force,
+    'FEXT_': RT_TDDFT_parser.parse_force,
+    'FHF_': RT_TDDFT_parser.parse_force,
+    'FVAL_': RT_TDDFT_parser.parse_force,
     'wf1d-0001-0001.dat': properties_parser.parse_wf1d,
     'wf1d-0003-0001.dat': properties_parser.parse_wf1d,
     'wf2d-0001-0001.xsf': properties_parser.parse_wf2d,
@@ -145,7 +150,16 @@ def truncate_fnames_with_exts(file_name: str) -> str:
     an extension beginning with '_'.
     :return file_name: File name prefix, else input file name.
     """
-    if ('EIGVAL_' in file_name) or ('PROJ_' in file_name):
+    prefixes = [
+        'EIGVAL_',
+        'PROJ_',
+        'ATOM_',
+        'FCR_',
+        'FEXT_',
+        'FHF_',
+        'FVAL_'
+    ]
+    if any( [ prefix in file_name for prefix in prefixes ] ) :
         file_name_prefix = file_name.split('_')[0] + '_'
         return file_name_prefix
 

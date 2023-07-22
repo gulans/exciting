@@ -65,6 +65,8 @@ DefaultTolerances = namedtuple('DefaultTolerances',
                                 'structure_factor',
                                 'time',
                                 'current_density',
+                                'velocity',
+                                'force',
                                 'au',
                                 'dos',
                                 'effective_mass'
