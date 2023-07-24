@@ -31,6 +31,7 @@ src_dir: ../src/src_gw
          ../src/potential
          ../src/matrix_elements
          ../src/src_xc
+         ../src/basis
          ../src/file_io
          ../src/dfpt
          ../src/src_phonon

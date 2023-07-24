@@ -25,6 +25,8 @@ _file_to_parser = {
     'evalcore.xml': groundstate_parser.parse_evalcore,
     'eigval.xml': groundstate_parser.parse_eigval,
     'geometry.xml': groundstate_parser.parse_geometry,
+    'LINENGY.OUT': groundstate_parser.parse_linengy,
+    'LO_RECOMMENDATION.OUT': groundstate_parser.parse_lo_recommendation,
     'RHO3D.xml': properties_parser.parse_plot_3d,
     'VCL3D.xml': properties_parser.parse_plot_3d,
     'VXC3D.xml': properties_parser.parse_plot_3d,
@@ -176,6 +178,7 @@ def parser_chooser(full_file_name: str) -> dict:
     param: str, full_file_name: file name prepended by full path
     return: parsed data
     """
+ 
     full_file_name = full_file_name.rstrip()
     if not os.path.exists(full_file_name):
         raise FileNotFoundError(f'File not found: {full_file_name}')

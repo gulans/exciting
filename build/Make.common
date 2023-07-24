@@ -52,6 +52,7 @@ SOURCEDIRS=	\
   ../../src/wavefunctions \
   ../../src/sirius \
   ../../src/read \
+  ../../src/basis \
   ../../src/potential \
   ../../src/file_io \
   ../../src/matrix_elements \
