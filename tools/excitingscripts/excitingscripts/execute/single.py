@@ -17,7 +17,7 @@ def run_exciting(root_directory=os.getcwd(), excitingroot=os.getenv("EXCITINGROO
             "If using bash please type: `export EXCITINGROOT=<path-to-exciting_smp>`")
 
     binary = pathlib.Path(excitingroot) / "bin/exciting_smp"
-    runner = BinaryRunner(binary, ['./'], omp_num_threads=4, time_out=200, directory=root_directory)
+    runner = BinaryRunner(binary, omp_num_threads=4, time_out=200, directory=root_directory)
     result = runner.run()
 
     if not (pathlib.Path(root_directory) / "INFO.OUT").is_file():

@@ -9,7 +9,6 @@ import pytest
 
 from excitingtools.runner.runner import BinaryRunner
 
-
 mock_binary = "false_exciting_binary"
 
 
@@ -103,11 +102,6 @@ def test_from_dict(tmp_path: Path, runner):
     new_runner = BinaryRunner.from_dict(runner.as_dict())
     assert new_runner.binary == (tmp_path / "exciting_mpismp").as_posix()
     assert new_runner.time_out == 260
-
-
-def test__compose_execution_list(runner):
-    binary = runner.binary
-    assert runner._compose_execution_list() == ['mpirun', '-np', '3', binary, '>', 'std.out']
 
 
 def test_run_with_bash_command(tmp_path: Path):

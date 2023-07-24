@@ -9,6 +9,11 @@ input_mandatory_attributes = ['groundstate', 'structure', 'title']
 
 
 # common information 
+origin_valid_attributes = ['coord'] 
+
+point_valid_attributes = ['breakafter', 'coord', 'label'] 
+point_mandatory_attributes = ['coord'] 
+
 plot1d_valid_subtrees = ['path'] 
 plot1d_mandatory_attributes = ['path'] 
 
@@ -98,7 +103,7 @@ Hybrid_valid_attributes = ['HSEsingularity', 'eccoeff', 'epsmb', 'exchangetype',
 
 sirius_valid_attributes = ['cfun', 'density', 'densityinit', 'eigenstates', 'sfacg', 'vha', 'xc'] 
 
-solver_valid_attributes = ['evaltol', 'packedmatrixstorage', 'type'] 
+solver_valid_attributes = ['constructHS', 'evaltol', 'minenergy', 'packedmatrixstorage', 'type'] 
 
 OEP_valid_attributes = ['convoep', 'maxitoep', 'tauoep'] 
 
@@ -152,6 +157,8 @@ region_valid_attributes = ['grid2d', 'grid3d', 'height', 'zrange']
 
 wfplot_valid_attributes = ['version'] 
 
+plot3d_valid_attributes = ['usesym'] 
+
 dos_valid_attributes = ['inttype', 'jdos', 'linkpt', 'lmirep', 'lonly', 'ngrdos', 'ngridkint', 'nsmdos', 'nwdos', 
                         'scissor', 'sqados', 'wannier', 'winddos'] 
 
@@ -186,6 +193,8 @@ raman_mandatory_attributes = ['energywindow']
 
 eigvec_valid_attributes = ['comp'] 
 eigvec_mandatory_attributes = ['comp'] 
+
+energywindow_valid_attributes = ['intv', 'points'] 
 
 moke_valid_attributes = ['drude', 'intraband', 'scissor', 'swidth', 'tevout', 'wgrid', 'wmax'] 
 
@@ -236,6 +245,8 @@ storeexcitons_valid_attributes = ['MaxEnergyExcitons', 'MaxNumberExcitons', 'Min
 
 scrwfplot_valid_attributes = ['bandrange', 'kptrange'] 
 
+plot3d_valid_attributes = ['usesym'] 
+
 writeexcitons_valid_attributes = ['MaxEnergyExcitons', 'MaxNumberExcitons', 'MinEnergyExcitons', 'MinNumberExcitons', 
                                   'abscutares', 'abscutres', 'selectenergy', 'useev'] 
 
@@ -251,8 +262,9 @@ exciton_valid_attributes = ['fix', 'lambda']
 electron_valid_subtrees = ['plot3d', 'plot1d', 'plot2d'] 
 
 realTimeTDDFT_valid_attributes = ['TaylorOrder', 'calculateNExcitedElectrons', 'calculateTotalEnergy', 'endTime', 
-                                  'normalizeWF', 'printAfterIterations', 'printTimingDetailed', 'printTimingGeneral', 
-                                  'propagator', 'readPmatBasis', 'subtractJ0', 'timeStep', 'vectorPotentialSolver'] 
+                                  'forcePmatHermitian', 'normalizeWF', 'printAfterIterations', 'printTimingDetailed', 
+                                  'printTimingGeneral', 'propagator', 'readPmatBasis', 'subtractJ0', 'timeStep', 
+                                  'vectorPotentialSolver'] 
 realTimeTDDFT_valid_subtrees = ['predictorCorrector', 'screenshots', 'laser'] 
 
 predictorCorrector_valid_attributes = [' maxIterations', 'tol'] 
@@ -305,6 +317,8 @@ istate_mandatory_attributes = ['statestype']
 
 tetra_valid_attributes = ['cw1k', 'kordexc', 'qweights', 'tetradf', 'tetraocc'] 
 
+energywindow_valid_attributes = ['intv', 'points'] 
+
 plan_valid_subtrees = ['doonly'] 
 
 doonly_valid_attributes = ['task'] 
@@ -354,3 +368,6 @@ valid_plan_entries = ['bse', 'bsegenspec', 'bsesurvey', 'df', 'df2', 'dielectric
                       'write_screened_coulomb', 'write_wfplot', 'writebandgapgrid', 'writebevec', 'writeemat', 
                       'writeematasc', 'writekpathweights', 'writeoverlapxs', 'writepmat', 'writepmatasc', 'writepmatxs', 
                       'writepwmat', 'x0toasc', 'x0tobin', 'xsestimate', 'xsgeneigvec'] 
+
+# valid bandstructure subtrees
+bandstructure_valid_subtrees = ['plot1d'] 
