@@ -45,6 +45,8 @@ Module mod_APW_LO
       Integer :: lorbord (maxlorb, maxspecies)
 ! local-orbital angular momentum
       Integer :: lorbl (maxlorb, maxspecies)
+! local-orbital principle quantum number                                                               
+      Integer :: lorbn (maxlorbord, maxlorb, maxspecies)
 ! local-orbital relativistic quantum number kappa = (l-j)(2j+1)                                                                                         
       Integer :: lorbk (maxlorb,maxspecies)
 ! wave-function relativistic quantum number kappa = (l-j)(2j+1)     

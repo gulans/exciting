@@ -113,6 +113,20 @@ groundstate/PBE-pulay-Al:
 
 groundstate/PBE_SOL-Al:
 
+groundstate/GGA_PBE_SOL-automatic_trial_energies-NaCl:
+   input:
+      - "input.xml"
+      - "Na.xml"
+      - "Cl.xml"
+   files_under_test:
+      - "INFO.OUT"
+      - "evalcore.xml"
+      - "geometry.xml"
+      - "eigval.xml"
+      - "atoms.xml"
+      - "LINENGY.OUT"
+      - "LO_RECOMMENDATION.OUT"
+
 groundstate/PBE_SOL-BN:
 
 groundstate/PBE-libxc-Al:

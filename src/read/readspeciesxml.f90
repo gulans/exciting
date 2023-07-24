@@ -407,6 +407,7 @@ Subroutine readspeciesxml
             lorbord(nlo, is) = 2
             do io = 1, lorbord(nlo, is)
               lorbe0(io, nlo, is) = apwe0(1, lx, is)
+              lorbn(io, nlo, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%n
               lorbdm(io, nlo, is) = io-1
               lorbve(io, nlo, is) = apwve(1, lx, is)
               wfkappa(io, nlo, is) = lorbk(nlo, is)
@@ -472,6 +473,7 @@ Subroutine readspeciesxml
         End If
         Do io = 1, lorbord(ilo, is)
            lorbe0(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%trialEnergy
+           lorbn(io, ilo, is)  = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%n
            lorbdm(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%matchingOrder
            lorbve(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%searchE
            wfkappa(io, ilo, is) = speziesdeflist(is)%sp%basis%loarray(ilx)%lo%wfarray(io)%wf%kappa
