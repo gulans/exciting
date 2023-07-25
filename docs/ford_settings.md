@@ -36,6 +36,7 @@ src_dir: ../src/src_gw
          ../src/dfpt
          ../src/src_phonon
          ../src/matrix_fourier_interpolation
+	 ../src/svlo
 
 [//]: # "Note, ford commands can not be separated by whitelines."  
 [//]: # "More information on ford's project file options can be found at:"  

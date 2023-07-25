@@ -145,11 +145,12 @@ contains
                                 (atot(2)/c)*pmat(1:nmatp,1:nmatp,2,ik) + &
                                 (atot(3)/c)*pmat(1:nmatp,1:nmatp,3,ik)
     end do
+
 #ifdef USEOMP
 !$OMP END DO NOWAIT
 !$OMP END PARALLEL
 #endif
-
+    
     call mt_h%release()
 
     if ( get_mathcalH ) call obtain_interstitial_contribution_mathcalH( &

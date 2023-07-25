@@ -891,7 +891,7 @@ def parse_cube(fname: str) -> dict:
 
   cube_data = []
   for line in lines[line_offset:]:
-        cube_data = cube_data + line.split()
+      cube_data = cube_data + line.split()
   
   output['cube_data'] = np.array(cube_data, dtype=np.double)
 

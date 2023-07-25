@@ -135,6 +135,9 @@ groundstate/PBE-libxc-Al:
 groundstate/PBE-libxc-spin-Al:
    group: !Group LIBXC
 
+groundstate/PBE-SOC-useDensityMatrix_false-realspace_false-svlo_true-GaAs:
+
+groundstate/PBE-SOC-useDensityMatrix_false-realspace_true-svlo_true-GaAs:
 
 groundstate/LDA_PW-davidson-wo-matrix-CO:
 
