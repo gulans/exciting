@@ -14,7 +14,8 @@ Subroutine genlofr
 ! !USES:
       Use modinput
       Use modmain
-! !DESCRIPTION:
+Use mod_hybrids, only: ex_coef
+      ! !DESCRIPTION:
 !   Generates the local-orbital radial functions. This is done by integrating
 !   the scalar relativistic Schr\"{o}dinger equation (or its energy deriatives)
 !   at the current linearisation energies using the spherical part of the
@@ -51,6 +52,7 @@ Subroutine genlofr
 ! variables for the lo recommendation
       Real (8) energy,energyp,tmp,tmp2,ens(0:20),elo,ehi,flo,fhi,emi,fmi
       integer nodes
+      character(len=1024) :: filename1,filename
 
 ! The following segment is useful if you want to come up 
 ! with energies for local orbitals with several nodes.
@@ -58,7 +60,7 @@ Subroutine genlofr
 ! Andris.
 ! -------------------------------------
 !      allocate(dwf1(mtnr),dwf2(mtnr))
-write(*,*)"updating lo base"
+write(*,*)"updating lo base, ex=",ex_coef, apwe(1, 0,1)
 open (12, file = 'base_lo.dat', status = 'replace')
      
       if ((input%groundstate%lorecommendation).and.(tlast)) then
@@ -151,6 +153,32 @@ open (12, file = 'base_lo.dat', status = 'replace')
       Allocate (ipiv(np))
       Allocate (xa(np), ya(np), c(np))
       Allocate (a(np, np), b(np))
+
+
+!if((ex_coef.gt.0d0).and.input%groundstate%Hybrid%updateRadial)then
+!open (2, file = 'base_lo_hf.dat', status = 'old')
+!Do is = 1, nspecies
+!  do ia = 1, natoms (is)
+!    read(2,*)!"is ia"
+!    read(2,*)!is, ia
+!    read(2,*)!"l order energy"
+!    ias = idxas (ia, is)
+!    Do ilo = 1, nlorb (is)
+!      l = lorbl (ilo, is)
+!      Do io1 = 1, lorbord (ilo, is)
+!        read(2,*)i1,i2,e1
+!        write(*,*)i1,i2,e1
+!        lorbe(io1, ilo, ias)=e1
+!      enddo
+!    enddo
+!  enddo
+!enddo
+!endif
+
+
+
+
+
       Do is = 1, nspecies
          nr = nrmt (is)
          Do ia = 1, natoms (is)
@@ -168,7 +196,7 @@ write(12,*)"l order energy"
                if (lorbe(io2, ilo, ias).gt.1e6) cycle
 
 write(12,*)l,lorbdm(io2, ilo, is),lorbe(io2, ilo, ias)
-if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial) then
+if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0)) then
 
 
         Call rschroddme2 (is,ia,lorbdm(io2, ilo, is), l, 0, &
@@ -182,7 +210,10 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
                  & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
                  & q1(:, io2))
  endif
-               ! normalise radial functions
+
+write(*,*)"rfun l=",l,"e=",lorbe(io2, ilo, ias),"dot=",lorbdm(io2, ilo, is),"nodes=",nn
+
+ ! normalise radial functions
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io2) ** 2
                   End Do
@@ -192,7 +223,27 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
                   p1 (1:nr, io2) = t1 * p1 (1:nr, io2)
                   q0 (1:nr, io2) = t1 * q0 (1:nr, io2)
                   q1 (1:nr, io2) = t1 * q1 (1:nr, io2)
-! set up the matrix of radial derivatives
+
+if(ex_coef.gt.0d0)then
+WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf',lorbe(io2, ilo, ias),"-o",lorbdm(io2, ilo, is),"-l",l,'HF.dat'
+else
+WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf',lorbe(io2, ilo, ias),"-o",lorbdm(io2, ilo, is),"-l",l,'.dat'
+endif
+
+open (11, file = filename, status = 'replace')
+Do ir = 1, nr
+write(11,*)spr(ir, is),",",p0(ir, io2)
+enddo
+close(11)
+
+                  
+                  
+                  
+                  
+                  
+                  
+                  
+                  ! set up the matrix of radial derivatives
                   Do j = 1, np
                      ir = nr - np + j
                      xa (j) = spr (ir, is)
@@ -246,10 +297,10 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
 
                  lofr_old (ir, 1, ilo, ias) = lofr (ir, 1, ilo, ias)
                  lofr_old (ir, 2, ilo, ias) = lofr (ir, 2, ilo, ias) 
-                 lofr (ir, 1, ilo, ias) = t1 * p0s (ir)
-                 lofr (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
-                 lofr_new (ir, 1, ilo, ias) = lofr (ir, 1, ilo, ias)
-                 lofr_new (ir, 2, ilo, ias) = lofr (ir, 2, ilo, ias)
+                 lofr_new (ir, 1, ilo, ias) = t1 * p0s (ir)
+                 lofr_new (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
+                 !lofr_new (ir, 1, ilo, ias) = lofr (ir, 1, ilo, ias)
+                 !lofr_new (ir, 2, ilo, ias) = lofr (ir, 2, ilo, ias)
 
 
 
@@ -259,6 +310,17 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
       End Do
       Deallocate (ipiv, xa, ya, a, b, c)
 close(12)
-      Return
+
+
+ if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
+    lofr =lofr_new
+    write(*,*)"*** atjaunojam lo"
+else
+    write(*,*)"*** neatjaunojam lo" 
+
+endif
+
+
+Return
 End Subroutine
 !EOC

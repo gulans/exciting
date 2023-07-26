@@ -64,9 +64,9 @@ maxaa=mt_dm%maxaa
 wfsize=maxaa+maxnlo
 
 if (.false.)then !write dm to a file
-!  write(*,*)"maxaa",maxaa
-!  write(*,*)"dm size",wfsize
-!  write(*,*)"lmaxmat",input%groundstate%lmaxmat
+  write(*,*)"maxaa",maxaa
+  write(*,*)"dm size",wfsize
+  write(*,*)"lmaxmat",input%groundstate%lmaxmat
 
   open (11, file = 'dm.dat', status = 'replace')
   do if1=1, wfsize

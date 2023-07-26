@@ -7,7 +7,7 @@
 ! !ROUTINE: findband
 ! !INTERFACE:
 !
-Subroutine findband (findlinentype, l, k, nr, r, vr, de0, etol, e0, tfnd)
+Subroutine findband1 (findlinentype, l, k, nr, r, vr, de0, etol, e0, tfnd,is,ia)
 ! !INPUT/OUTPUT PARAMETERS:
 !   l   : angular momentum quantum number (in,integer)
 !   k   : quantum number k, zero if Dirac eqn. is not to be used (in,integer)
@@ -37,6 +37,10 @@ Subroutine findband (findlinentype, l, k, nr, r, vr, de0, etol, e0, tfnd)
       Integer, Intent(In)    :: l
       Integer, Intent(In)    :: k
       Integer, Intent(In)    :: nr
+
+      Integer, Intent(In)    :: is
+      Integer, Intent(In)    :: ia
+
       Real(8), Intent(In)    :: r (nr)
       Real(8), Intent(In)    :: vr (nr)
       Real(8), Intent(In)    :: de0
@@ -50,13 +54,13 @@ Subroutine findband (findlinentype, l, k, nr, r, vr, de0, etol, e0, tfnd)
       Real (8), Parameter :: etoolow = - 1000.d0
       Real (8), Parameter :: ecutlow = - 100.d0
       Real (8), Parameter :: efermibands = 0.5d0
-      Real (8), Parameter :: erangebands = 1.d0
+      Real (8), Parameter :: erangebands = 20.d0 !default 1d0 es nomainīju
       Real (8), Parameter :: ediffusebands = efermibands + erangebands
       Real (8), Parameter :: erange1 = 3.d0
       Real (8), Parameter :: edefault1 = 1.d0
       Real (8), Parameter :: eupcut = 30.d0
       Real (8), Parameter :: edncut = -10.d0
-      Integer :: ie, nn
+      Integer :: ir,ie, nn
       Real (8) :: de, e, t0, t1, t00, t10, dl, dl0
       Real (8) :: u, uup, udn, upold, ddnold, dnold, du, dudn, dupold, &
      & duup, utst, dutst
@@ -65,11 +69,15 @@ Subroutine findband (findlinentype, l, k, nr, r, vr, de0, etol, e0, tfnd)
       Real (8) :: p0 (nr), p1 (nr), q0 (nr), q1 (nr)
       character(10) :: fname
       character(1024) :: message
-
-write(*,*)"findband0 begins l=",l,"e0=",e
-
+     character(len=1024) :: filename
+real(8) :: estart
+estart=e0
       tfnd=.false.
       de = Abs(de0)
+
+
+      write(*,*)"findband1 begins l=",l,"e0=",e0
+
 
       Select Case (trim(findlinentype))
 
@@ -80,6 +88,7 @@ write(*,*)"findband0 begins l=",l,"e0=",e
 !        find the Linearization Energy from the equation D_{l}(E)=-(l+1)/R_{MT}
          e = e0
          call rschroddme(0, l, k, e, nr, r, vr, nn, p0, p1, q0, q1)
+
          t00 = p0(nr)
          t10 = p1(nr)
          if ( dabs(t00)>1.0d-8 ) then
@@ -121,9 +130,35 @@ write(*,*)"findband0 begins l=",l,"e0=",e
       Case ('Wigner_Seitz')
 !-------------------------------------------
 
+! ! do ie=0,10
+! ! write(*,*)e0+ie*0.1d0
+! !    Call rschroddme2(is,ia,0, l, k, e0+ie*0.1d0, nr, r, vr, nn, p0, p1, q0, q1)
+! !    WRITE(filename, '(a1,F5.2,a4)')'u',e0+ie*0.1d0,'.dat'
+! !    open (11, file = filename, status = 'replace')
+! !    Do ir = 1, nr
+! !       write(11,*)r(ir),",",p0(ir)
+! !    enddo
+! !    close(11)
+
+! !    WRITE(filename, '(a3,F5.2,a4)')'ugr',e0+ie*0.1d0,'.dat'
+! !    open (11, file = filename, status = 'replace')
+! !    Do ir = 1, nr
+! !       write(11,*)r(ir),",",p1(ir)
+! !    enddo
+! !    close(11)
+! ! enddo
+
+
+
+! ! stop
+
+
+
+!write(*,*)"e0",e0
          de = de0
-         Call rschroddme(0, l, k, e0, nr, r, vr, nn, p0, p1, q0, q1)
-write(*,*)"findband0 e=",e0 ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
+         de= 0.02d0
+         Call rschroddme2(is,ia,0, l, k, e0, nr, r, vr, nn, p0, p1, q0, q1)
+         write(*,*)"findband1 e=",e0 ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
          u = p0 (nr)
          du = p1 (nr)
          eiup = e0
@@ -135,9 +170,10 @@ write(*,*)"findband0 e=",e0 ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
          dnold = u
          ddnold = du
 11       Continue
+!write(*,*)"eiup",eiup
          eiup = eiup + de
-         Call rschroddme(0, l, k, eiup, nr, r, vr, nn, p0, p1, q0, q1)
-write(*,*)"findband0 up e=",eiup ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
+         Call rschroddme2(is,ia,0, l, k, eiup, nr, r, vr, nn, p0, p1, q0, q1)
+         write(*,*)"findband1 up e=",eiup ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
          uup = p0 (nr)
          duup = p1 (nr)
          utst = upold * uup
@@ -152,11 +188,16 @@ write(*,*)"findband0 up e=",eiup ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
             e1 = eiup
             If (e2 .Gt. ecutlow) Go To 31
          End If
+
+         !write(*,*)"findband1 e1,eiup,ecutlow,ediffusebands", e1,eiup,ecutlow,ediffusebands
+
          If ((e1 .Lt. ecutlow) .And. (eiup .Lt. ediffusebands)) Then
 21          Continue
+!write(*,*)"eidn",eidn
+
             eidn = eidn - de
-            Call rschroddme(0, l, k, eidn, nr, r, vr, nn, p0, p1, q0, q1)
-write(*,*)"findband0 down e=",eidn ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
+            Call rschroddme2(is,ia,0, l, k, eidn, nr, r, vr, nn, p0, p1, q0, q1)
+            write(*,*)"findband1 down e=",eidn ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr)
             udn = p0 (nr)
             dudn = p1 (nr)
             utst = dnold * udn
@@ -196,7 +237,9 @@ write(*,*)"findband0 down e=",eidn ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr
             Go To 40
          Else
             e0 = (e1+e2) * 0.5d0
-            write(*,*)"findband result e1=",e1,"e2=",e2,"e=",e0
+            write(*,*)"findband1 result e1=",e1,"e2=",e2,"e=",e0
+            Call rschroddme2(is,ia,0, l, k, e0, nr, r, vr, nn, p0, p1, q0, q1) !just to get nn to the write in the next line
+            write(*,*)"findband1 final l=",l,"e0=",estart,"e=",e0,"nn=",nn
          End If
          tfnd=.true.
          Return
@@ -216,5 +259,6 @@ write(*,*)"findband0 down e=",eidn ,"nn=",nn, "p0(nr)=",p0 (nr),"p1(nr)=", p1(nr
          Write (*,*)
          Stop
       End Select
-End Subroutine findband
+
+End Subroutine findband1
 !EOC

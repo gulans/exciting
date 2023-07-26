@@ -14,7 +14,9 @@ Subroutine genapwfr
 ! !USES:
       Use modinput
       Use modmain
-! !DESCRIPTION:
+Use mod_hybrids, only: ex_coef
+
+      ! !DESCRIPTION:
 !   Generates the APW radial functions. This is done by integrating the scalar
 !   relativistic Schr\"{o}dinger equation (or its energy deriatives) at the
 !   current linearisation energies using the spherical part of the effective
@@ -41,7 +43,32 @@ Subroutine genapwfr
      & (apwordmax)
       Real (8) :: q0 (nrmtmax, apwordmax), q1 (nrmtmax, apwordmax)
       Real (8) :: hp0 (nrmtmax)
-      write(*,*)"updatinf apw base"
+character(len=1024) :: filename
+
+
+!if((ex_coef.gt.0d0).and.input%groundstate%Hybrid%updateRadial)then
+!open (2, file = 'base_apw_hf.dat', status = 'old')
+! Do is = 1, nspecies
+!         Do ia = 1, natoms (is)
+!read(2,*)
+!read(2,*)!is ia
+!read(2,*)
+!            ias = idxas (ia, is)
+!            Do l = 0, input%groundstate%lmaxapw
+!               Do io1 = 1, apword (l, is)
+!read(2,*)i1,i2,e1
+!write(*,*)i1,i2,e1
+!        apwe(io1, l, ias)=e1
+!
+!               enddo!io1
+!            enddo!l
+!         enddo!ia
+!       enddo!is
+!close(2)
+!endif
+
+
+write(*,*)"updating apw base, ex=",ex_coef, apwe(1, 0,1) 
 open (12, file = 'base_apw.dat', status = 'replace')
 
 
@@ -60,7 +87,7 @@ write(12,*)"l order energy"
 write(12,*)l,apwdm(io1, l, is),apwe(io1, l, ias)
 
 !if Hybrid is not associated then updateRadial is not defined, but it does not give error:
-if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial) then
+if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0)) then
                   Call rschroddme2 (is,ia,apwdm(io1, l, is), l, 0, apwe(io1, &
                  & l, ias), nr, spr(:, is), &
                  & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
@@ -70,6 +97,7 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
                  & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
  endif
 
+ write(*,*)"rfun l=",l,"e=",apwe(io1,l, ias),"dot=",apwdm(io1, l, is),"nodes=",nn
 
  ! normalise radial functions
                   Do ir = 1, nr
@@ -82,7 +110,28 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
                   p1 (1:nr, io1) = t1 * p1 (1:nr, io1)
                   q0 (1:nr, io1) = t1 * q0 (1:nr, io1)
                   q1 (1:nr, io1) = t1 * q1 (1:nr, io1)
-! subtract linear combination of previous vectors
+
+                  
+if(ex_coef.gt.0d0)then
+WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'HF.dat'
+
+else
+WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'.dat'
+endif
+                  
+
+open (11, file = filename, status = 'replace')
+Do ir = 1, nr
+
+write(11,*)spr(ir, is),",",p0(ir, io1)
+enddo
+close(11)
+
+
+                  
+                  
+                  
+                  ! subtract linear combination of previous vectors
                   Do io2 = 1, io1 - 1
                      Do ir = 1, nr
                         fr (ir) = p0 (ir, io1) * p0 (ir, io2)
@@ -123,11 +172,9 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
                      apwfr_old (ir, 1, io1, l, ias)=apwfr (ir, 1, io1, l, ias)
                      apwfr_old (ir, 2, io1, l, ias)=apwfr (ir, 2, io1, l, ias)
 
-                     apwfr (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
-                     apwfr (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
-                     apwfr_new (ir, 1, io1, l, ias)=apwfr (ir, 1, io1, l, ias)
-                     apwfr_new (ir, 2, io1, l, ias)=apwfr (ir, 2, io1, l, ias)
-
+                     apwfr_new (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
+                     apwfr_new (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
+ 
                   End Do
                End Do
             End Do
@@ -135,6 +182,17 @@ if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadia
       End Do
 !      write(*,*)
 close(12)
+
+
+
+ if (.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
+    apwfr =apwfr_new
+    write(*,*)"*** atjaunojam apw"
+else
+    write(*,*)"*** neatjaunojam apw" 
+ endif
+
+
 Return
 End Subroutine
 !EOC

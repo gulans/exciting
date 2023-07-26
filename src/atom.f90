@@ -237,6 +237,8 @@ Subroutine atom (ptnucl, zn, nst, n, l, k, occ, xctype, xcgrad, nr, &
 !      deallocate(dwf1,dwf2)
 ! ------------------------------------
 
+
+
       Deallocate (vn, vh, ex, ec, vx, vc, vrp)
       Deallocate (ri, fr1, fr2, gr1, gr2, cf)
       If (xcgrad .Eq. 1) Then

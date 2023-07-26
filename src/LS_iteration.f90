@@ -78,7 +78,7 @@ endif
 
 
 if (abs(hybx_coef).gt.1d-20) then
-  do inn=1,nmax
+   do inn=1,nmax
     ish=inn+shell0
 !    call get_Fock_ex(Ngrid,r,is,ia,l,Nshell,shell_l,&
 !            shell_occ,psi(:,inn)*r, u_all(:,:,sp),vx_psi(:,inn))

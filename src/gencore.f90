@@ -60,6 +60,8 @@ real(8) :: ftemp1(spnrmax),e_kin,e1,e2,hybx_coef
 
 hybx_coef = ex_coef !mod_hybrids variable
 
+
+
 e_kin=0d0
 engy_exnl_core=0d0
 

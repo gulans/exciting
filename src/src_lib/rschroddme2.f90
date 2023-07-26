@@ -91,12 +91,12 @@ use modinput
            Allocate (p0p(nr))
            If (m .Eq. 0) Then
 
-             call getu(m,is,ia,nr,vr,l,e,p0p,p0,p1,q0,q1)
+             call getu(m,is,ia,nn,nr,vr,l,e,p0p,p0,p1,q0,q1)
 
              !Call rschrodint (m, l, e, nr, r, vr, nn, rmfactor, p0p, p0, p1, q0, q1)
            Else
              Do im = 0, m
-             call getu(im,is,ia,nr,vr,l,e,p0p,p0,p1,q0,q1)
+             call getu(im,is,ia,nn,nr,vr,l,e,p0p,p0,p1,q0,q1)
 
              !Call rschrodint (im, l, e, nr, r, vr, nn, rmfactor, p0p, p0, p1, q0, q1)
                p0p (:) = p0 (:)
