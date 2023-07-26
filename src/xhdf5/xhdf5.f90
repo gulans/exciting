@@ -50,6 +50,9 @@ module xhdf5
     integer(hdf5_id) :: h5id = h5id_undefined
     !> MPI communicator handle
     integer :: mpi_comm
+    !> Flag to initialize HDF5 file in serial mode, even if compiled with MPI.
+    !> By default this is set to false.
+    logical :: serial_access = .false.
 
     contains
 
@@ -93,23 +96,29 @@ module xhdf5
 
 
   !> Initialize HDF5 library and, if `path` exists, open the file, else create a file at `path`.
-  subroutine initialize(this, path, mpi_comm)
+  subroutine initialize(this, path, mpi_comm, serial_access)
     !> HDF5 file handler.
     class(xhdf5_type), intent(inout) :: this
     !> Relative path to HDF5 file.
     character(*), intent(in) :: path
     !> MPI communicator handle.
     integer, intent(in) :: mpi_comm
+    !> Set to `.true.` if only serial access is possible.
+    logical, intent(in), optional :: serial_access
 
     this%path = trim(path)
     this%mpi_comm = mpi_comm
 
+    if(present(serial_access)) then
+      this%serial_access = serial_access
+    end if
+
     call hdf5_initialize()
 
     if(path_exists(this%path)) then
-      call hdf5_open_file(this%path, this%mpi_comm, this%h5id)
+      call hdf5_open_file(this%path, this%mpi_comm, this%h5id, this%serial_access)
     else 
-      call hdf5_create_file(this%path, this%mpi_comm, this%h5id)
+      call hdf5_create_file(this%path, this%mpi_comm, this%h5id, this%serial_access)
     end if    
   end subroutine
 
@@ -223,8 +232,8 @@ module xhdf5
 
     string_local = repeat(hdf5_blank, hdf5_max_string_len)
     string_trim = trim(adjustl(string))
-
-    call assert(len(string_trim) > hdf5_max_string_len, 'len(string) > hdf5_max_string_len.')
+    
+    call assert(len(string_trim) <= hdf5_max_string_len, 'len(string) > hdf5_max_string_len.')
 
     string_local(1 : len(string_trim)) = string_trim
 
@@ -242,7 +251,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_string
 
 
@@ -283,7 +293,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_integer_rank_0
 
 
@@ -330,7 +341,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_integer_rank_1
 
 
@@ -377,7 +389,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local,        &
+                            this%serial_access)
   end subroutine write_integer_rank_2
 
 
@@ -423,7 +436,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_sp_rank_0
 
 
@@ -470,7 +484,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_sp_rank_1
 
 
@@ -517,7 +532,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_sp_rank_2
 
 
@@ -564,7 +580,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_sp_rank_3
 
 
@@ -611,7 +628,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_sp_rank_4
 
 
@@ -657,7 +675,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_dp_rank_0
 
 
@@ -704,7 +723,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_dp_rank_1
 
 
@@ -751,7 +771,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_dp_rank_2
 
 
@@ -798,7 +819,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_dp_rank_3
 
 
@@ -845,7 +867,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_real_dp_rank_4
 
 
@@ -897,7 +920,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_complex_dp_rank_1
 
 
@@ -946,7 +970,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_complex_dp_rank_2
 
 
@@ -995,7 +1020,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)
+                            offset_local, &
+                            this%serial_access)
   end subroutine write_complex_dp_rank_3
 
 
@@ -1044,7 +1070,8 @@ module xhdf5
                             dataset_rank,        &
                             dataset_chunk_shape, &
                             dataset_shape_local, &
-                            offset_local)                        
+                            offset_local, &
+                            this%serial_access)                        
   end subroutine write_complex_dp_rank_4
   
 
@@ -1088,7 +1115,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
 
     string = trim(adjustl(string_local))
   end subroutine read_string
@@ -1129,7 +1157,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_integer_rank_0
 
 
@@ -1167,7 +1196,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_integer_rank_1
 
 
@@ -1205,7 +1235,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_integer_rank_2
 
 
@@ -1244,7 +1275,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_sp_rank_0
 
 
@@ -1282,7 +1314,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_sp_rank_1
 
 
@@ -1320,7 +1353,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_sp_rank_2
 
 
@@ -1358,7 +1392,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_sp_rank_3
 
 
@@ -1396,7 +1431,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_sp_rank_4
 
 
@@ -1435,7 +1471,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_dp_rank_0
 
 
@@ -1473,7 +1510,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_dp_rank_1
 
 
@@ -1511,7 +1549,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_dp_rank_2
 
 
@@ -1549,7 +1588,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_dp_rank_3
 
 
@@ -1587,7 +1627,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_real_dp_rank_4
 
 
@@ -1630,7 +1671,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_complex_dp_rank_1
 
 
@@ -1670,7 +1712,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_complex_dp_rank_2
 
 
@@ -1710,7 +1753,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_complex_dp_rank_3
 
 
@@ -1750,7 +1794,8 @@ module xhdf5
                            dataset_chunk_ptr,   &
                            dataset_rank,        &
                            dataset_chunk_shape, &
-                           offset_local)
+                           offset_local, &
+                            this%serial_access)
   end subroutine read_complex_dp_rank_4
 
 end module xhdf5  

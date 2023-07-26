@@ -15,7 +15,6 @@ module hdf5_utils
   !> Root group of any HDF5 file
   character(*), parameter :: hdf5_root = './'
 
-
   !> HDF5 integer kinds
 #ifdef _HDF5_
   integer, parameter :: hdf5_id = HID_T
@@ -44,7 +43,6 @@ module hdf5_utils
     hdf5_double = dp
 #endif
   end function
-
 
   !> Return HDF5 id for real (sp)
   integer(hdf5_id) function hdf5_float()

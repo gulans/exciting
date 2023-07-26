@@ -197,3 +197,4 @@ def parser_chooser(full_file_name: str) -> dict:
     #   container_converter should therefore be used as a decorator on parsers with values that are strings.
     #   That will massively speed up parsing
     return container_converter(data)
+

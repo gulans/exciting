@@ -302,13 +302,6 @@ subroutine exccoulint(iqmt)
   ! participating in the BSE
   call genparidxran('k', nk_bse)
 
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6, '(a)', advance="no") "Calculating Plane-wave matrix elements"
-    flush(6)
-  end if
-#endif
-
   !! RR:  M_uok(G,qmt) = <iu ikm|e^{-i(G+qmt)r}|io ikp>
   !!      with ikp = ik+qmt
   do ik = kpari, kparf
@@ -404,13 +397,6 @@ subroutine exccoulint(iqmt)
     end if
     call timesec(tpw0)
   end if
-
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-      write(6, '(a)', advance="no") "Calculating Exchange Interaction Matrix Elements"
-      flush(6)
-    end if
-#endif
 
   kkp: do ikkp = ppari, pparf
 

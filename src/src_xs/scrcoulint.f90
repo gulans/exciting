@@ -419,13 +419,6 @@ subroutine scrcoulint(iqmt, fra)
     & Calculating W(G1,G2,qr) fourier coefficients")')
   call timesec(tscc0)
 
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6, '(a)', advance="no") "Calculating Screened Coulomb Potential"
-    flush(6)
-  end if
-#endif
-
   do iqr = qpari, qparf ! Reduced q
 
     ! Locate reduced q-point in non-reduced set
@@ -563,13 +556,6 @@ subroutine scrcoulint(iqmt, fra)
   bsedt(1, :) = 1.d8
   bsedt(2, :) = -1.d8
   bsedt(3, :) = zzero
-
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-      write(6, '(a)', advance="no") "Calculating Screened Coulomb Matrix Elements"
-      flush(6)
-    end if
-#endif
 
   kkploop: do ikkp = ppari, pparf
 
