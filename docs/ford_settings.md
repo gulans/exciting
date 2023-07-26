@@ -36,7 +36,14 @@ src_dir: ../src/src_gw
          ../src/dfpt
          ../src/src_phonon
          ../src/matrix_fourier_interpolation
-	 ../src/svlo
+         ../src/xgrid/
+         ../src/xhdf5/
+         ../src/xhdf5/hdf5_wrappers/ 
+	     ../src/svlo
+         ../src/isdf
+         ../src/src_xs/fastBSE/
+         ../src/src_xs/fastBSE/BSH/
+         ../src/src_xs/fastBSE/utils/
 
 [//]: # "Note, ford commands can not be separated by whitelines."  
 [//]: # "More information on ford's project file options can be found at:"  

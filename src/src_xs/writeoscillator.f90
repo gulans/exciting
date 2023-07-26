@@ -117,8 +117,8 @@ module m_writeoscillator
       end if 
       !write hdf5 output
       gname="excitons"//trim(bsetypestring)//trim(scrtypestring)
-      call write_excitons_hdf5(hamsize, nexc, eshift, evalre, oscstrr,&
-      & gname, iqmt=iq)
+
+      call write_excitons_hdf5(hamsize, nexc, eshift, evalre, oscstrr, gname, iq)
 
       io1=1
       io2=3

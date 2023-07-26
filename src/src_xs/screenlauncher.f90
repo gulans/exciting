@@ -200,13 +200,6 @@ subroutine screenlauncher
   write(unitout, '(a, i4)') 'Info(' // thisname // '): Starting loop over q-points'
   write(unitout, *)
 
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6, '(a)', advance="no") "Calculating RPA Dielectric Function"
-    flush(6)
-  end if
-#endif
-
   ! Loop over q-points 
   do iq = qpari, qparf
 

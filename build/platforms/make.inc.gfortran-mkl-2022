@@ -6,15 +6,16 @@
 
 # Compiler, flags and preprocessing variables
 F90 = gfortran
-F90_OPTS = -O3 -march=native -ffree-line-length-0 -m64  -I"${MKLROOT}/include"
-CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC
+F90_OPTS = -O3 -march=native -ffree-line-length-0 -m64  -I"${MKLROOT}/include" -I"${MKLROOT}/fftw3/include/fftw"
+CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC -DFFTW3_INTERFACE
 F77 = $(F90)
 F77_OPTS = -O3
 # Required for compilation of LibXC 
 FCCPP = cpp
 
 F90_DEBUGOPTS = -g -O0 -DUSE_ASSERT -fbounds-check -fbacktrace -Wall -Wextra -ffree-line-length-0 -fcheck=all -finit-integer=2147483647 -finit-real=snan \
--frecord-gcc-switches -finit-character=42 -finit-logical=true -ffpe-trap=invalid,zero,overflow -fdump-core -fstack-protector-all -pipe
+-frecord-gcc-switches -finit-character=42 -finit-logical=true -ffpe-trap=invalid,zero,overflow -fdump-core -fstack-protector-all -pipe \
+-I"${MKLROOT}/include" -I"${MKLROOT}/fftw3/include/fftw"
 # Unusable debug flags: -pedantic 
 F77_DEBUGOPTS = $(F90_DEBUGOPTS)
 

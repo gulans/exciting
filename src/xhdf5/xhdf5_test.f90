@@ -604,7 +604,6 @@ module xhdf5_test
     data_chunk_read = 0._sp
     offset = [1, 1, 1, first]
     dataset_shape = shape(real_r4)
-    !print*, mpiglobal%rank, chunk_size, first, last 
 
     call h5%write('datasets', 'real_r4-4', data_chunk, offset, dataset_shape)
     call h5%read('datasets', 'real_r4-4', data_chunk_read, offset)
@@ -926,7 +925,6 @@ module xhdf5_test
     data_chunk_read = 0._dp
     offset = [1, 1, 1, first]
     dataset_shape = shape(real_r4)
-    !print*, mpiglobal%rank, chunk_size, first, last 
 
     call h5%write('datasets', 'real_r4-4', data_chunk, offset, dataset_shape)
     call h5%read('datasets', 'real_r4-4', data_chunk_read, offset)
@@ -1221,7 +1219,6 @@ module xhdf5_test
     data_chunk_read = cmplx(0.0, 0.0, dp)
     offset = [1, 1, 1, first]
     dataset_shape = shape(cmplx_r4)
-    !print*, mpiglobal%rank, chunk_size, first, last 
 
     call h5%write('datasets', 'cmplx_r4-4', data_chunk, offset, dataset_shape)
     call h5%read('datasets', 'cmplx_r4-4', data_chunk_read, offset)

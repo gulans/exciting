@@ -7,6 +7,7 @@ import enum
 
 bohr_to_angstrom = 0.529177210903
 angstrom_to_bohr = 1. / bohr_to_angstrom
+Hartree_to_eV = 27.211396641308
 
 
 class Unit(enum.Enum):

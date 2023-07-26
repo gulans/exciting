@@ -24,7 +24,6 @@ module hdf5_file
 #endif    
   end subroutine hdf5_initialize
   
-
   !> Finalize global variables, used by HDF5 library functions.
   subroutine hdf5_finalize()
 #ifdef _HDF5_       
@@ -35,9 +34,8 @@ module hdf5_file
 #endif    
   end subroutine
 
-
   !> Create an HDF5 file at `path`.
-  subroutine hdf5_create_file(path, mpi_comm, h5id_file)
+  subroutine hdf5_create_file(path, mpi_comm, h5id_file, serial_access)
     !> Relative path to the HDF5 file. Is expected to end with the name of the file,
     !> _e.g._, `path = 'path/to/file.h5'. HDF5 files are expected to have the `.h5` suffix.
     character(*), intent(in) :: path
@@ -45,6 +43,9 @@ module hdf5_file
     integer, intent(in) :: mpi_comm
     !> Identifier of the file, used by HDF5.
     integer(hdf5_id), intent(out) :: h5id_file
+    !> Set to `.true.` if only serial access is possible.
+    logical, intent(in) :: serial_access
+
 #ifdef _HDF5_   
     integer :: h5err
     integer(hdf5_id) :: h5id_plist
@@ -53,8 +54,10 @@ module hdf5_file
     call handle_hdf5_error('h5pcreate_f', h5err)
 
 #ifdef MPI
-    call h5pset_fapl_mpio_f(h5id_plist, mpi_comm, MPI_INFO_NULL, h5err)
-    call handle_hdf5_error('h5pset_fapl_mpio_f', h5err)
+    if(.not. serial_access) then 
+      call h5pset_fapl_mpio_f(h5id_plist, mpi_comm, MPI_INFO_NULL, h5err)
+      call handle_hdf5_error('h5pset_fapl_mpio_f', h5err)
+    end if
 #endif
 
     call h5fcreate_f(path, H5F_ACC_TRUNC_F, h5id_file, h5err, access_prp = h5id_plist)
@@ -67,7 +70,7 @@ module hdf5_file
   
   
   !> Open an HDF5 file at `path`.
-  subroutine hdf5_open_file(path, mpi_comm, h5id_file)
+  subroutine hdf5_open_file(path, mpi_comm, h5id_file, serial_access)
     !> Relative path to the HDF5 file. Is expected to end with the name of the file,
     !> _e.g._, `path = 'path/to/file.h5'. HDF5 files are expected to have the `.h5` suffix.
     character(*), intent(in) :: path
@@ -75,6 +78,9 @@ module hdf5_file
     integer, intent(in) :: mpi_comm
     !> Identifier of the file, used by HDF5.
     integer(hdf5_id), intent(out) :: h5id_file
+    !> Set to `.true.` if only serial access is possible.
+    logical, intent(in) :: serial_access
+
 #ifdef _HDF5_   
     integer :: h5err
     integer(hdf5_id) :: h5id_plist
@@ -83,8 +89,10 @@ module hdf5_file
     call handle_hdf5_error('h5pcreate_f', h5err)
 
 #ifdef MPI
-    call h5pset_fapl_mpio_f(h5id_plist, mpi_comm, MPI_INFO_NULL, h5err)
-    call handle_hdf5_error('h5pset_fapl_mpio_f', h5err)
+    if(.not. serial_access) then 
+      call h5pset_fapl_mpio_f(h5id_plist, mpi_comm, MPI_INFO_NULL, h5err)
+      call handle_hdf5_error('h5pset_fapl_mpio_f', h5err)
+    end if
 #endif
 
     call h5fopen_f(path, H5F_ACC_RDWR_F, h5id_file, h5err, access_prp = h5id_plist)
