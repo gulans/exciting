@@ -1,7 +1,9 @@
-# Example make.inc for Intel oneapi
+# make.inc Intel compilation of exciting with fastBSE
+# You need to have installed HDF5 and be able to access h5fc 
+# (serial and SMP) and h5pfc (MPI) via the terminal.
 
 # Compiler, flags and preprocessing variables 
-F90 = h5pfc # Wrapper for ifort --> export /path/to/hdf5/bin/h5pfc
+F90 = h5fc
 F90_OPTS = -O3 -ip -unroll -scalar-rep -I"${MKLROOT}/include" -I"${MKLROOT}/include/fftw"
 CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC -DIFORT -DFFTW -D_HDF5_ -DFFTW3_INTERFACE
 F77 = $(F90)

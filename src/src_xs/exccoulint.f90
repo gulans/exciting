@@ -329,11 +329,6 @@ subroutine exccoulint(iqmt)
     ematuok(1:inu, 1:ino, 1:numgq, ik) = muo(1:inu, 1:ino, 1:numgq)
   end do
 
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6, *)
-  end if
-#endif
   ! Helper no longer needed
   if(allocated(muo)) deallocate(muo)
 
@@ -479,11 +474,6 @@ subroutine exccoulint(iqmt)
     call putbsemat(exclifname, 77, ikkp, iqmt, excli)
   ! End loop over(k,kp) pairs
   end do kkp
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6,*)
-  end if
-#endif
   call barrier(callername=trim(thisname))
 
   if(mpiglobal%rank == 0) then

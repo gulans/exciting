@@ -159,7 +159,6 @@ module m_write_hdf5
 
       gname_ = gname
 
-      print*, mpiglobal%comm
       call h5%initialize(fhdf5, mpiglobal%comm, serial_access=.true.)
       call h5%initialize_group('.', gname_)
       
