@@ -440,12 +440,6 @@ subroutine scrcoulint(iqmt, fra)
     call putematrad(iqr, iqrnr)
   end do
 
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6, *)
-  end if
-#endif
-
   ! Set file extesion for later read EMATRAD in getematrad
   ! (some ranks may not participate in the qr loop above)
   filext = fileext_ematrad_write
@@ -922,11 +916,6 @@ subroutine scrcoulint(iqmt, fra)
   deallocate(bsedt)
   !   Write BSE kernel diagonal parameters
   if(mpiglobal%rank .eq. 0) call putbsediag('BSEDIAG.OUT')
-#ifndef MPI 
-  if(mpiglobal%rank == 0) then
-    write(6, *)
-  end if
-#endif
   if(allocated(igqmap)) deallocate(igqmap)
   if(allocated(wfc)) deallocate(wfc)
 

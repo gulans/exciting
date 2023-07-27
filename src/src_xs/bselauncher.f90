@@ -218,12 +218,6 @@ subroutine bselauncher
   end do
   !---------------------------------------------------------------------------!
 
-#ifndef MPI
-  if(mpiglobal%rank == 0) then
-    write(6, *)
-  end if
-#endif
-
   if(iq2<0) then
     write(*, '("Info(",a,"): Rank= ", i3, " is idle.")')&
       & trim(thisname), mpiglobal%rank
