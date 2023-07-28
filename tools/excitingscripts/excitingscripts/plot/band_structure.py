@@ -50,7 +50,6 @@ def option_parser():
         invert_plots
         max_ticks_y
         legend_label
-        different_volumes
         show
 
     :return input_options: Dictionary of parsed command line arguments 
@@ -94,8 +93,6 @@ def option_parser():
     
     help_legend_label = "Specifies the labels to appear in the legend for each plot."
 
-    help_different_volumes = "In the case of calculations performed at different volumes, rescale the horizontal axes to the first calculation in the list"
-
     help_show = "Opens plot in new window"
 
     #---------------------------------------------------------------------------
@@ -130,8 +127,6 @@ def option_parser():
     p.add_argument('-rc','--reverse_colors', action='store_true', help = help_reverse_colors)
 
     p.add_argument('-rp','--reverse_plots', action='store_true', help = help_reverse_plots)
-
-    p.add_argument('-dv', '--different_volumes', action='store_true', help=help_different_volumes)
 
     p.add_argument('-nl','--no_legend', action='store_true', help = help_no_legend)
      
@@ -217,7 +212,6 @@ def option_parser():
         
     input_options['reverse_plots'] = args.reverse_plots
     input_options['reverse_colors'] = args.reverse_colors
-    input_options['different_volumes'] = args.different_volumes
 
     input_options['maxticksy'] = args.max_ticks_y
     
@@ -454,7 +448,6 @@ def main(input_options):
     leg_pos = input_options['leg_pos']
     no_leg = input_options['no_legend']
     reverse_colors = input_options['reverse_colors']
-    different_volumes = input_options['different_volumes']
     reverse_plots = input_options['reverse_plots']
     maxticksy = input_options['maxticksy']
     legend = input_options['legend']
@@ -653,13 +646,11 @@ def main(input_options):
             sc = spin_color[number_of_plots-1-i]
         leg_spin = ["$\\uparrow$","$\\downarrow$"]
         for j in range(len(band[i])):
-            xkvec = kvec[0][j]
-            if not different_volumes: xkvec = kvec[i][j]
-            llab = set_legend_label(leg_label[i], npspin, leg_spin, local_single, 0, j)
-            ax1.plot(xkvec, band[i][j], color=lc, lw=line_thickness, label=llab)
+            llab = set_legend_label(leg_label[i],npspin,leg_spin,local_single,0,j)
+            ax1.plot(kvec[i][j], band[i][j], color=lc, lw=line_thickness, label=llab)
             if npspin:
-                llab = set_legend_label(leg_label[i], npspin, leg_spin, local_single, 1, j)
-                ax1.plot(xkvec, band_spin[i][j],
+                llab = set_legend_label(leg_label[i],npspin,leg_spin,local_single,1,j)
+                ax1.plot(kvec[i][j], band_spin[i][j],
                          color=sc, lw=sline_thickness, label=llab)
  
     if title is not None:  
