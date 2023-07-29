@@ -82,8 +82,8 @@ contains
     character(len=100)      :: fieldType
     character(len=100)      :: vectorPotentialSolver
 
-    real(dp)                :: atom_positions(3, natmtot) ! in cartesian coordinates x, y, z
-    real(dp)                :: atom_velocities(3, natmtot) ! in cartesian coordinates x, y, z
+    real(dp), allocatable   :: atom_positions(:, :) ! in cartesian coordinates x, y, z
+    real(dp), allocatable   :: atom_velocities(:, :) ! in cartesian coordinates x, y, z
     type(force)             :: forces
     type(MD_input_keys)     :: molecular_dynamics
 
@@ -655,9 +655,9 @@ contains
     !> variable with interfaces to MD outputs
     type(MD_out), intent(inout)        :: MD_outputs
     !> positions of all atoms in cartesian coordinates
-    real(dp), intent(out)              :: atom_positions(3, natmtot) 
+    real(dp), allocatable, intent(out) :: atom_positions(:, :) 
     !> velocities of all atoms in cartesian coordinates
-    real(dp), intent(out)              :: atom_velocities(3, natmtot)
+    real(dp), allocatable, intent(out) :: atom_velocities(:, :)
     !> forces acting on all atoms
     type(force), intent(out)           :: forces
 
@@ -671,7 +671,10 @@ contains
     call forces%allocate_arrays( natmtot )
     call force_rttdft( forces, molecular_dynamics%core_corrections, molecular_dynamics%valence_corrections )
     
+    allocate( atom_velocities(3, natmtot) )
     call init_atoms_velocities( atom_velocities )
+
+    allocate( atom_positions(3, natmtot) )
     call init_atoms_positions( atom_positions )
     
     if( molecular_dynamics%basis_derivative ) call Update_basis_derivative( atom_velocities, mathcalB, B_time, B_past )
