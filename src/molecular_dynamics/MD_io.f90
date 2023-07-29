@@ -74,7 +74,7 @@ module MD_io
   subroutine basic_io_write_to_file( this, string )
     class(basic_io), intent(in) :: this
     character(len=*), intent(in) :: string
-    write( this%file_unit, '(A)' ) string
+    write( this%file_unit, '(A)' ) trim( string )
   end subroutine
 
   !> Close file
