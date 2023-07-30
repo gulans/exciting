@@ -243,9 +243,9 @@ Compiler Support
 
 exciting requires an F2008-compliant compiler. exciting is known to compile with:
 
-* Intel ifort: 2015, 2016, 2017, 2019, 2021
+* Intel ifort: 2019, 2021
   
-* GCC gfortran: 7, 8, 9, 10, 12
+* GCC gfortran: 8, 9, 10, 12
   
 
 Compliant but not tested:
@@ -258,9 +258,16 @@ Compliant but not tested:
 Known Issues
 ------------------
 
-### Intel 2018
+### Intel MPI
 
-Compilation is known to fail at src_lib/mod_manopt.f90 with the error:
+Intel MPI 2019 and 2021.3 are known to exhibit memory leaks. This can be troublesome for memory-intensive calculations
+and cause exciting to crash. See the threads associated with [Qbox](https://groups.google.com/g/cp2k/c/BJ9c21ey0Ls) and
+[CP2K](https://github.com/cp2k/cp2k/issues/1830) for further discussion.
+
+
+### Intel Compiler 2018
+
+Compilation is known to fail at `src_lib/mod_manopt.f90` with the error:
 
 ```
    catastrophic error: **Internal compiler error: segmentation violation signal raised** 

@@ -1,21 +1,16 @@
-# Example make.inc file for GCC with MKL
-#
-# NOTE: If compiling with GCC 10 append F90_OPTS and F90_DEBUGOPTS with: 
-#  -fallow-argument-mismatch
-# See here for more details: https://gcc.gnu.org/gcc-10/porting_to.html
+# Example make.inc file for GCC 9 and below
 
 # Compiler, flags and preprocessing variables
 F90 = gfortran
-F90_OPTS = -O3 -march=native -ffree-line-length-0 -m64  -I"${MKLROOT}/include" -I"${MKLROOT}/fftw3/include/fftw"
-CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC -DFFTW3_INTERFACE
+F90_OPTS = -O3 -march=native -ffree-line-length-0
+CPP_ON_OPTS = -cpp -DXS -DISO -DLIBXC
 F77 = $(F90)
 F77_OPTS = -O3
 # Required for compilation of LibXC 
 FCCPP = cpp
 
 F90_DEBUGOPTS = -g -O0 -DUSE_ASSERT -fbounds-check -fbacktrace -Wall -Wextra -ffree-line-length-0 -fcheck=all -finit-integer=2147483647 -finit-real=snan \
--frecord-gcc-switches -finit-character=42 -finit-logical=true -ffpe-trap=invalid,zero,overflow -fdump-core -fstack-protector-all -pipe \
--I"${MKLROOT}/include" -I"${MKLROOT}/fftw3/include/fftw"
+-frecord-gcc-switches -finit-character=42 -finit-logical=true -ffpe-trap=invalid,zero,overflow -fdump-core -fstack-protector-all -pipe
 # Unusable debug flags: -pedantic 
 F77_DEBUGOPTS = $(F90_DEBUGOPTS)
 
@@ -27,10 +22,7 @@ INCL =
 # Libaries
 # Use native blas/lapack by default
 export USE_SYS_LAPACK=true
-
-# intel-mkl 2022.1.0. With 32 int. Dynamic linking. Note, no BLACS or Scalapack as BLACS with MPICH is given as -lmkl_blacs_intelmpi_lp64 
-# with link advisor
-LIB_LPK = -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+LIB_LPK = -L./ -llapack -lblas
 LIB_FFT = fftlib.a
 LIB_BZINT = libbzint.a
 LIBS = $(LIB_LPK) $(LIB_FFT) $(LIB_BZINT)
