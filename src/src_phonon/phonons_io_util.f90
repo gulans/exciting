@@ -203,7 +203,8 @@ contains
   !> Write Born effective charge tensors \({\bf Z}^\ast_\kappa\) to file.
   subroutine ph_io_write_borncharge( borncharge, fname, success, &
       sumrule_correction )
-    use mod_atoms, only: natmtot, nspecies, natoms, idxas, spsymb
+    use mod_atoms, only: natmtot, nspecies, natoms, idxas, spsymb, atposc
+    use mod_lattice, only: ainv
     !> Born effective charge \({\bf Z}^\ast_\kappa\) 
     real(dp), intent(in) :: borncharge(3, 3, natmtot)
     !> file name
@@ -214,6 +215,7 @@ contains
     real(dp), optional, intent(in) :: sumrule_correction(3, 3)
 
     integer :: ierr, un, is, ia, ias, ip
+    real(dp) :: vl(3)
     logical :: dosum
 
     real(dp), allocatable :: borncharge_sum(:,:,:)
@@ -236,7 +238,8 @@ contains
     do is = 1, nspecies
       do ia = 1, natoms(is)
         ias = idxas(ia, is)
-        write( un, '("# species ",i2," atom ",i3," (",a,")")' ) is, ia, trim( spsymb(is) )
+        call r3mv( ainv, atposc(:, ia, is), vl )
+        write( un, '("# species ",i2," atom ",i3," (",a,i3") : ",3f13.6)' ) is, ia, trim( spsymb(is) ), ia, vl
         do ip = 1, 3
           write( un, '(3f20.10)', iostat=ierr ) borncharge(ip, :, ias)
           success = (ierr == 0)
@@ -259,7 +262,8 @@ contains
   end subroutine ph_io_write_borncharge
 
   !> Read Born effective charge tensors \({\bf Z}^\ast_\kappa\) from file.
-  subroutine ph_io_read_borncharge( borncharge, fname, success )
+  subroutine ph_io_read_borncharge( borncharge, fname, success, &
+      sumrule_correction )
     use os_utils, only: path_exists
     use mod_atoms, only: natmtot
     !> Born effective charge \({\bf Z}^\ast_\kappa\) 
@@ -268,9 +272,14 @@ contains
     character(*), intent(in) :: fname
     !> `.true.` if reading was successful
     logical, intent(out) :: success
+    !> acoustic sum rule correction
+    real(dp), optional, intent(out) :: sumrule_correction(3, 3)
 
     integer :: ierr, un, ias, ip
+    logical :: dosum
     character(1024) :: line
+    
+    dosum = present( sumrule_correction )
 
     success = (path_exists( trim( adjustl( fname ) ), ierr ) .or. ierr /= 0)
     if( .not. success ) return
@@ -295,6 +304,19 @@ contains
       if( ias == natmtot .and. ip == 3 ) exit
     end do
     success = (ias == natmtot .and. ip == 3 .and. ierr == 0)
+    if( dosum .and. success ) then
+      do while( ierr == 0 )
+        read( un, '(a)', iostat=ierr ) line
+        line = trim( adjustl( line ) )
+        if( line(1:1) == '#' .or. line == '' ) cycle
+        if( mod( ip, 3 ) == 0 ) ias = ias + 1
+        ip = mod( ip, 3 ) + 1
+        read( line, *, iostat=ierr ) sumrule_correction(ip, :)
+        if( ias == natmtot+1 .and. ip == 3 ) exit
+      end do
+      success = (ias == natmtot+1 .and. ip == 3 .and. ierr == 0)
+    end if
+
     if( .not. success ) return
 
     ! close file
