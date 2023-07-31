@@ -29,9 +29,9 @@ if matplotlib.__version__.split(".")[0] == "2": matplotlib.style.use('classic')
 
 def option_parser():
     """
-    Parse command line inputs 
+    Parse command line inputs
 
-    Parse: 
+    Parse:
         directory
         eboundary
         assign_type
@@ -94,7 +94,7 @@ def option_parser():
 
     help_legend_label = "Specifies the labels to appear in the legend for each plot."
 
-    help_different_volumes = "In the case of calculations performed at different volumes, rescale the horizontal axes to the first calculation in the list"
+    help_different_volumes = "If present, in the case of calculations performed at different volumes, rescales the horizontal axes to the first calculation in the list."
 
     # ---------------------------------------------------------------------------
 
@@ -690,8 +690,14 @@ def main(input_options):
             sc = spin_color[number_of_plots - 1 - i]
         leg_spin = ["$\uparrow$", "$\downarrow$"]
         for j in range(len(band[i])):
-            xkvec = kvec[0][j]
-            if (not different_volumes): xkvec = kvec[i][j]
+            xkvec = kvec[i][j]
+            if (different_volumes):
+                xkvec = kvec[0][0]
+                xkone = kvec[i][0]
+                if (len(xkvec) != len(xkone)):
+                    km0 = max(xkvec)
+                    kmi = max(xkone)
+                    xkvec = kvec[i][0] * km0 / kmi
             llab = set_legend_label(leg_label[i], npspin, leg_spin, local_single, 0, j)
             ax1.plot(xkvec, band[i][j], color=lc, lw=line_thickness, label=llab)
             if (npspin):
