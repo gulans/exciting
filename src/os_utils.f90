@@ -43,7 +43,7 @@ contains
     !> system specific error code, 0 on success
     integer :: ierr
 
-#ifdef IFORT
+#ifdef __INTEL_COMPILER
     integer, external :: system
     ierr = system(trim(cmd))
 #else
@@ -98,7 +98,7 @@ contains
     integer :: ierr_local
     character(:), allocatable :: dir
 
-#ifdef IFORT
+#ifdef __INTEL_COMPILER
     dir = trim(path)
     if( dir(len(dir):len(dir)) == '/' ) then
       inquire(directory=trim(path), exist=exists, iostat=ierr_local)
