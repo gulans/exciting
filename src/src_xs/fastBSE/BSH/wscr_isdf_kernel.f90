@@ -9,7 +9,7 @@ module wscr_isdf_kernel
   use grid_utils, only: n_grid_diff, flattened_map
   use xlapack, only: matrix_multiply
   use lapack_f95_interfaces, only: zgemm, zhemm
-  use fftw_wrapper, only: fft_type, FFTW_FORWARD, FFTW_BACKWARD
+  use xfftw, only: fft_type, FFTW_FORWARD, FFTW_BACKWARD
   use multi_index_conversion, only: indices_to_composite_index, composite_index_to_indices
 
   use regular_grid, only: regular_grid_type

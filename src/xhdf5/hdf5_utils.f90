@@ -75,22 +75,27 @@ module hdf5_utils
 
   !> Abort run if exciting was compiled exciting without HDF5.
   !> Call this routine in features that require HDF5 in the beginning.
-  subroutine abort_if_not_hdf5(message)
-    !> Message to
+  subroutine abort_if_not_hdf5(mpi_env, message)
+    use modmpi, only: mpiinfo, terminate_mpi_env, mpiglobal
+    !> MPI environment to terminate.
+    type(mpiinfo), intent(inout), optional :: mpi_env
+    !> Message to print to the terminal
     character(*), intent(in), optional :: message
 
-    character(*), parameter :: default_message = &
-            'Error: exciting needs to be linked to HDF5 to run the current routine.'
+    character(:), allocatable :: message_local
+    type(mpiinfo) :: mpi_env_local
 
-#ifndef _HDF5_
-    if (present(message)) then
-      print*, message
-    else
-      print*, default_message
-    end if 
-    call trace_back()
-    call terminate()
-#endif 
+    character(*), parameter :: default_message = "Error: exciting needs to be linked to HDF5 to run this routine."
+    
+    message_local = default_message
+    if(present(message)) message_local = message
+
+    mpi_env_local = mpiglobal
+    if(present(mpi_env)) mpi_env_local = mpi_env
+
+#ifndef _HDF5_ 
+    call terminate_mpi_env(mpi_env_local, message=message)
+#endif  
   end subroutine abort_if_not_hdf5
 
   

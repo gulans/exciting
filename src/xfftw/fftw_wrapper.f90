@@ -1,10 +1,10 @@
 !> FFTW wrappers for calculating fast fourier transforms (FFT).
 !> For more information refer to the documentation of FFTW http://www.fftw.org/.
-module fftw_wrapper
+module xfftw
   use constants, only: zzero, zone, uninit_c_int
   use precision, only: dp 
   use asserts, only: assert
-  use modmpi, only: terminate
+  use modmpi, only: 
   use grid_utils, only: mesh_1d
   use, intrinsic :: ISO_C_binding
 
@@ -18,7 +18,7 @@ module fftw_wrapper
 
 
   private
-  public :: fft_type, FFTW_FORWARD, FFTW_BACKWARD
+  public :: fft_type, FFTW_FORWARD, FFTW_BACKWARD, abort_if_not_fftw3
   
   !> Effort to search for optimal FFT plans. When the FFTW interface to MKL DFTI 
   !> is used, this has no effect.
@@ -53,14 +53,27 @@ module fftw_wrapper
 
   contains
 
-  !> Abort exciting if fftw_wrapper is used but exciting was compiled with out FFTW.
-  subroutine abort_if_no_fftw()
+  !> Abort exciting if xfftw is used but exciting is not linked FFTW. Call this routine before starting workflows that need fftw.
+  subroutine abort_if_not_fftw3(mpi_env, message)
+    use modmpi, only: mpiinfo, terminate_mpi_env, mpiglobal
+    !> MPI environment to terminate.
+    type(mpiinfo), intent(inout), optional :: mpi_env
+    !> Message to print to the terminal
+    character(*), intent(in), optional :: message
 
-    character(*), parameter :: message = "Error: Exciting must be compiled with an interface to FFTW3 to run this routine."
+    character(:), allocatable :: message_local
+    type(mpiinfo) :: mpi_env_local
+
+    character(*), parameter :: default_message = "Error: Exciting must be linked to FFTW3 to run this routine."
+    
+    message_local = default_message
+    if(present(message)) message_local = message
+
+    mpi_env_local = mpiglobal
+    if(present(mpi_env)) mpi_env_local = mpi_env
 
 #ifndef FFTW3_INTERFACE 
-    print*, message
-    call terminate()
+    call terminate_mpi_env(mpi_env_local, message=message)
 #endif 
   end subroutine
 
@@ -77,8 +90,6 @@ module fftw_wrapper
     
     integer(c_int), parameter :: effort = default_effort 
     complex(dp), allocatable :: in_out(:)
-
-    call abort_if_no_fftw()
 
     this%dims = dims
     this%rank = size(dims)
@@ -116,8 +127,6 @@ module fftw_wrapper
     complex(dp), intent(inout) :: in_out(:)
 
     integer(c_int), parameter :: effort = default_effort 
-
-    call abort_if_no_fftw()
 
     call assert(size(in_out) == product(dims), 'size(in_out) /= product(dims).')
 
@@ -187,4 +196,4 @@ module fftw_wrapper
     this%effort = uninit_c_int  
   end subroutine delete
 
-end module fftw_wrapper
+end module xfftw

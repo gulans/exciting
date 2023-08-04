@@ -21,7 +21,7 @@ module xs_task_launcher
   use xs_plan_manager, only: xs_plan_bse, &
                               xs_plan_tddft, &
                               xs_plan_fastBSE
-  use xhdf5, only: abort_if_not_hdf5
+  use fastBSE, only: fastBSE_sanity_checks
 
   implicit none
 
@@ -61,15 +61,17 @@ module xs_task_launcher
     else if (trim(input%xs%xstype) == "TDDFT") then
       call xs_plan_tddft(nxstasks)
 
-    ! BSE calculation
+    
     else if(trim(input%xs%xstype) == "BSE") then
-      call xs_plan_bse(nxstasks)
+      ! BSE calculation
+      if(trim(input%xs%BSE%solver) == "direct") then
+        call xs_plan_bse(nxstasks)
 
-    ! fastBSE calculation
-    else if(trim(input%xs%xstype) == "fastBSE") then
-      call abort_if_not_hdf5("Error: exciting needs to be compiled with HDF5 to run fastBSE module.")
-      call xs_plan_fastBSE(nxstasks)
-
+      ! fastBSE calculation
+      else if(trim(input%xs%BSE%solver) == "fastBSE") then
+        call fastBSE_sanity_checks(mpiglobal, input)
+        call xs_plan_fastBSE(nxstasks)
+      end if
     else
       ! Stop the code: xstype not recognized
       message = 'error xstasklauncher: ' // trim(input%xs%xstype) // ' is not a valid xstype.'

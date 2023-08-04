@@ -6,13 +6,14 @@ module fastBSE_transitions
   use modmpi, only: mpiinfo
   use modinput, only: input_type
   use asserts, only: assert
-  use xhdf5, only: xhdf5_type
+  use xhdf5, only: xhdf5_type, abort_if_not_hdf5
   use xs_hdf5, only: h5ds_wfplot
   use os_utils, only: join_paths
   use xgrid, only: regular_grid_type, setup_unitcell_grid
   use xlapack, only: xgeqp3, qr_column_pivot
   use bse_utils, only: bse_type_to_bool
   use seed_generation, only: set_seed
+  use xfftw, only: abort_if_not_fftw3
 
   private
   public :: fastBSE_setup_transitions
@@ -55,6 +56,9 @@ module fastBSE_transitions
     complex(dp), allocatable :: dmat(:, :)
 
     type(xhdf5_type) :: h5
+
+    call abort_if_not_fftw3(mpi_env, "Error(fastBSE_write_u): exciting needs to be linked to FFTW3 for running fastBSE.")
+    call abort_if_not_hdf5(mpi_env, "Error(fastBSE_write_u): exciting needs to be compiled with HDF5 to run fastBSE module.")
 
     ! Save mpiglobal and set it to mpi_env
     mpiglobal_save = mpiglobal

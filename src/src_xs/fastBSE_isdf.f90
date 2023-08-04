@@ -1,5 +1,5 @@
 module fastBSE_isdf
-  use precision, only: dp 
+  use precision, only: dp, i32
   use math_utils, only: random_order
   use grid_utils, only: mesh_1d, first_element, last_element
   use qrcp_utils, only: qrcp, setup_subsampling_matrix_samek, setup_subsampling_matrix_kkp
@@ -8,14 +8,14 @@ module fastBSE_isdf
   use modmpi, only: mpiinfo
   use modinput, only: input_type
   use asserts, only: assert
-  use xhdf5, only: xhdf5_type
+  use xhdf5, only: xhdf5_type, abort_if_not_hdf5
   use xs_hdf5, only: h5ds_wfplot
   use os_utils, only: join_paths
-  use  xgrid, only: regular_grid_type, setup_unitcell_grid
+  use xgrid, only: regular_grid_type, setup_unitcell_grid
   use xlapack, only: xgeqp3, qr_column_pivot
   use bse_utils, only: bse_type_to_bool
   use seed_generation, only: set_seed
-
+  use xfftw, only: abort_if_not_fftw3
   use fastBSE_write_wfplot, only: h5group_wfplot, h5ds_u, h5ds_r_sampling, h5ds_k_list, h5ds_band_list
   use fastBSE_transitions, only: h5group_transitions, h5ds_uo_limits, h5ds_band_idx
 
@@ -37,63 +37,7 @@ module fastBSE_isdf
 
   contains 
 
-  subroutine load_u(mpi_env, input, h5file, h5group, u_u, u_o)
-    
-    type(mpiinfo), intent(inout) :: mpi_env
-    type(input_type), intent(in) :: input
-    character(*), intent(in) :: h5file, h5group
 
-    complex(dp), allocatable, intent(out) :: u_u(:, :), u_o(:, :)
-    
-    integer, allocatable :: index_map_u(:, :), index_map_o(:, :)
-
-    integer :: r_sampling(3), n_r, n_k, n_bands, ik, first, last, first_band, last_band
-    integer, allocatable :: k_list(:), uo_limits(:, :), n_u(:), n_o(:), shape_u(:)
-    complex(dp), allocatable :: u_chunk(:, :, :)
-
-    type(xhdf5_type) :: h5
-    character(:), allocatable :: group
-
-    call h5%initialize(h5file, mpi_env%comm)
-    group = join_paths(h5group, h5group_wfplot)
-    
-    call h5%dataset_shape(group, h5ds_u, shape_u, .true.)
-    n_r     = shape_u(1)
-    n_k     = shape_u(3)
-    
-    group = join_paths(h5group, h5group_transitions)
-    allocate(uo_limits(4, n_k))
-    call h5%read(group, h5ds_uo_limits, uo_limits, [1, 1])
-    
-    n_u = uo_limits(2, :) - uo_limits(1, :) + 1
-    n_o = uo_limits(4, :) - uo_limits(3, :) + 1
-    
-    first_band = uo_limits(3, 1) ! I assume that the lowest occupied and hightes unoccupied band index is constant with ik
-    last_band = uo_limits(2, 1)
-    n_bands = last_band - first_band + 1
-
-    group = join_paths(h5group, h5group_wfplot)
-
-    if (allocated(u_u)) deallocate(u_u); allocate(u_u(n_r, sum(n_u)))
-    if (allocated(u_o)) deallocate(u_o); allocate(u_o(n_r, sum(n_o)))
-
-    allocate(u_chunk(n_r, n_bands, 1))
-    do ik=1, n_k
-      call h5%read(group, h5ds_u, u_chunk, [1, 1, ik])
-      
-      first = first_element(n_u, ik)
-      last = last_element(n_u, ik)
-      u_u(:, first : last) = u_chunk(:, uo_limits(1, ik) : uo_limits(2, ik), 1)
-
-      first = first_element(n_o, ik)
-      last = last_element(n_o, ik)
-      u_o(:, first : last) = u_chunk(:, uo_limits(3, ik): uo_limits(4, ik), 1)
-    end do
-
-    deallocate(u_chunk, uo_limits, n_u, n_o, shape_u)
-    
-
-  end subroutine load_u
 
 
 
@@ -112,8 +56,8 @@ module fastBSE_isdf
     character(:), allocatable :: seed, bse_type
     logical :: calculate_vexc, calculate_wscr, has_converged
 
-    integer :: n_r, n_o, n_u, n_k, n_isdf, r_sampling(3), n_combinations, n_isdf_triple(3), i_function
-    integer :: max_cvt_steps, steps
+    integer :: n_r, n_ok, n_uk, n_k, n_isdf, r_sampling(3), n_combinations, nisdf(3), i_function
+    integer :: cvtsteplim, steps
     real(dp) :: lattice(3, 3), r_offset(3), epslat, time_start, time_end, time_cvt, time_isdf, tolerance, deviation
 
     
@@ -132,14 +76,17 @@ module fastBSE_isdf
     lattice       = input%structure%crystal%basevect
     epslat        = input%structure%epslat
     r_offset      = spread(0._dp, 1, 3)
-    r_sampling    = input%xs%fastBSE%r_sampling
+    r_sampling    = input%xs%fastBSE%rsampling
     r_grid        = setup_unitcell_grid(r_sampling, r_offset, lattice, epslat)
     n_r           = r_grid%number_of_points()
     n_k           = product(input%xs%ngridk)
-    max_cvt_steps = input%xs%fastBSE%max_cvt_steps
-    tolerance     = input%xs%fastBSE%cvt_tolerance
-    n_isdf_triple = input%xs%fastBSE%n_isdf_triple
+    cvtsteplim = input%xs%fastBSE%cvtsteplim
+    tolerance     = input%xs%fastBSE%cvttol
+    nisdf = input%xs%fastBSE%nisdf
     bse_type      = input%xs%BSE%bsetype
+
+    call abort_if_not_fftw3(mpi_env, "Error(fastBSE_write_u): exciting needs to be linked to FFTW3 for running fastBSE.")
+    call abort_if_not_hdf5(mpi_env, "Error(fastBSE_write_u): exciting needs to be compiled with HDF5 to run fastBSE module.")
     
     call bse_type_to_bool(bse_type, calculate_vexc, calculate_wscr)
 
@@ -149,8 +96,8 @@ module fastBSE_isdf
 
     call load_u(mpi_env, input, h5file, h5group, u_u, u_o)
 
-    n_u = size(u_u, 2)
-    n_o = size(u_o, 2)
+    n_uk = size(u_u, 2)
+    n_ok = size(u_o, 2)
     
     rho = sqrt(sum(abs(u_o) ** 2, dim=2) + sum(abs(u_u) ** 2, dim=2))
     points = r_grid%coordinate_array()
@@ -161,8 +108,8 @@ module fastBSE_isdf
       
       ! Calculate interpolation points via CVT
       call timesec(time_start)
-      n_isdf = min(n_isdf_triple(1), n_o * n_u * n_k)
-      steps = max_cvt_steps
+      n_isdf = min(nisdf(1), n_ok * n_uk / n_k)
+      steps = cvtsteplim
       indices = random_order(n_r, n_out=n_isdf)
       call cvt(points, rho, tolerance, steps, indices, has_converged, deviation)
       call timesec(time_end)
@@ -199,8 +146,8 @@ module fastBSE_isdf
 
       ! Calculate interpolation points via CVT
       call timesec(time_start)
-      n_isdf = min(n_isdf_triple(2), (n_k * n_o)**2)
-      steps = max_cvt_steps
+      n_isdf = min(nisdf(2), n_ok**2)
+      steps = cvtsteplim
       indices = random_order(n_r, n_isdf)
       call cvt(points, rho, tolerance, steps, indices, has_converged, deviation)
       call timesec(time_end)
@@ -231,8 +178,8 @@ module fastBSE_isdf
 
       ! Calculate interpolation points via CVT
       call timesec(time_start)
-      n_isdf = min(n_isdf_triple(3), (n_k * n_u)**2)
-      steps = max_cvt_steps
+      n_isdf = min(nisdf(3), n_uk**2)
+      steps = cvtsteplim
       indices = random_order(n_r, n_isdf)
       call cvt(points, rho, tolerance, steps, indices, has_converged, deviation)
       call timesec(time_end)
@@ -312,7 +259,7 @@ module fastBSE_isdf
   !  character(:), allocatable :: seed, bse_type
   !  logical :: calculate_vexc, calculate_wscr
 !
-  !  integer :: n_r, n_o, n_u, n_k, n_isdf, n_sub, n_sub_input, r_sampling(3), n_combinations, n_isdf_triple(3)
+  !  integer :: n_r, n_o, n_u, n_k, n_isdf, n_sub, n_sub_input, r_sampling(3), n_combinations, nisdf(3)
   !  integer :: i 
   !  real(dp) :: lattice(3, 3), r_offset(3), epslat, qrcp_eps, tol_qrcp, c_vexc_qrcp, c_wscr_qrcp, time_start, time_end, time_qrcp, time_isdf, r_diag_limit
 !
@@ -332,7 +279,7 @@ module fastBSE_isdf
   !  lattice       = input%structure%crystal%basevect
   !  epslat        = input%structure%epslat
   !  r_offset      = spread(0._dp, 1, 3)
-  !  r_sampling    = input%xs%fastBSE%r_sampling
+  !  r_sampling    = input%xs%fastBSE%rsampling
   !  r_grid        = setup_unitcell_grid(r_sampling, r_offset, lattice, epslat)
   !  n_r           = r_grid%number_of_points()  
   !  n_o           = input%xs%BSE%nstlbse(2) - input%xs%BSE%nstlbse(1) + 1
@@ -342,7 +289,7 @@ module fastBSE_isdf
   !  c_vexc_qrcp   = input%xs%fastBSE%c_vexc_qrcp
   !  c_wscr_qrcp   = input%xs%fastBSE%c_wscr_qrcp
   !  n_sub_input   = input%xs%fastBSE%n_subsampling_rows
-  !  n_isdf_triple = input%xs%fastBSE%n_isdf_triple
+  !  nisdf = input%xs%fastBSE%nisdf
   !  bse_type      = input%xs%BSE%bsetype
   !  call bse_type_to_bool(bse_type, calculate_vexc, calculate_wscr)
 !
@@ -363,7 +310,7 @@ module fastBSE_isdf
   !    ! Setup subsampling matrix M
   !    n_combinations = n_k * n_o * n_u
   !    n_sub = min(floor(c_vexc_qrcp * sqrt(1._dp * n_o * n_u * n_k)), n_combinations)
-  !    n_isdf = min(n_isdf_triple(1), n_o * n_u)
+  !    n_isdf = min(nisdf(1), n_o * n_u)
   !    r_diag_limit = 0._dp
 !
   !    call setup_subsampling_matrix_samek(mpi_env, n_sub, u_o, u_u, M)
@@ -428,7 +375,7 @@ module fastBSE_isdf
   !    ! Setup subsampling matrix M
   !    n_combinations = n_k * n_o
   !    n_sub = min(floor(c_wscr_qrcp * sqrt(1._dp * n_combinations)), n_combinations)
-  !    n_isdf = min(n_isdf_triple(2), n_combinations**2)
+  !    n_isdf = min(nisdf(2), n_combinations**2)
   !    r_diag_limit = 0._dp
   !    
   !    call setup_subsampling_matrix_kkp(mpi_env, n_sub, u_o, M)
@@ -484,7 +431,7 @@ module fastBSE_isdf
   !    ! Setup subsampling matrix M
   !    n_combinations = n_k * n_u
   !    n_sub = min(floor(c_wscr_qrcp * sqrt(1._dp * n_combinations)), n_combinations)
-  !    n_isdf = min(n_isdf_triple(3), n_combinations**2)
+  !    n_isdf = min(nisdf(3), n_combinations**2)
   !    r_diag_limit = 0._dp
 !
   !    call setup_subsampling_matrix_kkp(mpi_env, n_sub, u_u, M)
@@ -570,6 +517,68 @@ module fastBSE_isdf
 !  end subroutine write_info
 !
 !end subroutine fastBSE_isdf_qrcp
+
+  !> Load the periodic part of the wavefunction \(u\) from the hdf5 file.
+  subroutine load_u(mpi_env, input, h5file, h5group, u_u, u_o)
+    !> MPI environment
+    type(mpiinfo), intent(inout) :: mpi_env
+    !> Input file container
+    type(input_type), intent(in) :: input
+    !> Name of the HDF5 file to read \(u\) from
+    character(*), intent(in) :: h5file
+    !> Name of the group in the HDF5 file to read \(u\) from
+    character(*), intent(in) :: h5group
+
+    complex(dp), allocatable, intent(out) :: u_u(:, :), u_o(:, :)
+    
+    integer, allocatable :: index_map_u(:, :), index_map_o(:, :)
+
+    integer :: r_sampling(3), n_r, n_k, n_bands, ik, first, last, first_band, last_band
+    integer, allocatable :: k_list(:), uo_limits(:, :), n_u(:), n_o(:), shape_u(:)
+    complex(dp), allocatable :: u_chunk(:, :, :)
+
+    type(xhdf5_type) :: h5
+    character(:), allocatable :: group
+
+    call h5%initialize(h5file, mpi_env%comm)
+    group = join_paths(h5group, h5group_wfplot)
+    
+    call h5%dataset_shape(group, h5ds_u, shape_u, .true.)
+    n_r     = shape_u(1)
+    n_k     = shape_u(3)
+    
+    group = join_paths(h5group, h5group_transitions)
+    allocate(uo_limits(4, n_k))
+    call h5%read(group, h5ds_uo_limits, uo_limits, [1, 1])
+    
+    n_u = uo_limits(2, :) - uo_limits(1, :) + 1
+    n_o = uo_limits(4, :) - uo_limits(3, :) + 1
+    
+    first_band = uo_limits(3, 1) ! I assume that the lowest occupied and hightes unoccupied band index is constant with ik
+    last_band = uo_limits(2, 1)
+    n_bands = last_band - first_band + 1
+
+    group = join_paths(h5group, h5group_wfplot)
+
+    if (allocated(u_u)) deallocate(u_u); allocate(u_u(n_r, sum(n_u)))
+    if (allocated(u_o)) deallocate(u_o); allocate(u_o(n_r, sum(n_o)))
+
+    allocate(u_chunk(n_r, n_bands, 1))
+    do ik=1, n_k
+      call h5%read(group, h5ds_u, u_chunk, [1, 1, ik])
+      
+      first = first_element(n_u, ik)
+      last = last_element(n_u, ik)
+      u_u(:, first : last) = u_chunk(:, uo_limits(1, ik) : uo_limits(2, ik), 1)
+
+      first = first_element(n_o, ik)
+      last = last_element(n_o, ik)
+      u_o(:, first : last) = u_chunk(:, uo_limits(3, ik): uo_limits(4, ik), 1)
+    end do
+
+    deallocate(u_chunk, uo_limits, n_u, n_o, shape_u)
+    
+  end subroutine load_u
   
 
   

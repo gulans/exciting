@@ -6,7 +6,8 @@ module fastBSE_write_wfplot
   use modmpi, only: mpiinfo, distribute_loop
   use grid_utils, only: mesh_1d, concatenate
   use bravais_lattice, only: simple_cubic
-  use xhdf5, only: xhdf5_type
+  use xhdf5, only: xhdf5_type, abort_if_not_hdf5
+  use xfftw, only: abort_if_not_fftw3
   use os_utils, only: join_paths
 
   implicit none
@@ -34,7 +35,7 @@ module fastBSE_write_wfplot
     !> Input file container.
     type(input_type), intent(in) :: input
     !> MPI environment.
-    type(mpiinfo), intent(in) :: mpi_env
+    type(mpiinfo), intent(inout) :: mpi_env
 
     type(rgrid) :: r_grid
     integer, allocatable :: band_list(:), k_list(:)
@@ -48,6 +49,9 @@ module fastBSE_write_wfplot
 
     type(xhdf5_type) :: h5
     character(:), allocatable :: group
+
+    call abort_if_not_fftw3(mpi_env, "Error(fastBSE_write_u): exciting needs to be linked to FFTW3 for running fastBSE.")
+    call abort_if_not_hdf5(mpi_env, "Error(fastBSE_write_u): exciting needs to be compiled with HDF5 to run fastBSE module.")
 
     call setup_wfplot_gloabls(xs_calculation=.true.)
     call readfermi
@@ -63,7 +67,7 @@ module fastBSE_write_wfplot
     band_list = mesh_1d(first_band, last_band)
     n_bands = size(band_list)
 
-    r_sampling = input%xs%fastBSE%r_sampling
+    r_sampling = input%xs%fastBSE%rsampling
     box(1, :) = [0._dp, 0._dp, 0._dp]
     box(2:, :) = simple_cubic(1._dp)
     

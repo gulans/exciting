@@ -1682,7 +1682,7 @@
               </xs:simpleType>
             </xs:attribute>
 
-            <xs:attribute ex:importance="experimental" ex:unit="" name="r_sampling" use="optional" type="integertriple" default="5 5 5">
+            <xs:attribute ex:importance="expert" ex:unit="" name="rsampling" use="optional" type="integertriple" default="5 5 5">
               <xs:annotation>
                 <xs:documentation>
                   Sampling of the real space grid for calculating the wavefunctions on.
@@ -1690,7 +1690,7 @@
               </xs:annotation>
             </xs:attribute>
 
-            <xs:attribute ex:importance="experimental" ex:unit="" name="max_cvt_steps" use="optional" type="xs:integer" default="100">
+            <xs:attribute ex:importance="expert" ex:unit="" name="cvtsteplim" use="optional" type="xs:integer" default="100">
               <xs:annotation>
                 <xs:documentation>
                   Number sub matrix size
@@ -1698,7 +1698,7 @@
               </xs:annotation>
             </xs:attribute>                
 
-            <xs:attribute ex:importance="experimental" ex:unit="" name="cvt_tolerance" use="optional" type="fortrandouble" default="1e-8">
+            <xs:attribute ex:importance="expert" ex:unit="" name="cvttol" use="optional" type="fortrandouble" default="1e-2">
               <xs:annotation>
                 <xs:documentation>
                   Tolerance for deciding if the cluster centroids are element wise the same as in the previous CVT step.
@@ -1706,7 +1706,7 @@
               </xs:annotation>
             </xs:attribute>
 
-            <xs:attribute ex:importance="experimental" ex:unit="" name="n_lanczos" use="optional" type="xs:integer" default="50">
+            <xs:attribute ex:importance="expert" ex:unit="" name="lanczosmaxits" use="optional" type="xs:integer" default="50">
               <xs:annotation>
                 <xs:documentation>
                   Number Lanczos iterations
@@ -1714,15 +1714,7 @@
               </xs:annotation>
             </xs:attribute>
 
-            <xs:attribute ex:importance="experimental" ex:unit="" name="n_subsampling_rows" use="optional" type="xs:integer" default="30">
-              <xs:annotation>
-                <xs:documentation>
-                  Number sub sampling rows for QRCP.
-                </xs:documentation>
-              </xs:annotation>
-            </xs:attribute>
-
-            <xs:attribute ex:importance="experimental" ex:unit="" name="n_isdf_triple" use="optional" type="integertriple" default="10 10 10">
+            <xs:attribute ex:importance="expert" ex:unit="" name="nisdf" use="optional" type="integertriple" default="10 10 10">
               <xs:annotation>
                 <xs:documentation>
                   Number ISDF interpolation points for the wavefunction pair product. The first value is used for the exchange interaction kernel,

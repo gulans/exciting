@@ -9,9 +9,10 @@ module fastBSE
   use distributions, only: lorentzian
   use grid_utils, only: n_grid_diff, partial_grid, mesh_1d, linspace
   use xlapack, only: norm, diagonalize_symtridiag, matrix_multiply
-  use os_utils, only: join_paths
+  use os_utils, only: join_paths, make_directory
+  use m_getunit, only: getunit
 
-  use fftw_wrapper, only: fft_type, FFTW_FORWARD
+  use xfftw, only: fft_type, FFTW_FORWARD, abort_if_not_fftw3
   use unit_cell_utils, only: reciprocal_lattice, volume_parallelepiped
   use dynamic_indices, only: dynindex_type
   use  xgrid, only: regular_grid_type, setup_unitcell_grid, setup_fft_grid
@@ -33,18 +34,22 @@ module fastBSE
   
 
   implicit none 
+
+  private
+  public :: fastBSE_main, fastBSE_sanity_checks
+
   
   ! Formated file names
 
   !> Brand name
-  character(*), parameter :: brand_name = "fastBSE"
+  character(*), parameter :: brand_name = 'fastBSE'
 
   !> Name of the filet where the \(\mathbf{G}\)-vectors are read from.
-  character(*), parameter :: g_grid_file = "GQPOINTS_QMT001.OUT"
+  character(*), parameter :: g_grid_file = 'GQPOINTS_QMT001.OUT'
   !> File with Kohn-Sham eigen energies.
-  character(*), parameter :: ip_energy_file = "EIGVAL_QMT001.OUT"
+  character(*), parameter :: ip_energy_file = 'EIGVAL_QMT001.OUT'
   !> File with GW eigen energies.
-  character(*), parameter :: qp_energy_file = "EVALQP.OUT"
+  character(*), parameter :: qp_energy_file = 'EVALQP.OUT'
 
 
   ! Paths in the HDF5 file to the input datasets
@@ -67,7 +72,7 @@ module fastBSE
   !> Name of the dataset containing \(\omega\).
   character(*), parameter :: omega_dataset = 'omega'
   !> Name of the dataset containing \(\Im(\epsilon)\).
-  character(*), parameter :: imaginary_epsilon_dataset = 'eps_im'
+  character(*), parameter :: eps_im_dataset = 'eps_im'
   !> Name of the dataset containing the exciton energies.
   character(*), parameter :: exciton_energies_dataset = 'exciton_eval'
   !> Name of the dataset containing the exciton eigenvectors.
@@ -139,7 +144,7 @@ module fastBSE
     integer :: r_sampling(3)
     real(dp) :: lattice(3, 3), r_offset(3), epslat, omega
 
-    call abort_if_not_hdf5('exciting must be compiled with HDF5 to use the feature fastBSE.')
+    
 
     call bse_type_to_bool(input%xs%BSE%bsetype, calculate_vexc, calculate_wscr)
 
@@ -147,7 +152,7 @@ module fastBSE
     omega      = volume_parallelepiped(lattice)
     epslat     = input%structure%epslat
     r_offset   = spread(0._dp, 1, 3)
-    r_sampling = input%xs%fastBSE%r_sampling
+    r_sampling = input%xs%fastBSE%rsampling
     r_grid     = setup_unitcell_grid(r_sampling, r_offset, lattice, epslat)
     g_grid     = setup_fft_grid(r_grid)
     
@@ -180,22 +185,28 @@ module fastBSE
 !================================================================================================================================
 
 
+  !> Setup the transitions to be considered for fastBSE.
   subroutine setup_transitions(mpi_env, input, info_unit, h5file, h5group, transition_energies, matrix_elements, transitions)
     use fastBSE_transitions, only: h5group_transitions, h5ds_energies, h5ds_dmat, h5ds_band_idx, h5ds_mask
-    
+    !> MPI environment.      
     type(mpiinfo), intent(inout) :: mpi_env
-    type(input_type), intent(in) :: input
+    !> Input file container.
+    type(input_type), intent(in) :: input 
+    !> Unit of info file.
     integer, intent(in) :: info_unit
-    character(*), intent(in) :: h5file, h5group
+    !> Name of the HDF5 file to read transitions from.
+    character(*), intent(in) :: h5file
+    !> Name of the HDF5 group to read transitions from.
+    character(*), intent(in) :: h5group
     !> Transition energies of the electrons, either from DFT or GW.
     real(dp), intent(out), allocatable :: transition_energies(:)
     !> Renormalization of the matrix elements. 
     complex(dp), intent(out), allocatable :: matrix_elements(:, :)
-    !>
+    !> Transition container.
     type(transition_type), intent(out) :: transitions
 
     integer, parameter :: iqmt = 1
-    character(*), parameter :: thisname = "setup_fastBSE_diagonal_exciting"
+    character(*), parameter :: thisname = 'setup_fastBSE_diagonal_exciting'
 
     integer, allocatable :: dims(:), band_idx(:, :), transition_mask_int(:)
     
@@ -243,12 +254,21 @@ module fastBSE
     use fastBSE_isdf, only: h5group_isdf_vexc, h5ds_zeta, h5ds_wfplot_isdf_o, h5ds_wfplot_isdf_u
     use fastBSE_transitions, only: h5group_transitions
 
+    !> MPI environment.      
     type(mpiinfo), intent(inout) :: mpi_env
+    !> Unit of info file.
     integer, intent(in) :: info_unit
-    character(*), intent(in) :: h5file, h5group
+    !> Name of the HDF5 file to read ISDF from.
+    character(*), intent(in) :: h5file
+    !> Name of the HDF5 group to read ISDF from.
+    character(*), intent(in) :: h5group
+    !> \(\mathbf{G}-grid\) corresponding to the real space grid the wave functions are defined on.
     type(regular_grid_type), intent(in) :: g_grid
+    !> Volume of the unit cell
     real(dp), intent(in) :: omega
+    !> Transitions container.
     type(transition_type), intent(in) :: transitions
+    !> Container for compressed exchange interaction kernel.
     type(vexc_isdf_kernel_type), intent(out) :: vexc
     
 
@@ -316,18 +336,27 @@ module fastBSE
 
   !> Setup decomposed screened interaction kernel for fastBSE.
   subroutine setup_screened_kernel(mpi_env, input, info_unit, h5file, h5group, g_grid, omega, transitions, wscr)
-
-    ! Globals
+    ! h5 string names for isdf 
     use fastBSE_isdf, only: h5group_isdf_wscr_o, h5group_isdf_wscr_u, h5ds_zeta, &
                               h5ds_wfplot_isdf_o, h5ds_wfplot_isdf_u
 
+    !> MPI environment.      
     type(mpiinfo), intent(inout) :: mpi_env
-    type(input_type), intent(in) :: input
+    !> Input file container.
+    type(input_type), intent(in) :: input 
+    !> Unit of info file.
     integer, intent(in) :: info_unit
-    character(*), intent(in) :: h5file, h5group
+    !> Name of the HDF5 file to read ISDF from.
+    character(*), intent(in) :: h5file
+    !> Name of the HDF5 group to read ISDF from.
+    character(*), intent(in) :: h5group
+    !> \(\mathbf{G}-grid\) corresponding to the real space grid the wave functions are defined on.
     type(regular_grid_type), intent(in) :: g_grid
-    real(dp), intent(in) :: omega 
-    type(transition_type), intent(in) :: transitions 
+    !> Volume of the unit cell
+    real(dp), intent(in) :: omega
+    !> Transitions container.
+    type(transition_type), intent(in) :: transitions
+    !> Container for compressed screened interaction kernel.
     type(wscr_isdf_kernel_type), intent(out) :: wscr
 
     character(:), allocatable :: group
@@ -433,18 +462,23 @@ module fastBSE
   !>
   !> 3. Calculate the approximation to the exciton eigen energies and vectors.
   subroutine diagonalize(mpi_env, input, info_unit, h5file, h5group, bsh, dipole_matrix_elements)
+    use unit_conversion, only: hartree_to_ev
     !> MPI environment.      
     type(mpiinfo), intent(inout) :: mpi_env
+    !> Input file container.
     type(input_type), intent(in) :: input 
     !> Unit of info file.
     integer, intent(in) :: info_unit
-    character(*), intent(in) :: h5file, h5group
+    !> Name of the HDF5 file to write results to.
+    character(*), intent(in) :: h5file
+    !> Name of the HDF5 group to write results to.
+    character(*), intent(in) :: h5group
     !> fastBSE Bethe-Salpeter Hamiltonian.
     type(bsh_type), intent(inout) :: bsh
     !> Optical absorption vector.
     complex(dp), intent(in) :: dipole_matrix_elements(:, :)
 
-    integer :: n_lanczos
+    integer :: lanczosmaxits
     real(dp) :: scaling, broadening
     complex(dp), allocatable :: exciton_evec(:, :, :)
     real(dp), allocatable ::  omega(:), eps_im(:, :), exciton_eval(:, :), gaussquad_energies(:, :), gaussquad_weights(:, :)
@@ -452,9 +486,9 @@ module fastBSE
     type(xhdf5_type) :: h5
     real(dp) :: t_start, t_end
 
-    character(:), allocatable :: bse_type, result_group
-    integer :: i_dim, iterations, n_k, n_o, n_u, n_transitions, n_omega_points
-    real(dp) :: omega_vol, lattice(3, 3), omega_intervall(2)
+    character(:), allocatable :: bse_type, result_group, text_file
+    integer :: i_dim, iterations, n_k, n_o, n_u, n_transitions, n_omega_points, ierr
+    real(dp) :: omega_vol, lattice(3, 3), omega_intervall(2), escale
     real(dp), allocatable ::  alpha(:), beta(:), eigenvalues(:), eigenvectors(:, :), tridiag_vec(:, :)
     complex(dp), allocatable :: Q_k(:, :)
 
@@ -471,26 +505,29 @@ module fastBSE
     scaling         = 8 * pi**2 / omega_vol / n_k
     omega_intervall = input%xs%energywindow%intv
     n_omega_points  = input%xs%energywindow%points
-    bse_type        = input%xs%BSE%bsetype
-    n_lanczos       = min(input%xs%fastBSE%n_lanczos, n_transitions)
+    bse_type        = trim(adjustl(input%xs%BSE%bsetype))
+    lanczosmaxits       = min(input%xs%fastBSE%lanczosmaxits, n_transitions)
     
     ! Setup omega
     omega = linspace(omega_intervall, n_omega_points)
 
     ! Initialize arrays
-    allocate(eigenvectors(2 * n_lanczos - 1, 2 * n_lanczos - 1))
-    allocate(tridiag_vec(n_lanczos, n_lanczos))
-    allocate(gaussquad_energies(2 * n_lanczos - 1, 3), source = 0._dp)
-    allocate(gaussquad_weights(2 * n_lanczos - 1, 3), source = 0._dp)
+    allocate(eigenvectors(2 * lanczosmaxits - 1, 2 * lanczosmaxits - 1))
+    allocate(tridiag_vec(lanczosmaxits, lanczosmaxits))
+    allocate(gaussquad_energies(2 * lanczosmaxits - 1, 3), source = 0._dp)
+    allocate(gaussquad_weights(2 * lanczosmaxits - 1, 3), source = 0._dp)
     allocate(eps_im(n_omega_points, 3), source = 0._dp)
-    allocate(exciton_eval(n_lanczos, 3), source = 0._dp)
-    allocate(exciton_evec(n_transitions, n_lanczos, 3), source = zzero)
+    allocate(exciton_eval(lanczosmaxits, 3), source = 0._dp)
+    allocate(exciton_evec(n_transitions, lanczosmaxits, 3), source = zzero)
+    
+    escale = 1._dp
+    if(input%xs%tevout) escale = hartree_to_ev
     
 
     do i_dim=1, 3
 
       ! Run Lanczos iteration
-      call lanczos_iteration(n_lanczos, bsh_times_vector, dipole_matrix_elements(:, i_dim), alpha, beta, Q_k)
+      call lanczos_iteration(lanczosmaxits, bsh_times_vector, dipole_matrix_elements(:, i_dim), alpha, beta, Q_k)
       iterations = size(alpha)
 
       ! Calculate eigenvalues and oscillator strengths for the spectrum via gauss quadrature
@@ -523,21 +560,33 @@ module fastBSE
       deallocate(alpha, beta, Q_k)
     end do
 
+    ! Symmetrize quantities
+    if(.not. input%xs%BSE%nosymspec) then
+      call symmetrize_quantity(eps_im)
+      call symmetrize_quantity(gaussquad_energies)
+      call symmetrize_quantity(gaussquad_weights)
+    end if
 
-    result_group = brand_name // "_" // bse_type 
+
+    
+
+    result_group = brand_name // '_' // bse_type 
     call h5%initialize(h5file, mpi_env%comm)
     call h5%initialize_group(h5group, result_group)
     result_group = trim(adjustl(join_paths(h5group, result_group)))
 
     call h5%write(result_group, omega_dataset, omega, [1], shape(omega))
-    call h5%write(result_group, imaginary_epsilon_dataset, eps_im, [1, 1], shape(eps_im))
+    call h5%write(result_group, eps_im_dataset, eps_im, [1, 1], shape(eps_im))
     call h5%write(result_group, exciton_energies_dataset, exciton_eval, [1, 1], shape(exciton_eval))
     call h5%write(result_group, exciton_eigenvectors_dataset, exciton_evec, [1, 1, 1], shape(exciton_evec))
     call h5%write(result_group, gaussquad_energies_dataset, gaussquad_energies, [1, 1], shape(gaussquad_energies))
     call h5%write(result_group, gaussquad_weights_dataset, gaussquad_weights, [1, 1], shape(gaussquad_weights))
     call h5%finalize()
 
-    deallocate(omega, eps_im, exciton_eval, exciton_evec, gaussquad_energies,gaussquad_weights, eigenvalues, eigenvectors, tridiag_vec)
+    text_file = brand_name // '_' // bse_type // '_' // eps_im_dataset // '.out'
+    call write_eps_im_textfile(text_file , omega, eps_im, escale)
+
+    deallocate(omega, eps_im, exciton_eval, exciton_evec, gaussquad_energies, gaussquad_weights, eigenvalues, eigenvectors, tridiag_vec)
 
     call timesec(t_end)
 
@@ -554,68 +603,45 @@ module fastBSE
       call bsh%times_vector(vector_in, vector_out)
     end subroutine
 
+    subroutine write_eps_im_textfile(fname, omega, eps_im, escale)
+      character(*), intent(in) :: fname
+      real(dp), intent(in) :: omega(:), eps_im(:, :)
+      real(dp), intent(in) :: escale
+
+      integer :: n_omega, i_omega, unit 
+
+
+      n_omega = size(omega)
+
+      call getunit(unit)
+
+      open(unit, file=fname, form='formatted', action='write', status='replace')
+
+      write(unit, '(A)') '# fastBSE imaginary macroscopic dielectric function'
+      write(unit, '(A)') '# '
+      write(unit, '(A, f12.6, A)')'# Energy scaling: ', escale, ' Hartree'
+      write(unit, '(A, f12.6, A, f12.6, A)')'# Broadening: ', broadening, ' x ', escale, ' Hartree'
+      write(unit, '(A, A22, 1x, A23, 1x, A23, 1x, A23)') '#',  'omega', 'oc11', 'oc22', 'oc33'
+      write(unit, '(SP, E23.16, 1x, E23.16, 1x, E23.16, 1x, E23.16)') &
+              (omega(i_omega) * escale, eps_im(i_omega, 1), eps_im(i_omega, 2), eps_im(i_omega, 3), i_omega=1, n_omega)
+      
+      close(unit)
+    end subroutine
+
   end subroutine
 
-! TODO(Bene #160):
-! fastBSE should output results in the normal exciting format.
-!  subroutine fastBSE_write_results_to_ancient_format(mpi_env, input, info_unit, h5file, h5group)
-!    !> MPI environment.      
-!    type(mpiinfo), intent(inout) :: mpi_env
-!    type(input_type), intent(in) :: input 
-!    !> Unit of info file.
-!    integer, intent(in) :: info_unit
-!    character(*), intent(in) :: h5file, h5group 
-!    
-!    type(xhdf5_type) :: h5
-!
-!    integer :: n_omega, n_excitons, n_k, n_transitions
-!    real(dp), allocatable ::  omega(:), eps_im(:, :), exciton_eval(:, :),  oscillator_strength(:, :)
-!    integer, allocatable :: dset_shape(:)
-!
-!    call h5%initialize(h5file, mpi_env%comm)
-!
-!    ! Read problem size
-!    call h5%dataset_shape(result_group, omega_dataset, dset_shape)
-!    n_omega = dset_shape(1)
-!    deallocate(dset_shape)
-!
-!    call h5%dataset_shape(result_group, gaussquad_energies_dataset, dset_shape)
-!    n_excitons = dset_shape(1)
-!    deallocate(dset_shape)
-!
-!    call h5%dataset_shape(resc)
-!
-!    n_k = product(input%xs%ngridk)
-!
-!    ! Read data from HDF5 file
-!
-!    allocate(transition_energies(dims(1)))
-!    
-!    call h5%read(group, h5ds_energies, transition_energies, [1])
-!
-!    allocate(omega(n_omega))
-!    call h5%read(result_group, omega_dataset, omega, [1])
-!    
-!    allocate(eps_im(n_omega, 3))
-!    call h5%read(result_group, imaginary_epsilon_dataset, eps_im, [1, 1])
-!
-!    allocate(exciton_eval(n_excitons, 3))
-!    call h5%read(result_group, gaussquad_energies_dataset, exciton_eval, [1, 1])
-!
-!    allocate(oscillator_strength(n_excitons, 3))
-!    call h5%read(result_group, gaussquad_weights_dataset, oscillator_strength, [1, 1])
-!
-!    ! Symmetrize quantities
-!    if(.not. input%xs%BSE%nosymspec) then
-!      call symmetrize_quantity(eps_im)
-!      call symmetrize_quantity(exciton_eval)
-!      call symmetrize_quantity(oscillator_strength)
-!    end if
-!
-!    call writeoscillator(n_excitons, n_excitons, n_k, )
-!
-!
-!
-!  end subroutine
+  subroutine fastBSE_sanity_checks(mpi_env, input)
+    use modmpi, only: terminate_mpi_env
+    type(mpiinfo), intent(inout) :: mpi_env
+    type(input_type), intent(in) :: input 
+
+    call abort_if_not_fftw3(mpi_env, "Error(fastBSE): exciting needs to be linked to FFTW3 for running fastBSE.")
+    call abort_if_not_hdf5(mpi_env, "Error(fastBSE): exciting needs to be compiled with HDF5 to run fastBSE module.")
+
+    if(input%xs%BSE%coupling) then 
+      call terminate_mpi_env(mpi_env, 'Error(fastBSE): fastBSE only supports TDA.')
+    end if 
+
+  end subroutine
 
 end module fastBSE   
