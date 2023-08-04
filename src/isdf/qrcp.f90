@@ -1,7 +1,7 @@
 module qrcp_utils
   use precision, only: dp
   use constants, only: zzero 
-  use fftw_wrapper, only: fft_type, FFTW_FORWARD
+  use xfftw, only: fft_type, FFTW_FORWARD
   use asserts, only: assert
   use multi_index_conversion, only: composite_index_to_indices, indices_to_composite_index
   use xlapack, only: outer_product, qr_column_pivot

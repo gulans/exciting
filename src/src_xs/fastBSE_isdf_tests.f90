@@ -52,7 +52,7 @@ module fastBSE_isdf_tests
     call h5%initialize(h5file, mpi_env%comm)
 
     ! Intialize input data
-    n_r           = product(input%xs%fastBSE%r_sampling)
+    n_r           = product(input%xs%fastBSE%rsampling)
     n_o           = input%xs%BSE%nstlbse(2) - input%xs%BSE%nstlbse(1) + 1
     n_u           = input%xs%BSE%nstlbse(4) - input%xs%BSE%nstlbse(3) + 1
     n_k           = product(input%xs%ngridk)

@@ -337,6 +337,7 @@ contains
         use m_getunit, only: getunit
         use modxs, only: eps0dirname
         use math_utils, only: mod1
+        use modmpi, only: mpiglobal
 
         !> Name of the HDF5 file to write in.
         character(*), intent(in) :: h5file
@@ -395,7 +396,7 @@ contains
         real(dp), allocatable :: G_q_vectors(:, :, :), q_vectors(:, :)
         type(xhdf5_type) :: h5
 
-        call abort_if_not_hdf5()
+        call abort_if_not_hdf5(mpi_env, 'Error(write_screened_coulomb_interaction): exciting is not linked to HDF5. Thus, this task has no effect.')
 
         ! Set name for global variable, needed in gensclieff.f90
         eps0dirname = 'EPS0'

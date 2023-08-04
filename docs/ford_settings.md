@@ -39,7 +39,7 @@ src_dir: ../src/src_gw
          ../src/xgrid/
          ../src/xhdf5/
          ../src/xhdf5/hdf5_wrappers/ 
-	     ../src/svlo
+	       ../src/svlo
          ../src/isdf
          ../src/src_xs/fastBSE/
          ../src/src_xs/fastBSE/BSH/
