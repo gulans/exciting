@@ -14,7 +14,7 @@ Subroutine genlofr
 ! !USES:
       Use modinput
       Use modmain
-Use mod_hybrids, only: ex_coef
+Use mod_potential_and_density, only: ex_coef
       ! !DESCRIPTION:
 !   Generates the local-orbital radial functions. This is done by integrating
 !   the scalar relativistic Schr\"{o}dinger equation (or its energy deriatives)

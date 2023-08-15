@@ -42,8 +42,7 @@ Subroutine energy
 !   The first and second term of Eq.~(\ref{Eeff}) are the Coulomb potential energy, $V_{C}$, and
 !   exchange-correlation potential energy, $V_{\rm xc}$, respectively. ${\bf m}({\bf r})$ is the
 !   magnetization density, and ${\bf B}_{\rm xc}$ and ${\bf B}_{\rm ext}$ are the
-!   exchange-correlation effective magnetic and the external magnetic fields, respectively.
-!
+!   exchange-correlation effective magnetic and the external magnetic fields, respectively
 !   The Coulomb energy consists of the Hartree energy, $E_{\rm H}$, the electron-nuclear energy, $
 !   E_{\rm en}$, and the nuclear-nuclear energy, $E_{\rm nn}$,
 !   %
@@ -301,6 +300,8 @@ write(*,*)""
         ! core electron kinetic energy
         Call energykncr
         engykn = engykncr
+        write(*,*)"energy HF case: kincore ", engykncr
+
         ! kinetic energy from valence states
         Allocate (evecsv(nstsv, nstsv))
         Allocate (c(nstsv, nstsv))
@@ -313,6 +314,7 @@ write(*,*)""
             engykn = engykn + wkpt(ik) * occsv(ist,ik) * dble(zt1)
           End Do
         End Do
+        write(*,*)"energy HF case: sum ", engykn
         Deallocate (evecsv, c)
 
       else if (task == 7) then
@@ -320,7 +322,7 @@ write(*,*)""
         ! HF-based hybrids
         !------------------
         engykn = engykncr ! Importantly, engykncr should be computed first with PBE!
-
+write(*,*)"energy hyb case: kincore ", engykncr
         do ik = 1, nkpt
           do ist = 1, nstfv
             engykn = engykn + wkpt(ik)*occsv(ist,ik)*engyknst(ist,ik)

@@ -33,7 +33,7 @@ Subroutine energykncr
                If (spcore(ist, is)) engykncr = engykncr + spocc (ist, &
               & is) * evalcr (ist, ias)
             End Do
-            write(*,*)"sum of core eig=",engykncr
+            !write(*,*)"sum of core eig=",engykncr
 
 ! core density
             Do ir = 1, nrmt (is)
@@ -42,11 +42,11 @@ Subroutine energykncr
             engykncr = engykncr - rfmtinp (1, 0, nrmt(is), spr(:, is), &
            & lmmaxvr, rfmt, veffmt(:, :, ias))
 
-            engykncr=engykncr - engy_exnl_core
+            engykncr=engykncr - ex_coef*engy_exnl_core
 write(*,*)shape(rfmt)
 write(*,*)shape(veffmt(:, :, ias))
-write(*,*)"engykncr=",engykncr
-write(*,*)"engy_exnl_core=",engy_exnl_core
+!write(*,*)"engykncr=",engykncr
+!rite(*,*)"engy_exnl_core=",engy_exnl_core
 !read(*,*)
    End Do
       End Do
