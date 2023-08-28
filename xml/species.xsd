@@ -193,7 +193,7 @@
      <xs:attribute name="n" type="xs:integer" default="-1">
       <xs:annotation>
 	<xs:documentation>
-	  Specifies the principal quantum number for which the custom definition of local orbitals applies. 
+	  Specifies the principal quantum number for which the custom definition applies. 
     If given, automatically computed trial energies are used. 
       </xs:documentation>
       </xs:annotation>
