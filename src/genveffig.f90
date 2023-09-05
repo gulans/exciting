@@ -28,16 +28,16 @@ Subroutine genveffig
 ! allocatable arrays
       Complex (8), Allocatable :: zfft (:)
       call stopwatch("exciting:genveffig", 1)
-      Allocate (zfft(ngrtot))
+        Allocate (zfft(ngrtot))
 ! multiply effective potential with characteristic function
-      zfft (:) = veffir (:) * cfunir (:)
+        zfft (:) = veffir (:) * cfunir (:)
 ! Fourier transform to G-space
-      Call zfftifc (3, ngrid,-1, zfft)
-      Do ig = 1, ngvec
-         ifg = igfft (ig)
-         veffig (ig) = zfft (ifg)
-      End Do
-      Deallocate (zfft)
+        Call zfftifc (3, ngrid,-1, zfft)
+        Do ig = 1, ngvec
+          ifg = igfft (ig)
+          veffig (ig) = zfft (ifg)
+        End Do
+        Deallocate (zfft)
       call stopwatch("exciting:genveffig", 0)
       Return
 End Subroutine
