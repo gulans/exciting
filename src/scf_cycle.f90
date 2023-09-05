@@ -254,7 +254,7 @@ subroutine scf_cycle(verbosity)
 !-----------------------------------------------
 ! Solve Secular Equation for each k-point
 !-----------------------------------------------
-        call timesec(ta)
+call timesec(ta)
 
         if ( associated(input%groundstate%sirius) .and. sirius_options%use_eigen_states ) then
           call solve_seceqn_sirius()
@@ -263,27 +263,27 @@ subroutine scf_cycle(verbosity)
         else
 ! start k-point loop
 #ifdef MPI
-            call barrier()
+        call barrier()
             If (rank == 0) Call delevec()
-            splittfile = .True.
-            Do ik = firstofset(rank,nkpt), lastofset(rank,nkpt)
+        splittfile = .True.
+        Do ik = firstofset(rank,nkpt), lastofset(rank,nkpt)
 #else
-            splittfile = .False.
-            Do ik = 1, nkpt
+        splittfile = .False.
+        Do ik = 1, nkpt
 #endif
 
 !____________________________________________
 ! every thread should allocate its own arrays
 
-                Allocate (evalfv(nstfv, nspnfv))
-                Allocate (evecfv(nmatmax, nstfv, nspnfv))
-                Allocate (evecsv(nstsv, nstsv))
+            Allocate (evalfv(nstfv, nspnfv))
+            Allocate (evecfv(nmatmax, nstfv, nspnfv))
+            Allocate (evecsv(nstsv, nstsv))
 
-                if (iscl.le.1) then
-                  evecfv=0d0
-                elseif (input%groundstate%solver%type.eq.'Davidson') then
-                  Call getevecfv (vkl(:, ik), vgkl(:, :, :, ik), evecfv)
-                endif
+            if (iscl.le.1) then
+              evecfv=0d0
+            elseif (input%groundstate%solver%type.eq.'Davidson') then
+              Call getevecfv (vkl(:, ik), vgkl(:, :, :, ik), evecfv)
+            endif
 !! TIME - seceqn does not belong to IO
 
                 call timesec(ts1)
@@ -298,27 +298,27 @@ subroutine scf_cycle(verbosity)
 !______________________________________
 ! write the eigenvalues/vectors to file
 
-                Call putevalfv (ik, evalfv)
-                Call putevalsv (ik, evalsv(:, ik))
-                Call putevecfv (ik, evecfv)
-                Call putevecsv (ik, evecsv)
+            Call putevalfv (ik, evalfv)
+            Call putevalsv (ik, evalsv(:, ik))
+            Call putevecfv (ik, evecfv)
+            Call putevecsv (ik, evecsv)
 
 !__________________________
 ! calculate partial charges
-                if (input%groundstate%tpartcharges) call genpchgs(ik,evecfv,evecsv)
-                deallocate (evalfv, evecfv, evecsv)
+            if (input%groundstate%tpartcharges) call genpchgs(ik,evecfv,evecsv)
+            deallocate (evalfv, evecfv, evecsv)
 
-            End Do ! ik
+        End Do ! ik
 
 ! end k-point loop -------------------------------------------------------------
 
 #ifdef MPI
-            call mpi_allgatherv_ifc(nkpt, inplace=.False., rlen=nstsv, rbuf=evalsv)
-            if (task==7) call mpi_allgatherv_ifc(nkpt, inplace=.False., rlen=nstfv, rbuf=engyknst)
+        call mpi_allgatherv_ifc(nkpt, inplace=.False., rlen=nstsv, rbuf=evalsv)
+        if (task==7) call mpi_allgatherv_ifc(nkpt, inplace=.False., rlen=nstfv, rbuf=engyknst)
 #endif
         end if
 
-        call timesec(tb)
+call timesec(tb)
 ! Release memory used by the MT Hamiltonian
 !        call mt_hscf%release()
 
@@ -356,19 +356,19 @@ subroutine scf_cycle(verbosity)
           call generate_density_sirius()
           call get_periodic_function_sirius(rhoir, ngrid)
           call timesec(ts0)
-        else
+      else
           call generate_density_and_magnetization()
           call timesec(ts0)
 #ifdef MPI
         ! EXX case
-          If (input%groundstate%xctypenumber.Lt.0) Call mpiresumeevecfiles()
+        If (input%groundstate%xctypenumber.Lt.0) Call mpiresumeevecfiles()
 #endif
 
-          if ((input%groundstate%tpartcharges).and.(rank==0)) then
-              ! write out partial charges
-              call writepchgs(69,input%groundstate%lmaxvr)
-              call flushifc(69)
-          end if
+        if ((input%groundstate%tpartcharges).and.(rank==0)) then
+            ! write out partial charges
+            call writepchgs(69,input%groundstate%lmaxvr)
+            call flushifc(69)
+        end if
           call timesec(ts1)
           timeio = ts1 - ts0 + timeio
 !! TIME - End of second IO segment
@@ -377,13 +377,13 @@ subroutine scf_cycle(verbosity)
 ! symmetrise the density
           call symrf(input%groundstate%lradstep, rhomt, rhoir)
 ! symmetrise the magnetisation
-          If (associated(input%groundstate%spin)) Call symrvf(input%groundstate%lradstep, magmt, magir)
+        If (associated(input%groundstate%spin)) Call symrvf(input%groundstate%lradstep, magmt, magir)
 ! convert the density from a coarse to a fine radial mesh
           call rfmtctof (rhomt)
 ! convert the magnetisation from a coarse to a fine radial mesh
-          Do idm = 1, ndmag
-              Call rfmtctof (magmt(:, :, :, idm))
-          End Do
+        Do idm = 1, ndmag
+            Call rfmtctof (magmt(:, :, :, idm))
+        End Do
         end if
 
 ! add the core density to the total density

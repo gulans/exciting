@@ -19,7 +19,7 @@ subroutine calc_vnlmat
     implicit none
     type(evsystem) :: system
     integer :: ik
-    integer :: ie1, ie2
+    integer :: ie1, ie2, nst
     integer :: nmatp
     complex(8), allocatable :: evec(:,:)
     complex(8), allocatable :: temp(:,:), temp1(:,:)
@@ -39,57 +39,76 @@ subroutine calc_vnlmat
     !------------------------------------------!
     ! Matrix elements of non-local potential   !
     !------------------------------------------!
-    if (allocated(vnlmat)) deallocate(vnlmat)
-    allocate(vnlmat(nmatmax,nmatmax,ikfirst:iklast))
-    vnlmat = zzero
-    allocate(apwalm(ngkmax,apwordmax,lmmaxapw,natmtot,nspnfv))
-    apwalm = zzero
-    allocate(evec(nmatmax,nstfv))
-    evec = zzero
-    haaijSize = MaxAPWs()
+    if ((input%groundstate%solver%type.ne.'Davidson').or.(input%groundstate%solver%constructHS)) then
+      if (allocated(vnlmat)) deallocate(vnlmat)
+      allocate(vnlmat(nmatmax,nmatmax,ikfirst:iklast))
+      vnlmat = zzero
+      allocate(apwalm(ngkmax,apwordmax,lmmaxapw,natmtot,nspnfv))
+      apwalm = zzero
+      allocate(evec(nmatmax,nstfv))
+      evec = zzero
+    endif
 
     do ik = ikfirst, iklast
+        if (input%groundstate%hybrid%method.eq."MB".or.input%groundstate%hybrid%method.eq."BFB") then
+            ! matching coefficients
+            call match(ngk(1,ik), gkc(:,1,ik), tpgkc(:,:,1,ik), &
+            &          sfacgk(:,:,1,ik), apwalm(:,:,:,:,1))
 
-        ! matching coefficients
-        call match(ngk(1,ik), gkc(:,1,ik), tpgkc(:,:,1,ik), &
-        &          sfacgk(:,:,1,ik), apwalm(:,:,:,:,1))
+            ! Hamiltonian and overlap setup
+            nmatp = nmat(1,ik)
+            call newsystem(system,input%groundstate%solver%packedmatrixstorage,nmatp)
+            call MTRedirect(mt_hscf%main,mt_hscf%spinless)
+!            call hamiltonsetup(system, ngk(1, ik), apwalm, igkig(:, 1, ik), vgkc(:,:,1,ik))
+            call overlapsetup(system, ngk(1, ik), apwalm, igkig(:, 1, ik), vgkc(:,:,1,ik))
 
-        ! Hamiltonian and overlap setup
-        nmatp = nmat(1,ik)
-        call newsystem(system,input%groundstate%solver%packedmatrixstorage,nmatp)
-        call overlapsetup(system, ngk(1, ik), apwalm, igkig(:, 1, ik), vgkc(:,:,1,ik))
+            ! c
+            call getevecfv(vkl(:,ik), vgkl(:,:,:,ik), evec)
 
-        ! c
-        call getevecfv(vkl(:,ik), vgkl(:,:,:,ik), evec)
 
-        ! conjg(c)*S
-        allocate(temp(nstfv,nmatp))
-        call zgemm('c', 'n', nstfv, nmatp, nmatp, &
-        &          zone, evec(1:nmatp,:), nmatp, &
-        &          system%overlap%za, nmatp, &
-        &          zzero, temp, nstfv)
+            nst=min(nmatp, nstfv)
+            ! conjg(c)*S
+            allocate(temp(nst,nmatp))
 
-        ! Vnl*conjg(c)*S
-        allocate(temp1(nstfv,nmatp))
-        call zgemm('n', 'n', nstfv, nmatp, nstfv, &
-        &          zone, vxnl(:,:,ik), nstfv, &
-        &          temp, nstfv, zzero, &
-        &          temp1, nstfv)
 
-        ! V^{NL}_{GG'} = conjg[conjg(c)*S]*Vx*conjg(c)*S
-        call zgemm('c', 'n', nmatp, nmatp, nstfv, &
-        &          zone, temp, nstfv, &
-        &          temp1, nstfv, zzero, &
-        &          vnlmat(1:nmatp,1:nmatp,ik), nmatp)
+           call zgemm('c', 'n', nst, nmatp, nmatp, &
+           &          zone, evec(1:nmatp,:), nmatp, &
+           &          system%overlap%za, nmatp, &
+           &          zzero, temp, nst)
 
-        call deletesystem(system)
-        deallocate(temp)
-        deallocate(temp1)
+           ! Vnl*conjg(c)*S
+           allocate(temp1(nst,nmatp))
+           call zgemm('n', 'n', nst, nmatp, nst, &
+           &          zone, vxnl(:,:,ik), nstfv, &
+           &          temp, nst, zzero, &
+           &          temp1, nst)
+
+           ! V^{NL}_{GG'} = conjg[conjg(c)*S]*Vx*conjg(c)*S
+           call zgemm('c', 'n', nmatp, nmatp, nst, &
+           &          zone, temp, nst, &
+           &          temp1, nst, zzero, &
+           &          vnlmat(1:nmatp,1:nmatp,ik), nmatp)
+
+            call deletesystem(system)
+            deallocate(temp)
+            deallocate(temp1)
+        else 
+          if ((input%groundstate%solver%type.ne.'Davidson').or.(input%groundstate%solver%constructHS)) then
+            ! calculate vnlmat=P+*P
+            nmatp = nmat(1,ik)
+            call zgemm('c', 'n', nmatp, nmatp, nstsv, &
+            &          dcmplx(-1d0,0d0), pace(:,1:nmatp,ik), nstsv, &
+            &          pace(:,1:nmatp,ik), nstsv, zzero, &
+            &          vnlmat(1,1,ik), nmatmax)
+          endif
+        endif
 
     end do ! ik
 
-    deallocate(apwalm)
-    deallocate(evec)
+    if ((input%groundstate%solver%type.ne.'Davidson').or.(input%groundstate%solver%constructHS)) then
+      deallocate(apwalm)
+      deallocate(evec)
+    endif
 
     return
 end subroutine
