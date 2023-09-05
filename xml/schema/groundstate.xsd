@@ -381,6 +381,34 @@
                 </xs:restriction>
               </xs:simpleType>
             </xs:attribute>
+            <xs:attribute ex:importance="essential" ex:unit="" name="method" default="MB">
+              <xs:annotation>
+                <xs:documentation>
+                    Method for calculations with non-local exchange. Pick either ACE or MB.
+                </xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="ACE"/>
+                  <xs:enumeration value="MB"/>
+                  <xs:enumeration value="BFB"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+	          <xs:attribute ex:importance="essential" ex:unit="" name="singularity" default="exc">
+              <xs:annotation>
+                <xs:documentation>
+                    Method for singularity solution in Fock operator.
+                </xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="ps0d"/>
+                  <xs:enumeration value="exc0d"/>
+                  <xs:enumeration value="exc"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
             <xs:attribute ex:importance="essential" ex:unit="" name="excoeff" type="fortrandouble"
               default="0.25d0">
               <xs:annotation>
@@ -465,8 +493,8 @@
                 <xs:documentation>
                    Generate characteristic function (unit step function) with SIRIUS.
                 </xs:documentation>
-              </xs:annotation>
-            </xs:attribute>
+    	      </xs:annotation>
+	    </xs:attribute>
 
             <xs:attribute ex:importance="expert" ex:unit="" name="eigenstates" type="xs:boolean" use="optional" default="true">
               <xs:annotation>
@@ -525,12 +553,12 @@
                 <xs:documentation>Selects the eigenvalue solver for the first variational
                   equation</xs:documentation>
               </xs:annotation>
-               <xs:simpleType>
-                 <xs:restriction base="xs:string">
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
                    <xs:enumeration value="Lapack"/>
                    <xs:enumeration value="Davidson"/>
-                 </xs:restriction>
-               </xs:simpleType>
+                  </xs:restriction>
+                </xs:simpleType>
             </xs:attribute>
 
             <xs:attribute ex:importance="expert" ex:unit="" name="constructHS"
@@ -2292,6 +2320,7 @@
           <xs:restriction base="xs:string">
             <xs:enumeration value="fromscratch"/>
             <xs:enumeration value="fromfile"/>
+            <xs:enumeration value="extraempty"/>
             <xs:enumeration value="skip"/>
           </xs:restriction>
         </xs:simpleType>
@@ -2795,8 +2824,8 @@
               </li>
             </list>                             
             "cubic" is the most suitable
-            one for a majority of calculations, but switch to "expocubic" if you set the
-            innermost grid point very close to a nucleus.
+                             one for a majority of calculations, but switch to "expocubic" if you set the
+                             innermost grid point very close to a nucleus.
 
           </xs:documentation>
         </xs:annotation>
@@ -3028,6 +3057,26 @@
             overlap matrix setup.</xs:documentation>
         </xs:annotation>
       </xs:attribute>
+
+      <xs:attribute ex:importance="expert" ex:unit="" name="vha" default="exciting">
+	<xs:annotation>
+           <xs:documentation>Chooses the Poisson equation solver. Pick either "exciting" or "exciting0d" or "psolver0d" or "psolver1d" or "psolver2d" or "psolver3d", default is "exciting".
+	   </xs:documentation>
+         </xs:annotation>
+         <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="exciting"/>
+	      <xs:enumeration value="exciting0d"/>
+	      <xs:enumeration value="psolver0d"/>
+              <xs:enumeration value="psolver1d"/>
+              <xs:enumeration value="psolver2d"/>
+              <xs:enumeration value="psolver3d"/>
+            </xs:restriction>
+         </xs:simpleType>
+       </xs:attribute>
+
+
+
 
             <xs:attribute ex:importance="expert" ex:unit="" name="ValenceRelativity" default="zora">
               <xs:annotation>

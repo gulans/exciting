@@ -62,8 +62,8 @@ Subroutine seceqn (ik, evalfv, evecfv, evecsv)
          timematch=ts1-ts0+timematch
      ! solve the first-variational secular equation
          Call seceqnfv(ispn, ik, nmat(ispn,ik), ngk(ispn,ik), &
-        &  igkig(:,ispn,ik), vgkc(:,:,ispn,ik), apwalm(:,:,:,:,ispn), &
-        &  evalfv(:,ispn), evecfv(:,:,ispn))
+              &  igkig(:,ispn,ik), vgkc(:,:,ispn,ik), apwalm(:,:,:,:,ispn), &
+              &  evalfv(:,ispn), evecfv(:,:,ispn))
       End Do
       If (isspinspiral()) Then
      ! solve the spin-spiral second-variational secular equation

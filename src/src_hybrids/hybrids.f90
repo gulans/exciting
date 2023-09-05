@@ -32,10 +32,9 @@ Subroutine hybrids
     ! Charge distance
     Real (8), Allocatable :: rhomtref(:,:,:) ! muffin-tin charge density (reference)
     Real (8), Allocatable :: rhoirref(:)     ! interstitial real-space charge density (reference)
+    real(8) :: conv_old, conv_emp ! convergence for more empty orbitals 
     logical :: exist
     Type (apw_lo_basis_type) :: mt_basis
-
-
 !! TIME - Initialisation segment
     call timesec(tsg0)
     call timesec(ts0)
@@ -152,7 +151,7 @@ Subroutine hybrids
         !________________________________
         ! Inizialize mixed product basis
         call init_product_basis()
-
+      
       case(1)
         !----------------------------------------------
         ! Initialization from previous hybrid SCF run
@@ -173,7 +172,10 @@ Subroutine hybrids
         else
           stop 'ERROR(hybrids): Restart is not possible, STATE_PBE.OUT is missing!'
         end if
-        !
+        !copy to vrelmt because STATE.OUT only has veffmt saved
+        vrelmt=veffmt
+
+
         ! Core/Valence radial functions and integrals required for scf_cycle() + task=7
         ! (initialzed from PBE)
         call gencore()          ! generate the core wavefunctions and densities
@@ -185,11 +187,59 @@ Subroutine hybrids
         !
         ! Inizialize mixed-product basis
         call init_product_basis()
+        ! Initialize mt_hcsf parameter
+        call MTInitAll(mt_hscf)
         !_____________________________________________________________________________________
         ! step 2: Read hybrid density and potential and get prepared for scf_cycle() + task=7
         call readstate()
         call readfermi()
+        call hmlint(mt_hscf)
+        call genmeffig()
+        call MTNullify(mt_hscf)
+      if (input%groundstate%do.eq."extraempty") then
 
+        conv_emp = 0.d0
+        conv_old = 0.d0
+        splittfile = .False.
+        task=7
+        ex_coef = input%groundstate%Hybrid%excoeff
+        ec_coef = input%groundstate%Hybrid%eccoeff
+        input%groundstate%mixerswitch = 1
+        input%groundstate%scfconv = 'charge'
+
+        
+        do ihyb=1, input%groundstate%Hybrid%maxscl
+                write(*,*) "----------restart with orbitals----------", ihyb
+
+                splittfile = .False.
+                call MTInitAll(mt_hscf)
+                call hmlint(mt_hscf)
+                call calc_vxnl()
+!                write(*,*)"afer calc_vxnl------"
+                do ik = 1, 14
+                        write(*,'(14F13.9)') dble(vxnl(ik,1:14, :))
+                end do
+
+                call calc_vnlmat()
+                call mt_hscf%release
+                call timesec(ts0)
+                call scf_cycle(-1)
+                call timesec(ts1)
+                do ik = 1, nstfv
+                     !  write(*,*)dble(vxnl(ik,ik, 1))
+                       conv_emp = conv_emp+ dble(vxnl(ik,ik, 1))**2
+                end do
+                write(*,*)conv_emp-conv_old, "convergence criteria--------------"
+                if ((conv_emp-conv_old).lt.1e-5) then
+                        exit
+                end if
+                call flushifc(60)
+                conv_old = conv_emp
+                conv_emp = 0.d0
+
+        end do
+
+      end if 
       case default
         stop 'ERROR(hybrids): Not supported task!'
 
@@ -225,6 +275,11 @@ Subroutine hybrids
       ! to insure correct reading from GS files
       splittfile = .False.
 
+
+      call MTInitAll(mt_hscf)
+      call hmlint(mt_hscf)
+
+
       !-----------------------------------
       ! Calculate the non-local potential
       !-----------------------------------
@@ -243,6 +298,7 @@ Subroutine hybrids
         write(60,'(" CPU time for vnlmat (seconds)",T45 ": ", F12.2)') ts1-ts0
       end if
       time_hyb = time_hyb+ts1-ts0
+      call mt_hscf%release
 
       !--------------------------------------------------
       ! Internal SCF loop

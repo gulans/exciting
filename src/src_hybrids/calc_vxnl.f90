@@ -32,8 +32,12 @@ subroutine calc_vxnl()
     integer(4), allocatable :: idxpair(:,:)
     complex(8), allocatable :: minm(:,:,:)
     complex(8), allocatable :: evecsv(:,:)
+    complex(8), allocatable :: vnlcv(:,:,:,:)
 
     complex(8), external :: zdotc
+    logical :: hybrid
+! allocatables for ACE
+    complex(8), allocatable :: vxpsimt (:, :, :, :), vxpsiir(:, :)
 
     call cpu_time(tstart)
 
@@ -56,7 +60,9 @@ subroutine calc_vxnl()
     deallocate(evalfv)
 
     ! singular term prefactor
-    sxs2 = 4.d0*pi*vi*singc2*kqset%nkpt
+    sxs2 = 4.d0*pi*vi*singc2*kqset%nkpt 
+if (input%groundstate%hybrid%method.eq."MB") then
+
 
     if ((input%gw%coreflag=='all').or. &
         (input%gw%coreflag=='xal')) then
@@ -254,7 +260,87 @@ subroutine calc_vxnl()
       end do
     end do ! ikp
 
-    call cpu_time(tend)
 
+
+else ! Use oepvnl
+
+     ! hybrid = .False.
+     ! if (input%groundstate%hybrid%singularity.ne."exc") then
+        !hybrid = .True.
+       !write(*,*)"calc_vx hybrid", hybrid
+      !end if
+
+
+      if (input%groundstate%hybrid%singularity.ne."exc") sxs2=0.d0
+      !if (input%groundstate%vha.eq."psolver0d") sxs2=0d0
+
+      if (allocated(vxnl)) deallocate(vxnl)
+      allocate(vxnl(nstfv,nstfv,kset%nkpt))
+      allocate(vxpsiir (ngkmax, nstsv))
+      allocate(vxpsimt (lmmaxvr, nrcmtmax, natmtot, nstsv))
+      vxnl(:,:,:) = zzero
+
+
+      allocate(evalfv(nstfv,kset%nkpt))
+      evalfv(:,:) = 0.d0
+      do ik = 1, nkpt
+        call getevalfv(kset%vkl(:,ik), evalfv(:,ik))
+      end do
+
+      ! VB / CB state index
+      call find_vbm_cbm(1, nstfv, kset%nkpt, evalfv, efermi, nomax, numin, ikvbm, ikcbm, ikvcm)
+
+      ! BZ integration weights 
+      call kintw()
+      deallocate(evalfv)
+
+
+#ifdef MPI
+      Do ik = firstk (rank), lastk (rank)
+#else
+      Do ik = 1, nkpt
+#endif
+        vxpsiir=zzero
+        vxpsimt=zzero
+        call timesec(ta)
+        call FockExchange (ik, sxs2*kiw(1,ik) ,vxnl(:, :, ik),vxpsiir,vxpsimt)
+        call timesec(tb)
+        if (rank==0) write(*,*) 'FockExchange',tb-ta
+
+        do ie1 = 1, nstfv
+! making sure that the exchange matrix is Hermitian 
+          do ie2 = ie1+1, nstfv
+            vxnl(ie2,ie1,ik) = conjg(vxnl(ie1,ie2,ik))
+          end do
+        end do
+
+        call timesec(ta)
+        call calcACE (ik, vxnl(:, :, ik),vxpsiir,vxpsimt)
+        call timesec(tb)
+        if (rank==0) write(*,*) 'calcACE',tb-ta
+
+      End Do
+
+#ifdef MPI
+      call MPI_ALLREDUCE(MPI_IN_PLACE, vxnl , nstsv*nstsv*nkpt, MPI_DOUBLE_COMPLEX,  MPI_SUM, MPI_COMM_WORLD, ierr)
+#endif
+
+
+    deallocate(vxpsiir)
+    deallocate(vxpsimt)
+
+    if (rank==0) write(*,*) '-----------------'
+
+
+    exnl = 0.d0
+    do ikp = 1, kset%nkpt
+      do ie1 = 1, nomax
+        exnl = exnl + kset%wkpt(ikp)*vxnl(ie1,ie1,ikp)
+      end do
+    end do ! ikp
+
+endif
+
+    call cpu_time(tend)
     return
 end subroutine
