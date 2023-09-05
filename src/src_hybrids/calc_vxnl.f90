@@ -25,7 +25,7 @@ subroutine calc_vxnl()
     integer(4) :: is, ia, ias, ic
     integer(4) :: n, nmdim, m, mdim
     integer(4) :: iblk, nblk, mstart, mend
-    real(8)    :: tstart, tend, sxs2
+    real(8)    :: tstart, tend, sxs2, ta, tb
     complex(8) :: mvm, zt1, vc
     integer    :: ikfirst, iklast
 
@@ -296,7 +296,7 @@ else ! Use oepvnl
 
 
 #ifdef MPI
-      Do ik = firstk (rank), lastk (rank)
+      Do ik = firstk (rank, nkpt), lastk (rank, nkpt)
 #else
       Do ik = 1, nkpt
 #endif

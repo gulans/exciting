@@ -173,7 +173,7 @@ Subroutine hybrids
           stop 'ERROR(hybrids): Restart is not possible, STATE_PBE.OUT is missing!'
         end if
         !copy to vrelmt because STATE.OUT only has veffmt saved
-        vrelmt=veffmt
+        !vrelmt=veffmt
 
 
         ! Core/Valence radial functions and integrals required for scf_cycle() + task=7
