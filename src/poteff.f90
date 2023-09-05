@@ -13,7 +13,7 @@
 Subroutine poteff
 ! !USES:
       Use modmain
-! !DESCRIPTION:
+      ! !DESCRIPTION:
 !   Computes the effective potential by adding together the Coulomb and
 !   exchange-correlation potentials. See routines {\tt potcoul} and {\tt potxc}.
 !
@@ -26,7 +26,7 @@ Subroutine poteff
       Integer :: is, ia, ias, ir, lm, lmmax
       real (8) :: shift
       Real (8) :: ts0, ts1, ta, tb
-
+      
       call stopwatch("exciting:poteff", 1)
       
       Call timesec (ts0)
@@ -67,7 +67,7 @@ Subroutine poteff
             End Do
          End Do
       End Do
-      
+
       ! interstitial part
       vclir(:) = vclir(:) + shift
       
@@ -76,10 +76,10 @@ Subroutine poteff
       else
         veffir(:) = vclir(:) + vxcir(:)
       endif
-      
+
       Call timesec (ts1)
       timepot = timepot + ts1 - ts0
-
+      
       call stopwatch("exciting:poteff", 0)
       
       Return

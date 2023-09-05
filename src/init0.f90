@@ -71,6 +71,8 @@ Subroutine init0
 !------------------------------------!
 !     angular momentum variables     !
 !------------------------------------!
+      ntpll = 770
+      lmmaxhf = (2*input%groundstate%lmaxvr+1) ** 2
       lmmaxvr = (input%groundstate%lmaxvr+1) ** 2
       lmmaxapw = (input%groundstate%lmaxapw+1) ** 2
       lmmaxmat = (input%groundstate%lmaxmat+1) ** 2
@@ -161,7 +163,7 @@ Subroutine init0
      & input%groundstate%tevecsv = .True.
 
      call initialise_xc_mixing_coefficients(input%groundstate, xctype, xcdescr, xcspin, xcgrad, ex_coef, ec_coef)
-
+      
 ! reset input%groundstate%Hybrid%excoeff to ex_coef
 ! in case of libxc: overwritten by ex_coef as defined by libxc
       If (associated(input%groundstate%Hybrid)) input%groundstate%Hybrid%excoeff = ex_coef
@@ -279,8 +281,8 @@ Subroutine init0
                               &input%structure%autormtscaling, natoms, nspecies, 1)         
       end if 
 
-! check for overlapping muffin-tins               
-      Call checkmt  
+! check for overlapping muffin-tins
+      Call checkmt
 !
 !-----------------------!
 !     radial meshes     !
@@ -552,6 +554,8 @@ call allocate_coulomb_potentials(lmmaxvr, nrmtmax, natmtot, ngrtot, vclmt, vclir
       Call getsdata (input%groundstate%stypenumber, sdescr)
 ! generate the spherical harmonic transform (SHT) matrices
       Call genshtmat
+      Call genshtmat3
+      ! Call genshtmat2
 !
 ! allocate 1D plotting arrays
       If (allocated(dvp1d)) deallocate (dvp1d)

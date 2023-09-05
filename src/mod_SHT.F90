@@ -25,6 +25,12 @@ Module mod_SHT
       Complex (8), Allocatable :: zbshtvr (:, :)
 ! complex forward SHT matrix for lmaxvr
       Complex (8), Allocatable :: zfshtvr (:, :)
+! complex forward SHT matrix for lmaxhf
+      Complex (8), Allocatable :: zfshthf (:, :)
+! complex backward SHT matrix for lmaxhf
+      Complex (8), Allocatable :: zbshthf (:, :)
+! complex backward SHT matrix for lmaxhf
+      Complex (8), Allocatable :: testm (:, :)
 
   contains
 

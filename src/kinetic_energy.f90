@@ -71,12 +71,9 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
       if (nlomax.ne.0) then
         Allocate (t_lolo( nlomax,nlomax))
         Allocate (t_alo( apwordmax, nlomax))
-!        write(*,*) 'allocated'
         t_lolo=0d0
         t_alo=0d0
       endif
-!      write(*,*) nlomax
-!      read(*,*)
       Allocate (t_aa ( apwordmax, apwordmax, 0:input%groundstate%lmaxmat))
       t_aa=0d0
 
@@ -184,6 +181,7 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
                   End Do
                End Do
             End Do
+
 !-----------------------------------------------!
 !     local-orbital-local-orbital integrals     !
 !-----------------------------------------------!
@@ -214,11 +212,6 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
                End Do
             End Do
 
-!        zax2=0d0
-!       if3=0
-
-
-
 do ist=1,nstfv
               zvec=zzero
               if (mt_hscf%losize(is).ne.0) zveclo=zzero
@@ -237,10 +230,10 @@ do ist=1,nstfv
         do ilo = 1, nlorb (is)
           l=lorbl (ilo, is)
 ! LO-APW and APW-LO
+! Conditional statements are here for debugging purposes
 if (.true.) then
           do m=-l,l
             lm=idxlm (l, m)
-!            if3=if3+1
             do io1=1,apword(l,is)
               zvec(apwordmax*(lm-1)+io1)=zvec(apwordmax*(lm-1)+io1)+t_alo(io1,ilo)*evecfv(LOoffset+if3+m+l+1,ist)
               zveclo(if3+m+l+1)=zveclo(if3+m+l+1)+t_alo(io1,ilo)*zm(apwordmax*(lm-1)+io1,ist)
@@ -261,12 +254,9 @@ if (.true.) then
 endif
           if3=if3+2*l+1
         enddo
-!        write(*,*) if3,haloijSize(is)
-!        write(*,*) LOoffset
-!        write(*,*)
+
         engyknst(ist,ik)=engyknst(ist,ik)+zdotc(apwordmax*lmmaxapw,zm(1,ist),1,zvec,1)
         if (nlorb(is).ne.0) engyknst(ist,ik)=engyknst(ist,ik)+zdotc(mt_hscf%losize(is),evecfv(LOoffset+1,ist),1,zveclo,1)
-!        write(*,*) zdotc(apwordmax*lmmaxapw,zm(1,ist),1,zvec,1)+zdotc(haloijSize(is),evecfv(LOoffset+1,ist),1,zveclo,1)
 enddo
 
 

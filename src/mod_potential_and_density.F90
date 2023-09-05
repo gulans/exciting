@@ -34,7 +34,7 @@ Module mod_potential_and_density
       Real (8), Allocatable :: magir (:, :)
 ! muffin-tin Coulomb potential
       Real (8), Allocatable :: vclmt (:, :, :)
-! Madelung potential (excluding the on-site nuclear contribution) in the innermost radial point
+! Madulung potential (excluding the on-ste nuclear contribution) in the innermost radial point
       Real (8), Allocatable :: vmad (:)
 ! interstitial real-space Coulomb potential
       Real (8), Allocatable :: vclir (:)
@@ -56,6 +56,8 @@ Module mod_potential_and_density
       Real (8), Allocatable :: veffmt (:, :, :)
 ! interstitial effective potential
       Real (8), Allocatable :: veffir (:)
+! effective potential plugged into relativistic kinetic energy
+      Real (8), pointer :: vrelir (:)
 
 ! muffin-tin 'vhalf' potential (needed for DFT-1/2 calculations)
       Real (8), Allocatable :: vhalfmt (:, :, :)
@@ -262,8 +264,8 @@ Contains
      if (associated(mt_dm%losize)) deallocate(mt_dm%losize)
 
      end subroutine DMRelease
-
-
+      
+      
      !> Generate density and magnetization from the wave-functions
      !
      !> Construct the muffin-tin density using density matrices if

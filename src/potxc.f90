@@ -391,7 +391,11 @@ if (associated(input%groundstate%spin)) then
      exir(:) = exir(:)-ex_coef*exsr(:)
   endif
   ecir(:) = ec_coef*ecir(:)
-  
+
+! Should have been more general, something like "if (hybrid) then"
+  If  (xctype(1)==HYB_PBE0 .or. xctype(1)==HYB_HSE) Then
+     vrelir(1:ngrtot)=0.5d0*(vxup(1:ngrtot)+vxdn(1:ngrtot)+vcup(1:ngrtot)+vcdn(1:ngrtot))
+  endif
 else
 
   !--------------------------!
@@ -434,6 +438,12 @@ else
   ecir(:) = ec_coef*ecir(:)
 
 end if ! spin case
+
+! Using 100% of the local exchange and correlation for calculating the kinetic energy later on
+! Should have been more general, something like "if (hybrid) then"
+  If  (xctype(1)==HYB_PBE0 .or. xctype(1)==HYB_HSE) Then
+    vrelir(1:ngrtot)=vx(1:ngrtot)+vc(1:ngrtot)
+  endif
 
 ! OEP - EXX/HYBRIDS
 If  (associated(input%groundstate%OEP)) call oepmain

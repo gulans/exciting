@@ -10,13 +10,20 @@
 ! !INTERFACE:
 !
 !
-Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
-& zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0)
+Subroutine zpotcoul2 (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
+& zn, zrhomt, zrhoir, hybrid, zvclmt, zvclir, zrho0)
       Use modinput
+      Use mod_kpoint, only: nkptnr
 ! !USES:
       Use modmain
 #ifdef USEOMP
       use omp_lib
+#endif
+#ifdef PSOLVER
+   use dictionaries
+   use Poisson_Solver
+   use at_domain
+   use numerics, only: onehalf
 #endif
 ! !INPUT/OUTPUT PARAMETERS:
 !   nr     : number of radial points for each species (in,integer(nspecies))
@@ -32,6 +39,7 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
 !   zn     : nuclear charges at the atomic centers (in,real(nspecies))
 !   zrhomt : muffin-tin charge density (in,complex(lmmaxvr,nrmax,natmtot))
 !   zrhoir : interstitial charge density (in,complex(ngrtot))
+!   hybrid : hybrid calculation option 0 or 1 (in, integer)
 !   zvclmt : muffin-tin Coulomb potential (out,complex(lmmaxvr,nrmax,natmtot))
 !   zvclir : interstitial Coulomb potential (out,complex(ngrtot))
 !   zrho0  : G+p=0 term of the pseudocharge density (out,complex)
@@ -110,12 +118,13 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
       Complex (8), Intent (In) :: sfacgp (ngvec, natmtot)
       Real (8), Intent (In) :: zn (nspecies)
       Complex (8), Intent (In) :: zrhomt (lmmaxvr, nrmax, natmtot)
-      Complex (8), Intent (Inout) :: zrhoir (ngrtot)
+      Complex (8), Intent (In) :: zrhoir (ngrtot)
+      Integer , Intent(In) :: hybrid
       Complex (8), Intent (Out) :: zvclmt (lmmaxvr, nrmax, natmtot)
       Complex (8), Intent (Out) :: zvclir (ngrtot)
       Complex (8), Intent (Out) :: zrho0
 ! local variables
-      Integer :: is, ia, ias, l, m, lm, i, j
+      Integer :: is, ia, ias, l, m, lm
       Integer :: ir, ig, ifg
       Real (8) :: fpo, t1, t2, t3
       Complex (8) zsum, zt1, zt2
@@ -128,16 +137,125 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
       Complex (8) qilocal (lmmaxvr)
       Complex (8) zrp (lmmaxvr)
       real(8) :: vn(nrmax)
-      real(8) :: third
+      real(8) :: third 
       parameter (third=0.3333333333333333333333d0)
 #ifdef USEOMP
       integer ithr,nthreads,whichthread
 #endif
-      real(8), allocatable :: vdplmt(:,:,:), vdplir(:)
+      real(8), allocatable :: vdplmt(:,:,:), vdplir(:) 
 
 ! external functions
       Real (8) :: factnm
       External factnm
+!for compiling without PSOLVER library
+   logical psolver0d, psolver1d, psolver2d, psolver3d, exciting, exciting0d, excite
+   real(8) :: r_c
+#ifdef PSOLVER
+
+! PSolver related
+   character(len=1) :: solvertype
+   character(len=64) :: chain
+   integer :: i1,i2,i3,n1,n2,n3,i1_max,i2_max,i3_max,isf_order, i, bc_type
+   real(kind=8) :: max_diff, alpha_bc, beta_ac, gamma_ab, bc, ac, ab
+   real(kind=8) :: sigma,length,hgrid,mu,energy,offset,acell,epot
+   real(kind=8), dimension(:), allocatable :: fake_arr
+   real(kind=8), allocatable :: psi, r_v(:), c_v(:)
+   type(coulomb_operator) :: kernel
+   type(dictionary), pointer :: dict
+   type(domain) :: dom
+   integer, dimension(3) :: ndims
+   real(kind=8), dimension(3) :: hgrids, acel
+   real(8), dimension(3,3) :: n_avec
+   
+#endif
+
+! Initialise PSolver
+   psolver0d=(input%groundstate%vha.eq."psolver0d")
+   psolver1d=(input%groundstate%vha.eq."psolver1d")
+   psolver2d=(input%groundstate%vha.eq."psolver2d")
+   psolver3d=(input%groundstate%vha.eq."psolver3d")
+   exciting =(input%groundstate%vha.eq."exciting")
+   exciting0d=(input%groundstate%vha.eq."exciting0d")
+   if (exciting.or.exciting0d) then
+      excite = .True.
+   end if
+
+   if (hybrid.eq.1) then! for hybrid calculations, using methods for Fock operator calculations
+     exciting0d=(input%groundstate%hybrid%singularity.eq."exc0d")
+     psolver0d=(input%groundstate%hybrid%singularity.eq."ps0d")
+     if (psolver0d) then
+            excite = .False.
+     end if
+   end if
+   
+
+#ifdef PSOLVER
+if (.not.excite) then
+!call f_lib_initialize()
+
+   n1=ngrid(1)
+   n2=ngrid(2)
+   n3=ngrid(3)
+
+isf_order = 16
+
+   if (psolver0d) then! free in all directions
+       !write(*,*)"type Free"
+       solvertype='F'
+       bc_type = 0
+   else if ((psolver3d)) then! periodic x, y, z
+       solvertype='P'
+       bc_type = 3
+       !write(*,*)"type P"
+   else if (psolver1d) then!free in x,y, periodic in z
+       solvertype = 'W'
+       bc_type = 1
+       isf_order=60
+       !write(*,*) "type W"
+   else if (psolver2d) then! free in y, periodic x, z
+       solvertype = 'S'
+       bc_type = 2
+       isf_order=60
+       !write(*,*) "type S"
+   end if 
+
+   
+
+
+
+
+do i=1,3 
+   hgrids(i) = sqrt(dot_product(avec(:,i), avec(:,i)))/ngrid(i)
+   
+   n_avec(:, i) = avec(:,i)/sqrt(dot_product(avec(:,i), avec(:,i)))
+   !write(*,*)i, hgrids(i)
+end do
+  
+
+!   bc = acos(DOT_PRODUCT(avec(:,2), avec(:,3)) / (SQRT(DOT_PRODUCT(avec(:,2), avec(:,2))) * SQRT(DOT_PRODUCT(avec(:,3), avec(:,3)) ) ) )!y, z
+!   ac = acos(DOT_PRODUCT(avec(:,1), avec(:,3)) / (SQRT(DOT_PRODUCT(avec(:,1), avec(:,1))) * SQRT(DOT_PRODUCT(avec(:,3), avec(:,3)) ) ) )!x, z
+!   ab = acos(DOT_PRODUCT(avec(:,1), avec(:,2)) / (SQRT(DOT_PRODUCT(avec(:,1), avec(:,1))) * SQRT(DOT_PRODUCT(avec(:,2), avec(:,2)) ) ) )!z, y
+!check angles
+!write(*,*)  "bc23", bc*57.3
+!write(*,*)  "ac13", ac*57.3
+!write(*,*)  "ab12", ab*57.3
+
+
+
+   dom=domain_new(units=ATOMIC_UNITS,bc=geocode_to_bc_enum(solvertype), abc = n_avec)!alpha_bc=bc, beta_ac=ac, gamma_ab=ab, acell = ngrid*hgrids
+   dict=>dict_new('kernel' .is. dict_new('isf_order' .is. isf_order))
+   kernel=pkernel_init(0,1,dict,dom,ngrid,hgrids)
+   call dict_free(dict)
+   call pkernel_set(kernel,verbose=.true.)
+
+
+
+
+end if
+
+#endif
+
+
       fpo = fourpi / omega
 ! solve Poisson's equation for the isolated charge in the muffin-tin
       Do is = 1, nspecies
@@ -220,7 +338,7 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
 #ifdef USEOMP
 !$OMP PARALLEL DEFAULT(NONE) PRIVATE(qilocal,ig,ifg,zt1,t1,lm,t2,zt2,m,l,nthreads,whichthread,ithr) SHARED(input,gpc,sfacgp,zvclir,rmt,qi,ias,ngvec,is,ylmgp,jlgpr,zil,rmtl,igfft)
             qilocal=0d0
-!$OMP DO
+!$OMP DO    
 #else
             qilocal=0d0
 #endif
@@ -249,7 +367,7 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
             whichthread=omp_get_thread_num()
             do ithr=0,nthreads-1
               if (ithr.eq.whichthread) then
-                qi(:,ias)=qi(:,ias)+qilocal(:)
+                qi(:,ias)=qi(:,ias)+qilocal(:) 
               endif
 !$OMP BARRIER
             enddo
@@ -259,7 +377,7 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
 #endif
          End Do
       End Do
-!      stop
+
 ! find the smooth pseudocharge within the muffin-tin whose multipoles are the
 ! difference between the real muffin-tin and interstitial multipoles
       Do is = 1, nspecies
@@ -281,7 +399,7 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
 ! add the pseudocharge and real interstitial densities in G-space
 #ifdef USEOMP
 !$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,ifg,zt1,t1,t2,zsum,m,l,lm,t3) SHARED(input,gpc,zvclir,rmt,qi,ias,ngvec,is,ylmgp,jlgpr,zil,rmtl,igfft,zrp,fpo,sfacgp)
-!$OMP DO
+!$OMP DO    
 #endif
             Do ig = 1, ngvec
                ifg = igfft (ig)
@@ -307,17 +425,97 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
             End Do
 #ifdef USEOMP
 !$OMP END DO
-!$OMP END PARALLEL
+!$OMP END PARALLEL 
 #endif
 
          End Do
       End Do
 
+
+
+
+
+!------------------------------
+
+#ifdef PSOLVER
+if (.not.excite) then
+!write(*,*)"psolver"
+! Fourier transform interstitial potential to real space
+      Call zfftifc (3, ngrid, 1, zvclir)
+      allocate(fake_arr(1),r_v(n1*n2*n3), c_v(n1*n2*n3))
+
+
+      !if (psolver0d) then
+          !write(*,*)"reorder"
+      !    call reorder(bc_type, zvclir,ngrid, r_v, c_v)     
+      !else 
+          !write(*,*)"else order"
+          r_v=dble(zvclir)
+          c_v=dimag(zvclir)
+      !end if
+
+      offset=0d0
+
+
+      call H_potential('G',kernel,r_v,fake_arr,energy,offset,.false.,quiet='no')
+
+      call H_potential('G',kernel,c_v,fake_arr,energy,offset,.false.,quiet='yes')
+
+
+      zvclir=dcmplx(r_v,c_v)!combine complex and real solutions
+
+
+     !if (bc_type.eq.0) then
+        !write(*,*)"deorder"
+     !   call reorder(bc_type, zvclir,ngrid, r_v, c_v)
+        !zvclir=dcmplx(r_v,c_v)
+      !end if
+      deallocate(fake_arr, r_v, c_v)
+
+
+! Fourier transform interstitial potential to reciprocal space
+      Call zfftifc (3, ngrid, -1, zvclir)
+      !zvclir(1)=0d0
+      
+
+
+
+end if!psolver
+
+#endif
+if (excite) then!exciting or exciting0d
+!write(*,*)"exciting0"
 ! set zrho0 (pseudocharge density coefficient of the smallest G+p vector)
       ifg = igfft (igp0)
       zrho0 = zvclir (ifg)
-      ! zvclir (ifg) = 0.d0
+      !zvclir (ifg) = 0.d0
+      
+
+
+!r_c = (3d0*omega*nkptnr/(fourpi))**(1d0/3d0)
+r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0!0.171d0
+
+
 ! solve Poissons's equation in G-space for the pseudocharge
+If (associated(input%groundstate%hybrid)) Then 
+
+   If ((input%groundstate%vha.eq."exciting0d").or.(input%groundstate%hybrid%singularity.eq."exc0d")) Then
+
+      Do ig = 1, ngvec
+         ifg = igfft (ig)
+         If (gpc(ig) .Gt. input%structure%epslat) Then 
+            zvclir (ifg) = fourpi * zvclir (ifg)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
+         Else
+            zvclir (ifg) = zvclir(ifg)*(fourpi*0.5d0)*r_c**2
+         End If
+      End Do
+
+   Else
+   
+      ifg = igfft (igp0)
+      zrho0 = zvclir (ifg)
+      zvclir (ifg) = 0.d0
+
       Do ig = 1, ngvec
          ifg = igfft (ig)
          If (gpc(ig) .Gt. input%structure%epslat) Then
@@ -326,6 +524,41 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
             zvclir (ifg) = 0.d0
          End If
       End Do
+
+   End If
+
+Else If (input%groundstate%vha.eq."exciting0d") Then
+
+   Do ig = 1, ngvec
+      ifg = igfft (ig)
+      If (gpc(ig) .Gt. input%structure%epslat) Then
+         zvclir (ifg) = fourpi * zvclir (ifg)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
+      Else
+         zvclir (ifg) = zvclir(ifg)*(fourpi*0.5d0)*r_c**2
+      End If
+   End Do
+
+Else
+
+   ifg = igfft (igp0)
+   zrho0 = zvclir (ifg)
+   zvclir (ifg) = 0.d0
+   Do ig = 1, ngvec
+      ifg = igfft (ig)
+      If (gpc(ig) .Gt. input%structure%epslat) Then
+         zvclir (ifg) = fourpi * zvclir (ifg) / (gpc(ig)**2)
+      Else
+         zvclir (ifg) = 0.d0
+      End If
+   End Do
+
+End If
+End If ! excite check
+
+
+
+!------------------------------
+
 ! match potentials at muffin-tin boundary by adding homogeneous solution
       Do is = 1, nspecies
 ! compute (r/R_mt)^l
@@ -345,9 +578,9 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
 #ifdef USEOMP
 !$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,ifg,zt1,zt2,zsum,m,l,lm,t3,qilocal,nthreads,whichthread,ithr) SHARED(input,zvclir,ias,ngvec,is,ylmgp,jlgpr,zil,rmtl,igfft,sfacgp,vilm)
             qilocal=0d0
-!$OMP DO
+!$OMP DO  
 #else
-            qilocal=0d0
+            qilocal=0d0  
 #endif
             Do ig = 1, ngvec
                ifg = igfft (ig)
@@ -372,9 +605,9 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
               endif
 !$OMP BARRIER
             enddo
-!$OMP END PARALLEL
+!$OMP END PARALLEL 
 #else
-            vilm  = vilm +qilocal
+            vilm  = vilm +qilocal 
 #endif
 
 ! add homogenous solution
@@ -414,6 +647,13 @@ Subroutine zpotcoul (nr, nrmax, ld, r, igp0, gpc, jlgpr, ylmgp, sfacgp, &
         zvclir(:) =  zvclir(:)+vdplir(:)
         deallocate(vdplmt,vdplir)
       end if
+
+#ifdef PSOLVER
+if (.not.excite) then
+   !call f_lib_finalize()
+   call pkernel_free(kernel)
+end if
+#endif
 
       Return
 End Subroutine

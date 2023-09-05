@@ -66,7 +66,6 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
       !character( len=64) :: fname
   ! apwi related variables for storing matching coefficients in a more convenient way
       Integer :: is,ia,ias,l,io,m,ifun,lm
-
   !----------------------------------------!
   !     Hamiltonian and overlap set up     !
   !----------------------------------------!
@@ -104,7 +103,7 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
           write(*,*) 'seqeqn: cannot run hybrid calculations with iterative eigensolver without constructing the Hamiltonian matrix explicitly'
           stop
         endif  
-        call MTRedirect(mt_hscf%main,mt_hscf%spinless)        
+        call MTRedirect(mt_hscf%main,mt_hscf%spinless)
       endif
 
       ! Rearranging matching coefficients should be generalised beyond the Davidson solver and moved to seceqn
@@ -116,9 +115,9 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
             ias = idxas (ia, is)
             ifun=0
             Do l = 0, input%groundstate%lmaxmat
-              Do m = - l, l
-                lm = idxlm (l, m)
-                Do io = 1, apword (l, is)
+                Do m = - l, l
+                  lm = idxlm (l, m)
+              Do io = 1, apword (l, is)
                   ifun=ifun+1
                   system%apwi(ifun,1:ngp,ias)=apwalm(1:ngp, io, lm, ias)
                 End Do

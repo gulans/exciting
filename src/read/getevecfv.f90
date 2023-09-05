@@ -119,7 +119,8 @@ Subroutine getevecfv (vpl, vgpl, evecfv)
          Write (*, '(" EVECFV.OUT : ", I8)') nstfv_
          Write (*, '(" file	     : ", a)') trim(outfilenamestring(filetag,ik))
          Write (*,*)
-         Stop
+         Write(*,*)"Ignore the warning if more nempty option used"
+         !stop
       End If
       Allocate (evecfv_(nmatmax_, nstfv_, nspnfv_))
       Inquire (IoLength=Recl) vkl_, nmatmax_, nstfv_, nspnfv_, evecfv_
@@ -127,7 +128,8 @@ Subroutine getevecfv (vpl, vgpl, evecfv)
      & Form='UNFORMATTED', Access='DIRECT', Recl=Recl)
       Read (70, Rec=koffset) vkl_, nmatmax_, nstfv_, nspnfv_, evecfv_
   ! retreive subset
-      evecfv (:, :, :) = evecfv_ (:, :nstfv, :)
+
+      evecfv (:, :nstfv_, :) = evecfv_ (:, :nstfv_, :)
       Deallocate (evecfv_)
 #else
       Read (70, Rec=koffset) vkl_, nmatmax_, nstfv_, nspnfv_, evecfv
@@ -238,9 +240,9 @@ subroutine rotate_evecfv( isym, vpl, vprl, ngp, vgpl, vgprl, evecfv, ld, nst)
 
   complex(dp), external :: getdlmm, zdotu
 
-  ! index to spatial rotation in lattice point group
+      ! index to spatial rotation in lattice point group
   lspl = lsplsymc( isym)
-  ! the inverse of the spatial symmetry rotates k into p
+      ! the inverse of the spatial symmetry rotates k into p
   ilspl = isymlat( lspl)
   sl = dble( symlat(:,:,ilspl))
   sc = symlatc(:,:,ilspl)
@@ -259,7 +261,7 @@ subroutine rotate_evecfv( isym, vpl, vprl, ngp, vgpl, vgprl, evecfv, ld, nst)
 !$omp do
   do ist = 1, nst
     evecfvt(1:ngp,ist) = ztv*evecfv(1:ngp,ist)
-  end do
+        end do
 !$omp end do
 !$omp end parallel
   deallocate( dotp, ztv)
@@ -273,37 +275,37 @@ subroutine rotate_evecfv( isym, vpl, vprl, ngp, vgpl, vgprl, evecfv, ld, nst)
         do ist = 1, nst
           evecfv( igpr, ist) = evecfvt( igp, ist)
         end do
-        exit ! continue with new igp
-      end if
-    end do
-  end do
+              exit ! continue with new igp
+            end if
+          end do
+        end do
 !$omp end do
 !$omp end parallel
 
 !---------------------------------------------------------!
 !     translate and rotate local-orbital coefficients     !
 !---------------------------------------------------------!
-  if (nlotot>0) then
+      if (nlotot>0) then
     call r3mtv( sl, vpl, v)
-    ! make a copy of the local-orbital coefficients
+! make a copy of the local-orbital coefficients
     evecfvt(ngp+1:ngp+nlotot,1:nst) = evecfv(ngp+1:ngp+nlotot,1:nst)
-    do is = 1, nspecies
+          do is = 1, nspecies
       do ja = 1, natoms(is)
         jas = idxas(ja,is)
-        ! equivalent atom for this symmetry
+            ! equivalent atom for this symmetry
         ia = ieqatom(ja,is,isym)
         ias = idxas(ia,is)
-        !---------------
-        ! phase factor
-        !---------------
+            !---------------
+            ! phase factor
+            !---------------
         v1 = input%structure%speciesarray(is)%species%atomarray(ia)%atom%coord + vtlsymc(:,isym)
         t1 = dot_product( vpl, v1)
         t2 = dot_product( v, input%structure%speciesarray(is)%species%atomarray(ja)%atom%coord)
         t1 = twopi*(t2 - t1)
         zt1 = cmplx( cos(t1), sin(t1), dp)
 
-        do ilo = 1, nlorb(is)
-          l = lorbl(ilo,is)
+            do ilo = 1, nlorb(is)
+              l = lorbl(ilo,is)
           ! get index of first basis coefficients of this LO at atom ias
           i = ngp + idxlo( idxlm(l,-l), ilo, ias)
           ! get index of first basis coefficients of this LO at atom jas
@@ -315,10 +317,10 @@ subroutine rotate_evecfv( isym, vpl, vprl, ngp, vgpl, vgprl, evecfv, ld, nst)
                  dlmm, 2*l+1, &
                  evecfvt(i,1), ngp+nlotot, zzero, &
                  evecfv(j,1), ld)
+          end do
+          end do
         end do
-      end do
-    end do
-  end if
+      end if
 
   deallocate( evecfvt)
 end subroutine
