@@ -66,7 +66,8 @@ Subroutine potcoul
       Call genjlgpr (lmax, gc, jlgr)
 ! solve the complex Poisson's equation
       call coulomb_potential( nrmt, spr, ngvec, gc, 1, jlgr, ylmg, sfacg, spzn, &
-                              zrhomt, zrhoir, zvclmt, zvclir, zrho0)
+                              zrhomt, zrhoir, zvclmt, zvclir, zrho0, &
+                              cutoff = input%groundstate%vha.eq."exciting0d")
 ! convert complex muffin-tin potential to real spherical harmonic expansion
       Do is = 1, nspecies
          Do ia = 1, natoms (is)
