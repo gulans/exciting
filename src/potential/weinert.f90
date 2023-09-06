@@ -373,7 +373,7 @@ module weinert
       use mod_atoms, only: nspecies, natoms, idxas
       Use mod_kpoint, only: nkptnr
       use mod_muffin_tin, only: rmt
-      use constants, only: zzero, fourpi
+      use constants, only: zzero, fourpi, twopi
       !> maximum angular momentum \(l\)
       integer, intent(in) :: lmax
       !> pseudodensity expansion order
@@ -428,7 +428,7 @@ module weinert
 
       if (present(cutoff).and.(cutoff)) then
         r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
-        zvclig = zrhoig*(fourpi*0.5d0)*r_c**2
+        zvclig = zrhoig*twopi*r_c**2
 !$omp parallel default(shared) private(i,igp,ig,ifg)
 !$omp do
       ! cutoff correction for > epslat
