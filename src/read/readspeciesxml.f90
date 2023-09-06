@@ -211,6 +211,10 @@ Subroutine readspeciesxml
 !    Default definitions
 !----------------------------
 
+!    Setting principal quantum number of all (L)APWs to -1 (default) 
+!    to avoid automatic calculations of trial energies.
+     apwn(1:maxapword, 0:maxlapw, is) = default_apwn
+     
      if (size(speziesdeflist(is)%sp%basis%default%wfarray)>0) then
        
 !      DEFAULT: Element wf is specified
@@ -294,10 +298,10 @@ Subroutine readspeciesxml
         Write (*,*)
         Stop
      End If
-
+     
      nlo = 0
      Do ilx = 1, nlx
-        
+
         lx = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%l
         If (lx .Lt. 0) Then
            Write (*,*)
@@ -342,6 +346,7 @@ Subroutine readspeciesxml
              Stop
           End If
           Do io = 1, apword (lx, is)
+             apwn(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%wfarray(io)%wf%n  
              apwe0(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%wfarray(io)%wf%trialEnergy
              apwdm(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%wfarray(io)%wf%matchingOrder
              apwve(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%wfarray(io)%wf%searchE
@@ -371,6 +376,7 @@ Subroutine readspeciesxml
           end if
           Do io = 1, apword(lx, is)
              apwe0(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%trialEnergy
+             apwn(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%n
              apwdm(io, lx, is) = io-1
              apwve(io, lx, is) = speziesdeflist(is)%sp%basis%customarray(ilx)%custom%searchE
              mine0=min(apwe0(io,lx,is),mine0)

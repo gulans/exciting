@@ -9,7 +9,7 @@
     <atomicState n="3" l="0" kappa="1" occ="1.00000" core="false"/>
     <basis>
       <default type="lapw" trialEnergy="0.1500" searchE="false"/>
-      <custom l="0" type="apw+lo" trialEnergy="-2.1" searchE="false" n="3"/>
+      <custom l="0" type="apw+lo" searchE="false" n="3"/>
       <lo l="0">
         <wf matchingOrder="0" searchE="false" n="3"/>
         <wf matchingOrder="2" searchE="false" n="3"/>
@@ -19,7 +19,7 @@
         <wf matchingOrder="0" searchE="false" n="2"/>
       </lo>
 
-      <custom l="1" type="apw+lo" trialEnergy="-1.1" searchE="false" n="2"/>
+      <custom l="1" type="lapw" searchE="false" n="2"/>
       <lo l="1">
         <wf matchingOrder="0" searchE="false" n="2"/>
         <wf matchingOrder="2" searchE="false" n="2"/>
