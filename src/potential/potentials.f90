@@ -30,7 +30,7 @@ module potentials
     !> In the last step, we add the homogeneous solution of Poisson's equation to the muffin-tin Coulomb potential
     !> to match it with the interstitial potential on the muffin-tin sphere boundaries using the subroutines
     !> [[match_bound_mt(subroutine)]] and [[surface_ir(subroutine)]].
-    subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0)
+    subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff)
       use constants, only: y00
       use modinput
       use mod_atoms, only: natmtot, nspecies, natoms, idxas
@@ -67,7 +67,9 @@ module potentials
       complex(dp), intent(out) :: zvclir(:)
       !> Fourier component of pseudocharge density for shortest \({\bf G+p}\) vector
       complex(dp), intent(out) :: zrho0
-    
+      !> option for using coulomb cutoff for solving Poisson's equation
+      logical, optional, intent(in) :: cutoff
+ 
       integer :: is, ia, ias, ir
     
       real(dp), allocatable :: vion(:,:), vdplmt(:,:,:), vdplir(:)
@@ -113,7 +115,7 @@ module potentials
       ! solve Poisson's equation in interstitial region
       call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                       zrhoig, qlm, zvclir)
+                       zrhoig, qlm, zvclir, cutoff)
       zrho0 = zrhoig( igfft( igp0))
     
       ! evaluate interstitial potential on muffin-tin surface

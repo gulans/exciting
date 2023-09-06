@@ -367,10 +367,11 @@ module weinert
     !> \[ V({\bf r}) = \sum_{\bf G} \hat{V}({\bf G+p}) \, {\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf r}} \;, \]
     !> with
     !> \[ \hat{V}({\bf G+p}) = 4\pi \frac{\hat{n}^{\rm ps}({\bf G+p})}{|{\bf G+p}|^2} \;.\]
-    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig)
+    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig, cutoff)
       use modinput
       use mod_lattice, only: omega
       use mod_atoms, only: nspecies, natoms, idxas
+      Use mod_kpoint, only: nkptnr
       use mod_muffin_tin, only: rmt
       use constants, only: zzero, fourpi
       !> maximum angular momentum \(l\)
@@ -400,11 +401,13 @@ module weinert
       complex(dp), intent(inout) :: zrhoig(:)
       !> muffin-tin multipole moments \(q^\alpha_{lm}\) of the charge density
       complex(dp), intent(in) :: qlm(:,:)
+      !> option for using coulomb cutoff for solving Poisson's equation
+      logical, optional, intent(in) :: cutoff 
       !> Fourier components \(\hat{V}({\bf G+p})\) of the interstitial electrostatic potential on the FFT grid
       complex(dp), intent(out) :: zvclig(:)
 
       integer :: i, is, ia, ias, igp, ngpf, ifg, ig(3)
-
+      real :: r_c
       integer, allocatable :: igp_finite(:)
     
       ! add Fourier components of pseudodensity from multipole moments
@@ -417,19 +420,40 @@ module weinert
       end do
   
       ! solve Poisson's equation in reciprocal space
-      zvclig = zzero
+!      zvclig = zzero
       igp_finite = pack( [(i, i=1, ngp)], [(gpc(i) > input%structure%epslat, i=1, ngp)])
       ngpf = size( igp_finite)
+
+
+
+      if (present(cutoff).and.(cutoff)) then
+        r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
+        zvclig = zrhoig*(fourpi*0.5d0)*r_c**2
 !$omp parallel default(shared) private(i,igp,ig,ifg)
 !$omp do
-      do i = 1, ngpf
-        igp = igp_finite(i)
-        ig = modulo( ivgp(:,igp)-intgv(:,1), intgv(:,2)-intgv(:,1)+1) + intgv(:,1)
-        ifg = igfft( ivgig( ig(1), ig(2), ig(3)))
-        zvclig(ifg) = fourpi*zrhoig(ifg)/(gpc(igp)**2)
-      end do
+      ! cutoff correction for > epslat
+        do i = 1, ngpf
+          igp = igp_finite(i)
+          ig = modulo( ivgp(:,igp)-intgv(:,1), intgv(:,2)-intgv(:,1)+1) + intgv(:,1)
+          ifg = igfft( ivgig( ig(1), ig(2), ig(3)))
+          zvclig(ifg) = fourpi*zrhoig(ifg)*(1d0-cos(gpc(igp)*r_c))/(gpc(igp)**2)
+        end do
 !$omp end do
 !$omp end parallel
+      else
+        zvclig = zzero
+      ! without cutoff correction
+!$omp parallel default(shared) private(i,igp,ig,ifg)
+!$omp do
+        do i = 1, ngpf
+          igp = igp_finite(i)
+          ig = modulo( ivgp(:,igp)-intgv(:,1), intgv(:,2)-intgv(:,1)+1) + intgv(:,1)
+          ifg = igfft( ivgig( ig(1), ig(2), ig(3)))
+          zvclig(ifg) = fourpi*zrhoig(ifg)/(gpc(igp)**2)
+        end do
+!$omp end do
+!$omp end parallel
+      end if
     end subroutine
 
     !> This subroutine computes the Fourier components of a quickly converging pseudodensity with multipole moments \(q_{lm}\)
