@@ -223,9 +223,9 @@ Subroutine davidson (system, nst, evecfv, evalfv,ik)
 
        call HloSlo(n_local,npw_local,nsize,system,trialvec,Hx,Sx)
 ! The following bit will be necessary for supporting ACE
-!       if (allocated(pace).and.(.not.associated(system%hamilton%za))) then
-!        call pacelo(n_local,npw_local,nsize,nstsv,input%groundstate%hybrid%excoeff,pace(:,:,ik),trialvec ,Hx )
-!       endif
+       if (allocated(pace).and.(.not.associated(system%hamilton%za))) then
+        call pacelo(n_local,npw_local,nsize,nstsv,input%groundstate%hybrid%excoeff,pace(:,:,ik),trialvec ,Hx )
+       endif
 
 ! -> 2. singular components
        if (nusedsingular.ne.0) then
@@ -267,9 +267,9 @@ call timesec(time1)
       call HapwSapw(n_local,npw,nsize-nloall,system,fftmap,zfftcf,zfftveff,zfftmeff,trialvec(:,nloall+1:nsize),Hx(:,nloall+1:nsize),Sx(:,nloall+1:nsize),.true.)
 
 ! The following bit will be necessary for supporting ACE
-!      if (allocated(pace).and.(.not.associated(system%hamilton%za))) then
-!        call paceapw(n_local,npw,nsize-nloall,nstsv,input%groundstate%hybrid%excoeff,pace(:,:,ik),trialvec(1:n_local,nloall+1:nsize) ,Hx(1:n_local,nloall+1:nsize))
-!      endif
+      if (allocated(pace).and.(.not.associated(system%hamilton%za))) then
+        call paceapw(n_local,npw,nsize-nloall,nstsv,input%groundstate%hybrid%excoeff,pace(:,:,ik),trialvec(1:n_local,nloall+1:nsize) ,Hx(1:n_local,nloall+1:nsize))
+      endif
 
       call innerproduct(n_local,nsize,nsize,trialvec,Hx(:,1:nsize),blockH(:,1:nsize))
       call innerproduct(n_local,nsize,nsize,trialvec,Sx(:,1:nsize),blockS(:,1:nsize))
@@ -339,9 +339,9 @@ call timesec(time2)
           call GSortho(n_local,nsize-nadd-nloall,nsize-nloall,trialvec(:,nloall+1:))
           call HapwSapw(n_local,npw,nadd,system,fftmap,zfftcf,zfftveff,zfftmeff,trialvec(:,nsize-nadd+1:nsize),Hx(:,nsize-nadd+1:nsize),Sx(:,nsize-nadd+1:nsize),.true.)
 ! The following bit will be necessary for supporting ACE 
-!      if (allocated(pace).and.(.not.associated(system%hamilton%za))) then
-!        call paceapw(n_local,npw,nadd,nstsv,input%groundstate%hybrid%excoeff,pace(:,:,ik),trialvec(1:n_local,nsize-nadd+1:nsize) ,Hx(1:n_local,nsize-nadd+1:nsize))
-!      endif
+          if (allocated(pace).and.(.not.associated(system%hamilton%za))) then
+            call paceapw(n_local,npw,nadd,nstsv,input%groundstate%hybrid%excoeff,pace(:,:,ik),trialvec(1:n_local,nsize-nadd+1:nsize) ,Hx(1:n_local,nsize-nadd+1:nsize))
+          endif
 
           call innerproduct(n_local,nsize,nsize,trialvec,Hx,blockH)
           call innerproduct(n_local,nsize,nsize,trialvec,Sx,blockS)
