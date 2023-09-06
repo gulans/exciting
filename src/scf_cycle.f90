@@ -264,7 +264,7 @@ call timesec(ta)
 ! start k-point loop
 #ifdef MPI
         call barrier()
-            If (rank == 0) Call delevec()
+        !    If (rank == 0) Call delevec()
         splittfile = .True.
         Do ik = firstofset(rank,nkpt), lastofset(rank,nkpt)
 #else
@@ -278,7 +278,6 @@ call timesec(ta)
             Allocate (evalfv(nstfv, nspnfv))
             Allocate (evecfv(nmatmax, nstfv, nspnfv))
             Allocate (evecsv(nstsv, nstsv))
-
             if (iscl.le.1) then
               evecfv=0d0
             elseif (input%groundstate%solver%type.eq.'Davidson') then

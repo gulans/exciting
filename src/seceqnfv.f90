@@ -99,10 +99,6 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
         nullify(system%overlap%cap)
         nullify(system%hamilton%ipiv)
         nullify(system%overlap%ipiv)        
-        if (task == 7) then 
-          write(*,*) 'seqeqn: cannot run hybrid calculations with iterative eigensolver without constructing the Hamiltonian matrix explicitly'
-          stop
-        endif  
         call MTRedirect(mt_hscf%main,mt_hscf%spinless)
       endif
 
