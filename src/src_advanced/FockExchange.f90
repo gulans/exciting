@@ -8,6 +8,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
+      Use potentials, only: coulomb_potential
       Implicit None
 ! arguments
       Integer, Intent (In) :: ikp
@@ -204,17 +205,10 @@ write(*,*) 'genWFs',tb-ta
                   prodir(:)=prodir(:)-zrho01
                   prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-zrho01/y00
    endif
-
-   if (solver) then
-                  Call zpotcoul2 (nrcmt, nrcmtmax, nrcmtmax, rcmt, &
-                  & igq0, gqc, jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), 1, pot%mtrlm(:,:,:,1), potir(:), zrho02)
-   else
-   !write(*,*)"zpotcoul exciting"
-                  Call zpotcoul (nrcmt, nrcmtmax, nrcmtmax, rcmt, &
-                  & igq0, gqc, jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02)
-   end if
+                  Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                  & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+                  & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02, &
+                  & cutoff=input%groundstate%hybrid%singularity.eq."exc0d")
 
                call WFprodrs(ist2,wf2,ist3,wf1,prod)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
