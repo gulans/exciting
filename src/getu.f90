@@ -71,7 +71,7 @@ do iter=1, 40
   uatom(1:nrmt)=u
   call getrFock(nratom,ratom,is,ia,l,uatom,vx_uatom)
   vx_u=vx_uatom(1:nrmt)
-
+  vx_u=vx_u*ex_coef
 
 if(original)then
   if (m.eq.0) then
