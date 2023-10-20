@@ -26,6 +26,8 @@ subroutine sigma(iq,lambdamax)
     use mod_coulomb_potential, only : sgm
     use mod_misc_gw, only : vi    
     use strconst, only: rstr
+    use mod_lattice, only: omega
+    Use mod_kpoint, only: nkptnr
 !!INPUT PARAMETERS:
     implicit none
     integer(4), intent(in) :: iq        ! index of the q-point for which 
@@ -56,7 +58,10 @@ subroutine sigma(iq,lambdamax)
     real(8) :: gtolam              ! value of gleng^(lambda-2)/2^(lambda-0.5)
     real(8) :: gamlam              ! gamlam = Gamma[lambda+1/2]
     real(8) :: erfr
-    real(8) :: gammaor             
+    real(8) :: gammaor
+    real(8) :: r_c                 !cutofff radius             
+    real(8) :: fheaviside
+
 
     real(8), dimension(3) :: qvec  ! cartesian coords. of the q point
     real(8), dimension(3) :: raa   ! Vector going from atom 1 to atom 2.
@@ -77,6 +82,7 @@ subroutine sigma(iq,lambdamax)
     real(8), external :: calceta
     real(8), external :: gcutoff
     real(8), external :: rcutoff
+    real(8), external :: heaviside
 
 ! !REVISION HISTORY:
 !
@@ -92,7 +98,8 @@ subroutine sigma(iq,lambdamax)
     sgm(:,:,:) = zzero
 !
 ! Lattice sums cutoff parameters
-!
+!   
+    r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0 !cutoff radius for coulomb interaction
     eta = calceta()
     rcf = 2.0d+0*rcutoff(input%gw%barecoul%stctol,eta,10)
     gcf = 2.0d+0*gcutoff(input%gw%barecoul%stctol,eta,10)
@@ -107,7 +114,7 @@ subroutine sigma(iq,lambdamax)
             
             ! Initialize the temporal storage of the lattice sums
             stmp1 = zzero
-            stmp2 = zzero
+            !stmp2 = zzero
             
             !----------------------------------------------
             ! Calculate all the R's such that R+r_aa < rcf
@@ -126,17 +133,21 @@ subroutine sigma(iq,lambdamax)
               qtraa = qvec(1)*rpaa(1)+qvec(2)*rpaa(2)+qvec(3)*rpaa(3)
               expqdr = cmplx(dcos(qtraa),dsin(qtraa),8)
               gausr = dexp(-1.0d0*rleng*rleng/(eta*eta))
-              erfr = derfc(rleng/eta)
-              gammaor = dsqrt(pi)*erfr/rleng
-              term1 = expqdr*cmplx(gammaor,0.0d0,8)*ylam(1)
+              !erfr = derfc(rleng/eta)
+              !gammaor = dsqrt(pi)*erfr/rleng
+              !term1 = expqdr*cmplx(gammaor,0.0d0,8)*ylam(1)
+              fheaviside = heaviside(rleng/eta, r_c)
+              write(*,*)"heaviside", fheaviside, "i1", i1, "r", rleng/eta, r_c, eta
+              gammaor = fheaviside
+              term1 = expqdr*cmplx(fheaviside*eta/rleng,0.0d0,8)*ylam(1)
               stmp1(1) = stmp1(1)+term1
               do lmbd = 1, lambdamax
-                gammaor = (dble(lmbd)-0.5d0)*gammaor/rleng+ &
-                &          rleng**(lmbd-2)*gausr/(eta**(2*lmbd-1))
+                !gammaor = !(dble(lmbd)-0.5d0)*gammaor+ &
+                !          !rleng**(2.0d0*dble(lmbd)-1.0d0)*gausr/(eta**(2.0d0*dble(lmbd)-1.0d0))
                 do mu = -lmbd, lmbd
                   lmuind = lmbd*lmbd+lmbd+mu+1
                   stmp1(lmuind) = stmp1(lmuind)+ &
-                  &               cmplx(gammaor,0.0d0,8)*expqdr*ylam(lmuind)
+                  &               cmplx(fheaviside*(eta/rleng)**(dble(lmbd)+1d0),0.0d0,8)*expqdr*ylam(lmuind)
                 enddo ! mu
               enddo ! lmbd
             enddo ! i1
@@ -145,12 +156,14 @@ subroutine sigma(iq,lambdamax)
             !----------------------------------------------
             ! Calculate all the G's such that G+q < gcf
             !----------------------------------------------
+            if (.false.) then
             qtemp(1:3) = -1.0d0*qvec(1:3)
             call genrstr(gcf,qtemp,bvec,ng)
             
             !---------------------------------------
             ! Sum over the reciprocal space lattice
             !---------------------------------------
+           
             pref = 4.0d0*pi*dsqrt(pi)*vi
             do i1 = 1, ng
               gqv(1:3) = rstr(1:3,i1)
@@ -176,20 +189,22 @@ subroutine sigma(iq,lambdamax)
                 enddo ! mu
               enddo ! lmbd
             enddo !i1
+           
             deallocate(rstr)
+           end if
               
             gamlam = dsqrt(pi)
             stmp1(1) = stmp1(1)*cmplx(1.0d0/gamlam,0.0d0,8)
-            stmp2(1) = stmp2(1)*cmplx(1.0d0/gamlam,0.0d0,8)
-            sgm(ias,jas,1) = stmp1(1)+stmp2(1)
+            !stmp2(1) = stmp2(1)*cmplx(1.0d0/gamlam,0.0d0,8)
+            sgm(ias,jas,1) = stmp1(1)!+stmp2(1)
 
             do lmbd = 1, lambdamax
               gamlam = 5.0d-1*dble(2*lmbd-1)*gamlam
               do mu = -lmbd, lmbd
                 lmuind = lmbd*lmbd+lmbd+mu+1
                 stmp1(lmuind) = stmp1(lmuind)*cmplx(1.0d0/gamlam,0.0d0,8)
-                stmp2(lmuind) = stmp2(lmuind)*cmplx(1.0d0/gamlam,0.0d0,8)
-                sgm(ias,jas,lmuind) = stmp1(lmuind)+stmp2(lmuind)
+                !stmp2(lmuind) = stmp2(lmuind)*cmplx(1.0d0/gamlam,0.0d0,8)
+                sgm(ias,jas,lmuind) = stmp1(lmuind)!+stmp2(lmuind)
               enddo
             enddo
             
@@ -334,3 +349,9 @@ subroutine genrstr(rmax,rshift,rbas,nr)
     enddo
 end subroutine genrstr
 !EOC
+
+function heaviside (r, r_c) result(h_s)
+  double precision h_s, r, r_c
+  h_s = 1
+  if (r .ge. r_c) h_s = 0
+  end

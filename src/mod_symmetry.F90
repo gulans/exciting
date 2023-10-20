@@ -232,7 +232,11 @@ Module mod_symmetry
       call r3frac( 1e-6_dp, v, shift)
     
       ngrid = intgv2(:,2) - intgv2(:,1) + 1
-    
+
+! This PRIVATE/SHARED partitioning assumes ig maps uniquely onto jfg.
+
+!!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,igf,ivg,phase,jg,jgf,zfig2) SHARED(fft1,fft2,ng,igfft1,igfft2,irotl,ivg1,shift,vpl,vtl,ngrid,intgv2,ivgig2,zfig1)
+!!$OMP DO
       do ig = 1, ng
         igf = ig
         if( fft1) igf = igfft1(ig)
@@ -250,6 +254,8 @@ Module mod_symmetry
         ! update entry in output function
         zfig2(jgf) = zfig2(jgf) + cmplx( cos(phase), sin(phase), dp)*zfig1(igf)
       end do    
+!!$OMP END DO
+!!$OMP END PARALLEL
     end subroutine symapp_zfig
 
     !> Find all pairs of points and rotations from a list of points and rotations that 

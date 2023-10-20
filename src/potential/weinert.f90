@@ -420,7 +420,6 @@ module weinert
       end do
   
       ! solve Poisson's equation in reciprocal space
-!      zvclig = zzero
       igp_finite = pack( [(i, i=1, ngp)], [(gpc(i) > input%structure%epslat, i=1, ngp)])
       ngpf = size( igp_finite)
 

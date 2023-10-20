@@ -10,6 +10,8 @@ subroutine calcbarcmb_ipw_mt(iq)
     use mod_coulomb_potential, only : barc
     use mod_misc_gw,           only : vi, atposl
     use constants,             only : zi, zzero, zone, pi
+    use mod_lattice,           only: omega
+    Use mod_kpoint,            only: nkptnr
     implicit none
     ! input variables
     integer, intent(in) :: iq
@@ -22,6 +24,7 @@ subroutine calcbarcmb_ipw_mt(iq)
     real(8) :: gvec(3), gqvec(3), gqlen, gpr
     real(8) :: janl
     real(8) :: vc
+    real(8) :: r_c !cutofff radius
     real(8), allocatable :: fr(:), gr(:), cf(:,:)
     real(8), allocatable :: bessl(:,:)
     complex(8) :: expg, prefac
@@ -113,7 +116,7 @@ subroutine calcbarcmb_ipw_mt(iq)
     tmat1(:,:) = zzero
     
     ipw0 = 1
-    if (Gamma) ipw0 = 2
+    !if (Gamma) ipw0 = 2
     
 #ifdef USEOMP
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ipw,gvec,gqvec,gqlen,vc,sph,imix,is,nr,bessl,ir,x,fr,gr,cf,ia,ias,gpr,expg,irm,l1,janl,prefac,m1,l1m1)
@@ -129,12 +132,16 @@ subroutine calcbarcmb_ipw_mt(iq)
       gqvec(1:3) = Gset%vgc(1:3,Gqbarc%igkig(ipw,1,iq))+kqset%vqc(1:3,iq)
       ! length of G+q vector
       gqlen = dsqrt(gqvec(1)*gqvec(1)+gqvec(2)*gqvec(2)+gqvec(3)*gqvec(3))
+
+      !coulomb potential truncation
+      vc = (1.0d0-cos(gqlen*r_c))/(gqlen*gqlen)
       if (abs(gqlen) < 1.d-8) then
-        write(*,*) 'WARNING(calcbarcmb_ipw_mt.f90): Zero length vector!' 
-        cycle
+        write(*,*) 'WARNING(calcbarcmb_ipw_mt.f90): Zero length vector!', ipw
+        vc = 0.50d0*r_c**2 ! cutoff correction for |G+q|=0
+        
       endif
      
-      vc = 1.d0/(gqlen*gqlen)
+      !vc = 1.d0/(gqlen*gqlen)
       
       !----------------------
       ! Calculate Y_lm(q+G)
