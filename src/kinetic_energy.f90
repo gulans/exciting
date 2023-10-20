@@ -93,7 +93,7 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
          Do ia = 1, natoms (is)
            ias = idxas (ia, is)
            Do ir = 1, nr
-             rmtable (ir) = 1d0/(1d0-0.5d0*alpha**2*veffmt (1, ir, ias)*y00)
+             rmtable (ir) = 1d0/(1d0-a*veffmt (1, ir, ias)*y00)
            End Do
 !---------------------------!
 !     APW-APW integrals     !

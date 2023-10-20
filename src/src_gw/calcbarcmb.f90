@@ -59,12 +59,12 @@ subroutine calcbarcmb(iq)
 
     case('mb')
 
-      if (Gamma) then
+      !if (Gamma) then
         !------------------------------------------------
         ! Matrix elements for the singular q=0, L=0 case
         !------------------------------------------------
-        call barcq0
-      end if
+      !  call barcq0
+      !end if
 
       !-----------------------------------------------------------
       ! Matrix elements between MT and MT mixed product functions

@@ -30,7 +30,6 @@ Subroutine poteff
       call stopwatch("exciting:poteff", 1)
       
       Call timesec (ts0)
-      
 !---------------------------------------------
 ! compute the exchange-correlation potential
 !---------------------------------------------

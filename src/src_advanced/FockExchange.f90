@@ -8,6 +8,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
+      Use potentials, only: coulomb_potential
       Implicit None
 ! arguments
       Integer, Intent (In) :: ikp
@@ -53,6 +54,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: zvcltp (:, :)
       Complex (8), Allocatable :: zfmt (:, :)
       Complex (8), Allocatable :: zwfir (:)
+      Complex (8), Allocatable :: ztir1(:,:)
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
@@ -204,17 +206,10 @@ write(*,*) 'genWFs',tb-ta
                   prodir(:)=prodir(:)-zrho01
                   prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-zrho01/y00
    endif
-
-   if (solver) then
-                  Call zpotcoul2 (nrcmt, nrcmtmax, nrcmtmax, rcmt, &
-                  & igq0, gqc, jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), 1, pot%mtrlm(:,:,:,1), potir(:), zrho02)
-   else
-   !write(*,*)"zpotcoul exciting"
-                  Call zpotcoul (nrcmt, nrcmtmax, nrcmtmax, rcmt, &
-                  & igq0, gqc, jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02)
-   end if
+                  Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                  & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+                  & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02, &
+                  & cutoff=input%groundstate%hybrid%singularity.eq."exc0d")
 
                call WFprodrs(ist2,wf2,ist3,wf1,prod)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
@@ -316,6 +311,7 @@ call timesec(tb)
 write(*,*) 'vcv',tb-ta
 
       vxpsimt=vxpsimt+zvclmt
+      if (.true.) then
       Allocate (wf1ir(ngrtot))
 call timesec(ta)
       Do ist1 = 1, nstsv
@@ -355,6 +351,99 @@ call timesec(ta)
 call timesec(tb)
 
 write(*,*) 'Matrix',tb-ta
+end if
+      if(.false.) then
+call timesec(ta)
+      If (q0corr.ne.0.d0) Then
+        Allocate (wf1ir(ngrtot))
+        Do ist1 = 1, nomax
+            ! Evaluate wavefunction in real space
+            wf1ir(:) = 0.d0
+            Do igk = 1, Gkqset%ngk (1, ik)
+               ifg = igfft (Gkqset%igkig(igk, 1, ik))
+               wf1ir(ifg) = t1*wf1%gk(igk, ist1)
+            End Do
+            Call zfftifc (3, ngrid, 1, wf1ir(:))
+
+            ! Apply q=0 correction to MT part
+            vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
+
+            ! Apply correction to IR part and roll back correction to momentum space
+            vxpsiirtmp(:) = q0corr*wf1ir(:)*cfunir(:)
+            Call zfftifc (3, ngrid,-1,vxpsiirtmp)
+            Do igk=1, Gkqset%ngk (1, ik)
+               vxpsiirgk(igk, ist1)=vxpsiirgk(igk, ist1)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
+            End Do
+        End Do ! ist1
+        Deallocate (wf1ir)
+      End If 
+call timesec(tb)
+write(*,*)'q0corr', tb-ta
+
+
+
+
+
+
+
+!----------------------------------------
+call timesec(ta)
+! IR part
+! replace with ZGEMM
+!if (.t.) then
+      allocate(ztir1(nstsv, nstsv))
+      call zgemm('C', 'N', nstsv, nstsv, Gkqset%ngk (1, ik), dcmplx(1.0D0,0.0), wf1%gk, &
+              & nmatmax, vxpsiirgk, ngkmax, dcmplx(0.0D0,0.0d0), ztir1, nstsv)
+      vnlvv = vnlvv - ztir1
+     ! do ist1 = 1, 6
+     !    write(*,'(14F13.9)') dble(vnlvv(ist1,1:6))
+     ! end do
+
+      deallocate(ztir1)
+call timesec(tb)
+      if (.false.) then
+write(*,*)"zgemm", tb-ta
+      Do ist1 = 1, nstsv
+         Do ist3 = 1, nstsv
+
+            ztir = 0.d0
+            Do igk = 1, Gkqset%ngk (1, ik)
+               ztir = ztir + conjg(wf1%gk(igk, ist1))*vxpsiirgk(igk,ist3)
+            End Do
+            vnlvv (ist1, ist3) = vnlvv (ist1, ist3) - ztir
+                write(*,*)ist1, ist3, ztir
+         End Do ! ist3
+      End Do ! ist1
+
+ !     do ist1 = 1, 6
+ !        write(*,'(14F13.9)') dble(vnlvv(ist1,1:6))
+ !     end do
+   end if
+!stop
+      
+! MT part
+call timesec(ta)
+!write(*,*)"before omp"
+!!$omp parallel default(shared), private(ist3, ztmt)
+      Do ist1 = 1, nstsv
+         ! Write(*,*) 'ist1=',ist1
+!!$omp do
+         Do ist3 = 1, nstsv
+
+            ztmt = zfinpmt (.True., wf1%mtrlm(:,:,:,ist1),vxpsimt(:,:,:,ist3))
+            vnlvv (ist1, ist3) = vnlvv (ist1, ist3) - ztmt
+
+         End Do ! ist3
+!!$omp end do
+      End Do ! ist1
+!!$omp end parallel
+call timesec(tb)
+end if
+do ist1 = 1, 6
+         write(*,'(14F13.9)') dble(vnlvv(ist1,1:6))
+ end do
+!stop
+!write(*,*) 'omp mt',tb-ta
 
 if (.false.) then
       Write(*,*) "ikp, ik, memopt:", ikp, ik
@@ -372,7 +461,6 @@ end if
       Deallocate (vgqc, tpgqc, gqc, jlgqr, jlgq0r)
       Deallocate (ylmgq, sfacgq)
       Deallocate (wfcr1)
-      Deallocate (wf1ir)
       Deallocate (zrhomt, zrhoir, zvcltp, zfmt)
       call WFRelease(wf1)
       call WFRelease(wf2)

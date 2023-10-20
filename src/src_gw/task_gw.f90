@@ -189,11 +189,15 @@ subroutine task_gw()
           case('ppm','PPM')
             call calcepsilon_ppm(iq, iomstart, iomend)
           case default
-            call calcepsilon(iq, iomstart, iomend)
+            write(*,*)"mp2-full"
+            call calcmp2_full(iq, iomstart, iomend)
+            !call calcepsilon(iq, iomstart, iomend)
             !==========================================
             ! Calculate the screened Coulomb potential
             !==========================================
-            call calcinveps(iomstart, iomend)
+            !call calcinveps(iomstart, iomend)
+            write(*,*)"I am done with the mp2 calculation"
+            stop
         end select
         !========================================
         ! Calculate the q-dependent self-energy

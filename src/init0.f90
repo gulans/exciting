@@ -22,6 +22,7 @@ Subroutine init0
       Use autormt, only: optimal_rmt
       use cmd_line_args, only: cmd_line_args_type
       Use modxcifc
+      Use modinteg 
       Use modmpi, only: mpiglobal, mpi_env_k, mpi_env_band, find_2d_grid
 #ifdef MPI
       use modmpi, only: MPI_COMM_SELF
@@ -312,6 +313,18 @@ Subroutine init0
       Else
             input%groundstate%APWprecision = determine_APWprecision(input%groundstate%rgkmax, spzn(input%groundstate%isgkmax))
       End If
+!-----------------------!
+! initialize modinteg   !
+!-----------------------!
+
+if (allocated(mt_integw%fintw)) then
+  call dealloc_icoef()
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+
+  else
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+  endif
+
 !
 !--------------------------------------!
 !     charges and number of states     !
