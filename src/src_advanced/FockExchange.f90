@@ -5,6 +5,7 @@
 !
 !
 Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
+      use modbess, only: nfit, zbessi,zbessk,erfc_fit,zilmt
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
@@ -28,7 +29,10 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir
       Complex (8) zrho01, zrho02, ztmt, zt2, ztir
-      Integer :: nr, l, m, io1, lm2, ir, if3
+      Integer :: nr, l, m, io1, lm2, ir, if3, j
+
+      Complex (8) :: potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot)
+
 ! automatic arrays
       Real (8) :: zn (nspecies)
       Complex (8) sfacgq0 (natmtot)
@@ -205,11 +209,34 @@ write(*,*) 'genWFs',tb-ta
                   prodir(:)=prodir(:)-zrho01
                   prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-zrho01/y00
    endif
-                  Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
-                  & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02, &
-                  & cutoff=input%groundstate%hybrid%singularity.eq."exc0d")
+   if (.false.) then !Yukawa case
+      pot%mtrlm(:,:,:,1)=zzero
+      potir=zzero
+      do j=1, nfit
+         Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+         & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+         & prodir(:), potmt0, potir0, zrho02, &
+         & cutoff=input%groundstate%hybrid%singularity.eq."exc0d",hybrid_in=.true.,yukawa_in=.true., &
+         & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:))
+         pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
+         potir=potir+potir0 * erfc_fit(j,1)
+      enddo
+      do j=2, nfit
+         Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+         & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+         & prodir(:), potmt0, potir0, zrho02, &
+         & cutoff=input%groundstate%hybrid%singularity.eq."exc0d",hybrid_in=.true.,yukawa_in=.true., &
+         & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)))
+         pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
+         potir=potir+potir0 * conjg(erfc_fit(j,1))
+      enddo
 
+   else
+      Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+      & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02, &
+      & cutoff=input%groundstate%hybrid%singularity.eq."exc0d", hybrid_in=.true.)
+   endif
                call WFprodrs(ist2,wf2,ist3,wf1,prod)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
 

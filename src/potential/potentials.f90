@@ -30,8 +30,10 @@ module potentials
     !> In the last step, we add the homogeneous solution of Poisson's equation to the muffin-tin Coulomb potential
     !> to match it with the interstitial potential on the muffin-tin sphere boundaries using the subroutines
     !> [[match_bound_mt(subroutine)]] and [[surface_ir(subroutine)]].
-    subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff)
-      use constants, only: y00
+    subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
+                                & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt)
+
+      use constants, only: y00,zzero
       use modinput
       use mod_atoms, only: natmtot, nspecies, natoms, idxas
       use mod_muffin_tin, only: lmmaxvr, rmt, nrmtmax
@@ -62,30 +64,70 @@ module potentials
       !> complex interstitial charge density
       complex(dp), intent(in) :: zrhoir(:)
       !> complex muffin-tin Coulomb potential
-      complex(dp), intent(out) :: zvclmt(:,:,:)
+      complex(dp), intent(out) :: zvclmt(:,:,:) ! lm, nrmax, natoms
       !> complex interstitial Coulomb potential
       complex(dp), intent(out) :: zvclir(:)
       !> Fourier component of pseudocharge density for shortest \({\bf G+p}\) vector
       complex(dp), intent(out) :: zrho0
       !> option for using coulomb cutoff for solving Poisson's equation
       logical, optional, intent(in) :: cutoff
- 
-      integer :: is, ia, ias, ir
-    
+      logical, optional, intent(in) :: hybrid_in
+      logical, optional, intent(in) :: yukawa_in
+      complex(dp), optional, intent(in) :: zlambda_in
+      complex(dp), optional, intent(in) :: zbessi(nrmtmax,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies)
+      complex(dp), optional, intent(in) :: zbessk(nrmtmax,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies)   
+      complex(dp), optional, intent(in) :: zilmt(0:,:)  
       real(dp), allocatable :: vion(:,:), vdplmt(:,:,:), vdplir(:)
       complex(dp), allocatable :: qlm(:,:), qlmir(:,:), zrhoig(:)
+
+      logical :: yukawa
+      logical :: hybrid
+      complex(dp) :: zlambda
+     
+      integer :: is, ia, ias, ir,j
+      integer :: ig, ifg, lm
     
+      real(dp) :: t1
+
+      if ((present(hybrid_in)).and.(hybrid_in)) then
+        hybrid=.true.
+      else
+        hybrid=.false.
+      endif
+
+if (present(yukawa_in)) then
+  yukawa=yukawa_in
+else
+  yukawa=.false.
+endif
+
+if (present(zlambda_in)) then
+  zlambda=zlambda_in
+endif
+
+
+
+write(*,*)yukawa_in, yukawa, cutoff
+
       allocate( qlm( lmmaxvr, natmtot), qlmir( lmmaxvr, natmtot))
       allocate( zrhoig( ngrtot))
       allocate( vion( nrmtmax, nspecies), source=0._dp)
     
       ! solve Poisson's equation in each muffin-tin sphere
       ! and find muffin-tin multipoles
+      
       do is = 1, nspecies
         do ia = 1, natoms(is)
           ias = idxas(ia,is)
-          call poisson_and_multipoles_mt( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias))
-          vmad(ias) = dble( zvclmt(1,1,ias) ) * y00
+
+          if(yukawa) then
+              call poisson_and_multipoles_mt_yukawa ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias),&
+                  & zlambda, zbessi(1:nr(is),0:input%groundstate%lmaxvr,is), zbessk(1:nr(is),0:input%groundstate%lmaxvr,is),is)
+            vmad(ias) = dble( zvclmt(1,1,ias) ) * y00       
+          else ! Coulumb
+            call poisson_and_multipoles_mt ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias))
+            vmad(ias) = dble( zvclmt(1,1,ias) ) * y00   
+          endif
         end do
       end do
     
@@ -102,36 +144,100 @@ module potentials
     
       ! Fourier transform interstitial density to reciprocal space
       zrhoig = zrhoir
+     
       call zfftifc( 3, ngrid, -1, zrhoig)
       ! find multipole moments of interstitial density
       ! extended into the muffin-tin spheres
+      
+
+
+
+
+      if (yukawa) then
+
+        !Do ig = ngp+1, ngrtot
+        !  ifg = igfft (ig)
+        !  zrhoig(ifg)=zzero
+        !End Do
+
+        call multipoles_ir_yukawa( input%groundstate%lmaxvr, ngp, gpc, &
+            & jlgpr, ylmgp, sfacgp, igfft, &
+            zrhoig, qlmir,zlambda,zilmt)
+!write(*,*)"qlmir"
+!      write(*,*)"qlmir",qlmir(1:10,1)
+!      stop
+      else
+
+
+
       call multipoles_ir( input%groundstate%lmaxvr, ngp, gpc, &
                           ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
                           zrhoig, qlmir)
-    
+      endif
       ! take difference of muffin-tin and interstitial multipole moments
+
+
       qlm = qlm - qlmir
     
+
+     
       ! solve Poisson's equation in interstitial region
-      call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-                       ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                       zrhoig, qlm, zvclir, cutoff)
-      zrho0 = zrhoig( igfft( igp0))
-    
+
+      if (yukawa) then
+        
+        !call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
+        !              & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
+        
+        call pseudocharge_rspace(input%groundstate%lmaxvr,input%groundstate%npsden,qlm,zrhoig,yukawa,zlambda,zilmt,zbessi)
+
+        ! open(11,file='is_pseudo_r.dat',status='replace')
+        ! Do ig = 1, ngrtot
+        !     t1 = gpc (ig)
+        !     ifg = igfft (ig)
+        !     write(11,*)t1,",",dble(zrhoig(ifg))
+        ! End Do
+        ! close(11)
+        !stop
+
+
+
+        !zrho0 = zrhoig( igfft( igp0))
+
+        call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir)
+
+
+      else
+        call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
+                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+                        zrhoig, qlm, zvclir, cutoff,hybrid=hybrid)
+        zrho0 = zrhoig( igfft( igp0))
+      endif
       ! evaluate interstitial potential on muffin-tin surface
       call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
                        zvclir, qlmir)
-    
+     
       ! match muffin-tin and interstitial potential on muffin-tin boundaries
       do is = 1, nspecies
         do ia = 1, natoms(is)
           ias = idxas(ia,is)
-          call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias))
+          call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa, zbessi=zbessi(:,:,is) )
           vmad(ias) = vmad(ias) + dble( qlmir(1,ias) ) * y00 - vion(nr(is),is)
         end do
       end do
-    
+!if(yukawa)then    
+!do ig=1, 10
+!  ifg = igfft (ig)
+!write(*,*)"gatavs ,",zvclir(ifg)
+!enddo
+!stop
+!endif
+
+      
+
+
+
+
       ! Fourier transform interstitial potential to real space
       call zfftifc( 3, ngrid, 1, zvclir)
     
@@ -153,6 +259,27 @@ module potentials
         zvclir = zvclir + vdplir
         deallocate( vdplmt, vdplir)
       end if
+
+if(yukawa)then
+      open(11,file='mt_rez.dat',status='replace')
+      is=1
+      lm=1
+      do ir=1, nr(is)
+         write(11,*)r(ir,is),",",dble(zvclmt (lm, ir, is))*y00
+      enddo
+      close(11)
+      
+      open(11,file='is_rez.dat',status='replace')
+      Do ig = 1, ngrtot
+         t1 = gpc (ig)
+         write(11,*)dble(zvclir(ig))
+      End Do
+      close(11)
+      !stop
+    endif
+
+
+
     end subroutine coulomb_potential
 
 end module potentials

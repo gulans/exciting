@@ -17,6 +17,8 @@
 !>   Created January 2004 (JKD)
 !>   Started clean-up. 2022 (ABuccheri)
 Subroutine init0
+      use modinteg
+      use modbess
       Use modinput
       Use modmain
       Use autormt, only: optimal_rmt
@@ -312,7 +314,28 @@ Subroutine init0
       Else
             input%groundstate%APWprecision = determine_APWprecision(input%groundstate%rgkmax, spzn(input%groundstate%isgkmax))
       End If
-!
+
+
+!-----------------------!
+! initialize modinteg   !
+!-----------------------!
+
+
+if (allocated(mt_integw%fintw)) then
+  call dealloc_icoef()
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+
+  else
+  call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
+  endif
+
+!-----------------------!
+! initialize modbess    !
+!-----------------------!
+
+ call init_bess(nrmtmax,nspecies,nrmt,spr(1:nrmtmax,:))
+
+
 !--------------------------------------!
 !     charges and number of states     !
 !--------------------------------------!
