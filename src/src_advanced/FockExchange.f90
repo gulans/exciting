@@ -10,6 +10,9 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
       Use potentials, only: coulomb_potential
+
+      USE OMP_LIB
+
       Implicit None
 ! arguments
       Integer, Intent (In) :: ikp
@@ -163,9 +166,10 @@ write(*,*) 'genWFs',tb-ta
          
          zvclmt (:, :, :, :) = 0.d0
 
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp) REDUCTION(+:zvclmt,vxpsiirgk)
-
+!write(*,*)"pirms", OMP_GET_THREAD_NUM()
+write(*,*)"nomax",nomax,"nstfv",nstfv
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j) REDUCTION(+:zvclmt,vxpsiirgk)
+!write(*,*)"pēc", OMP_GET_THREAD_NUM()
          call WFInit(prod)
          call WFInit(pot)
 
@@ -186,7 +190,7 @@ write(*,*) 'genWFs',tb-ta
             End Do
             Call zfftifc (3, ngrid, 1, wf2ir(:))
 
-   !$OMP DO
+!$OMP DO
             Do ist3 = 1, nstfv
 
                vxpsiirtmp(:) = 0.d0
@@ -209,7 +213,13 @@ write(*,*) 'genWFs',tb-ta
                   prodir(:)=prodir(:)-zrho01
                   prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-zrho01/y00
    endif
-   if (.false.) then !Yukawa case
+
+
+  
+
+
+
+   if (.true.) then !Yukawa case
       pot%mtrlm(:,:,:,1)=zzero
       potir=zzero
       do j=1, nfit
@@ -240,6 +250,11 @@ write(*,*) 'genWFs',tb-ta
                call WFprodrs(ist2,wf2,ist3,wf1,prod)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
 
+
+              
+
+
+
    if ((ik.eq.jk).and.(.not.solver)) then
                   Call zrhogp (gqc(igq0), jlgq0r, ylmgq(:, &
                   & igq0), sfacgq0, pot%mtrlm(:,:,:,1), potir(:), zrho01)
@@ -248,7 +263,8 @@ write(*,*) 'genWFs',tb-ta
                   pot%mtrlm(1,:,:,1)=pot%mtrlm(1,:,:,1)-zrho01/y00
    endif
 
-   !-----------------------------------------------------------------------------------
+
+   !-----------------------------------------------------------------------------------1
                call genWFonMeshOne(pot)
                pot%mtmesh=conjg(pot%mtmesh)
                call WFprodrs(1,pot,ist2,wf2,prod)
@@ -257,6 +273,13 @@ write(*,*) 'genWFs',tb-ta
    ! ----------------------------------------------------------------------------------
                ! Calculate Fourier transform of vxpsiirtmp(r)
                Call zfftifc (3, ngrid,-1,vxpsiirtmp)
+
+
+do j=1,10
+!write(*,*) ist3,",",OMP_GET_THREAD_NUM(),",",j,"," ,dble(vxpsiirtmp(j)),",",imag(vxpsiirtmp(j))
+enddo
+
+
                Do igk=1, Gkqset%ngk (1, ik)
                   vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
                End Do
@@ -272,7 +295,7 @@ write(*,*) 'genWFs',tb-ta
          Deallocate (wf2ir)
          Deallocate (prodir)
          Deallocate (potir)
-
+         Deallocate (wf1ir)
 !$OMP END PARALLEL
 
 call timesec(ta)
@@ -340,7 +363,7 @@ write(*,*) 'vcv',tb-ta
       Allocate (wf1ir(ngrtot))
 call timesec(ta)
       Do ist1 = 1, nstsv
-
+         write(*,*)"q0corr",q0corr
          If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
             ! Evaluate wavefunction in real space
             wf1ir(:) = 0.d0
@@ -350,11 +373,17 @@ call timesec(ta)
             End Do
             Call zfftifc (3, ngrid, 1, wf1ir(:))
 
+!!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method
+write(*,*)"FockExchange korekcija notiek"
+
             ! Apply q=0 correction to MT part
             vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
 
             ! Apply correction to IR part and roll back correction to momentum space
             vxpsiirtmp(:) = q0corr*wf1ir(:)*cfunir(:)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method//
+
             Call zfftifc (3, ngrid,-1,vxpsiirtmp)
             Do igk=1, Gkqset%ngk (1, ik)
                vxpsiirgk(igk, ist1)=vxpsiirgk(igk, ist1)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
@@ -365,10 +394,12 @@ call timesec(ta)
          Do ist3 = 1, nstsv
 
             ztir = 0.d0
+
             Do igk = 1, Gkqset%ngk (1, ik)
                ztir = ztir + conjg(wf1%gk(igk, ist1))*vxpsiirgk(igk,ist3)
             End Do
             ztmt = zfinpmt (.True., wf1%mtrlm(:,:,:,ist1),vxpsimt(:,:,:,ist3))
+
             vnlvv (ist1, ist3) = vnlvv (ist1, ist3) - ztmt - ztir
 
          End Do ! ist3
@@ -377,16 +408,16 @@ call timesec(tb)
 
 write(*,*) 'Matrix',tb-ta
 
-if (.false.) then
+if (.true.) then
       Write(*,*) "ikp, ik, memopt:", ikp, ik
       write(*,*) 'vnlvv real (1:14,1:14)'
-      do ist1 = 1, 14
-         write(*,'(14F13.9)') dble(vnlvv(ist1,1:14))
+      do ist1 = 1, 6
+         write(*,'(14F13.9)') dble(vnlvv(ist1,1:6))
       end do
       
       write(*,*) 'vnlvv imag (1:14,1:14)--'
-      do ist1 = 1, 14
-         write(*,'(14F13.9)') dimag(vnlvv(ist1,1:14))
+      do ist1 = 1, 6
+         write(*,'(14F13.9)') dimag(vnlvv(ist1,1:6))
       end do
 end if
       
@@ -398,6 +429,9 @@ end if
       call WFRelease(wf1)
       call WFRelease(wf2)
       call WFRelease(prod)
+
+
+!stop
       Return
 End Subroutine
 !EOC

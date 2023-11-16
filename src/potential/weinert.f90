@@ -368,7 +368,7 @@ module weinert
     !> \[ V({\bf r}) = \sum_{\bf G} \hat{V}({\bf G+p}) \, {\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf r}} \;, \]
     !> with
     !> \[ \hat{V}({\bf G+p}) = 4\pi \frac{\hat{n}^{\rm ps}({\bf G+p})}{|{\bf G+p}|^2} \;.\]
-    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig, cutoff,hybrid)
+    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig, cutoff_in,hybrid_in)
       use modinput
       use mod_lattice, only: omega
       use mod_atoms, only: nspecies, natoms, idxas
@@ -404,9 +404,9 @@ module weinert
       !> muffin-tin multipole moments \(q^\alpha_{lm}\) of the charge density
       complex(dp), intent(in) :: qlm(:,:)
       !> option for using coulomb cutoff for solving Poisson's equation
-      logical, optional, intent(in) :: cutoff 
+      logical, optional, intent(in) :: cutoff_in
 
-      logical, optional, intent(in) :: hybrid 
+      logical, optional, intent(in) :: hybrid_in 
       !> Fourier components \(\hat{V}({\bf G+p})\) of the interstitial electrostatic potential on the FFT grid
       complex(dp), intent(out) :: zvclig(:)
 
@@ -414,9 +414,22 @@ module weinert
       real :: r_c
       integer, allocatable :: igp_finite(:)
       
+      logical :: cutoff, hybrid
 
-    if(present(hybrid).and.hybrid) then
-    !if(.true.) then      
+  if (present(hybrid_in)) then 
+        hybrid=hybrid_in
+  else
+        hybrid=.false.
+  endif
+
+  if (present(cutoff_in)) then 
+    cutoff=cutoff_in
+else
+    cutoff=.false.
+endif
+
+    !if (hybrid) then
+    if(.false.) then      
           call pseudocharge_rspace(lmax,npsden,qlm,zrhoig)
           
     else
@@ -439,7 +452,7 @@ module weinert
 
 
 
-      if (present(cutoff).and.(cutoff)) then
+      if (cutoff) then
         r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
         zvclig = zrhoig*twopi*r_c**2
 !$omp parallel default(shared) private(i,igp,ig,ifg)
@@ -732,7 +745,7 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
   use modinput
   use mod_atoms, only: nspecies, natoms, idxas
   use mod_muffin_tin, only: rmt,nrmtmax,nrmt
-  use constants, only: fourpi,y00,zil
+  use constants, only: fourpi,y00,zil,zzero
   !> maximum angular momentum \(l\)
   integer, intent(in) :: lmax
   !> total number of \({\bf G+p}\) vectors
@@ -767,6 +780,7 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
   Real (8) :: factnm
   External factnm
 
+  qi (:, :) = zzero
 
 
   do is = 1, nspecies
@@ -790,7 +804,7 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
                &* ((zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))&
                &- (gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is)))
                 endif
-                
+
                 Do m = - l, l
                    lm = lm + 1
                    qi (lm, ias) = qi (lm, ias) + zt2 * conjg (ylmgp(lm, ig))
@@ -905,7 +919,7 @@ End Do
 !enddo
 end subroutine
 
-subroutine poisson_ir_yukawa( lmax, ngvec, gpc, igfft, zrhoir, zlambda,zvclir)
+subroutine poisson_ir_yukawa( lmax, ngvec, gpc, igfft, zrhoir, zlambda,zvclir,cutoff)
   use mod_lattice, only: omega
   Use mod_kpoint, only: nkptnr
   use modinput
@@ -926,8 +940,7 @@ subroutine poisson_ir_yukawa( lmax, ngvec, gpc, igfft, zrhoir, zlambda,zvclir)
 
   complex(dp), intent(in) :: zlambda
   complex(dp), intent(out) :: zvclir(:)
-
-
+  logical, intent(in) :: cutoff
   
   
   integer :: ig, ifg
@@ -940,6 +953,9 @@ subroutine poisson_ir_yukawa( lmax, ngvec, gpc, igfft, zrhoir, zlambda,zvclir)
 r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
 Do ig = 1, ngvec
   ifg = igfft (ig)
+
+if (cutoff) then
+
   If (gpc(ig) .Gt. input%structure%epslat) Then
      zvclir (ifg) = fourpi * zrhoir (ifg) *&
         (1d0 - exp(-zlambda*r_c)* ( zlambda * sin(gpc(ig)*r_c) / gpc(ig) + cos(gpc(ig)*r_c) ) )/&
@@ -947,12 +963,20 @@ Do ig = 1, ngvec
   Else
      zvclir (ifg) = fourpi * zrhoir(ifg)* (1d0 - exp(-zlambda*r_c)*(zlambda*r_c + 1))/(zlambda ** 2)
   End If 
-End Do
+  !write(*,*)ig,zvclir (ifg)
+else
 
+  zvclir (ifg) = fourpi * zrhoir (ifg) / ((gpc(ig) ** 2) + (zlambda ** 2))
+
+  !write(*,*)ig,zvclir (ifg)
+endif
+
+End Do
+!stop
 end subroutine
 
 
-subroutine pseudocharge_rspace(lmax,npsd,qlm,zvclir,yukawa,zlambda,zilmt,zbessi)
+subroutine pseudocharge_rspace(lmax,npsd,qlm,zvclir,yukawa_in,zlambda,zilmt,zbessi)
 
   use modinput
 use modinteg
@@ -966,13 +990,13 @@ use modinteg
   integer, intent(in) :: npsd
   complex(8), intent(in) :: qlm((lmax+1)**2,natmtot)
   Complex (8), Intent (InOut) :: zvclir(ngrtot)
-  logical, optional, intent(in) :: yukawa
+  logical, optional, intent(in) :: yukawa_in
   complex(dp),optional, intent(in) :: zlambda
   complex(dp),optional, intent(in) :: zilmt(0:,:)
   complex(dp),optional, intent(in) :: zbessi(:,0:,:)
 
   complex(dp) :: cor(ngrtot)
-
+logical :: yukawa
 
   complex (8) :: zylm((lmax+1)**2), zrp((lmax+1)**2),alm((lmax+1)**2),zf1(nrmtmax),zf2(nrmtmax)
   complex (8) :: zt1,zt2, rr
@@ -986,23 +1010,30 @@ use modinteg
   Real (8) :: factnm
   External factnm
   
+
+if(present(yukawa_in))then 
+  yukawa=yukawa_in
+else
+  yukawa=.false.
+endif
+
   cor=zzero
 
   call zfftifc( 3, ngrid, 1, zvclir)
   
-  write(*,*)"nspecies",nspecies, shape(nspecies)
-  write(*,*)"natoms",natoms, shape(natoms)
+  ! write(*,*)"nspecies",nspecies, shape(nspecies)
+  ! write(*,*)"natoms",natoms, shape(natoms)
   do is=1, nspecies
   do ia=1, natoms(is)
   ias=idxas(ia,is)
   
-  write(*,*)"ngrtot",ngrtot
-  write(*,*)"ias", ias
-  write(*,*)"qlm",shape(qlm)
-  write(*,*)"ngrtot?",shape(zvclir)
+  ! write(*,*)"ngrtot",ngrtot
+  ! write(*,*)"ias", ias
+  ! write(*,*)"qlm",shape(qlm)
+  ! write(*,*)"ngrtot?",shape(zvclir)
   ratom=atposc (:, ia, is)
   
-  write(*,*)"ratom",ratom
+  ! write(*,*)"ratom",ratom
 
 
   
@@ -1026,8 +1057,8 @@ use modinteg
   a2_abs=sqrt(a2(1)**2+a2(2)**2+a2(3)**2)
   a3_abs=sqrt(a3(1)**2+a3(2)**2+a3(3)**2)
   
-  write(*,*)"atoma poz",col(1,1),col(1,2),col(1,3)
-  write(*,*)"mt izmērs",rmt(is)/a1_abs,rmt(is)/a2_abs,rmt(is)/a3_abs
+  ! write(*,*)"atoma poz",col(1,1),col(1,2),col(1,3)
+  ! write(*,*)"mt izmērs",rmt(is)/a1_abs,rmt(is)/a2_abs,rmt(is)/a3_abs
 
     do l = 0, lmax
       t1 = factnm( 2*l + 2*npsd + 3, 2)/factnm( 2*l+1, 2)
@@ -1065,8 +1096,13 @@ use modinteg
                     ig = (i3-1)*ngrid(2)*ngrid(1) + (i2-1)*ngrid(1) + i1
                     lm=0
                     
-    
-                    tp(1)=dacos(rv(3)/rv_abs) !theta
+                    if (rv_abs.eq.0d0) then 
+                      tp(1)=0d0
+                    else
+                      tp(1)=dacos(rv(3)/rv_abs) !theta
+                    endif
+
+
                     if ((rv(1).eq.0d0).and.(rv(2).eq.0d0))then
                       tp(2)= 0d0 !to avoid NaN
                     else
@@ -1074,7 +1110,7 @@ use modinteg
                     endif
                     call genylm(lmax, tp, zylm)
   
-            if((present(yukawa)).and.(yukawa)) then
+            if(yukawa) then
               
               
 if(.true.)then !skaitkiski
@@ -1167,16 +1203,16 @@ endif
     enddo !ia
     enddo !is
 
-    open(11,file='is_pseudo_r_cor_a.dat',status='replace')
-    Do ig = 1, ngrtot
-        write(11,*)(ig-1)*a1(1),",",dble(cor(ig))
-    End Do
-    close(11)
+    ! open(11,file='is_pseudo_r_cor_a.dat',status='replace')
+    ! Do ig = 1, ngrtot
+    !     write(11,*)(ig-1)*a1(1),",",dble(cor(ig))
+    ! End Do
+    ! close(11)
     
 
 
 
-  write(*,*)"pseudodensity_ir"
+  !write(*,*)"pseudodensity_ir"
   
   
   call zfftifc( 3, ngrid, -1, zvclir)

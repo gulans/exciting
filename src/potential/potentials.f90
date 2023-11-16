@@ -89,10 +89,10 @@ module potentials
     
       real(dp) :: t1
 
-      if ((present(hybrid_in)).and.(hybrid_in)) then
-        hybrid=.true.
+      if (present(hybrid_in)) then 
+            hybrid=hybrid_in
       else
-        hybrid=.false.
+            hybrid=.false.
       endif
 
 if (present(yukawa_in)) then
@@ -107,7 +107,7 @@ endif
 
 
 
-write(*,*)yukawa_in, yukawa, cutoff
+write(*,*)"Yukawa", yukawa,"cutoff", cutoff
 
       allocate( qlm( lmmaxvr, natmtot), qlmir( lmmaxvr, natmtot))
       allocate( zrhoig( ngrtot))
@@ -164,8 +164,8 @@ write(*,*)yukawa_in, yukawa, cutoff
             & jlgpr, ylmgp, sfacgp, igfft, &
             zrhoig, qlmir,zlambda,zilmt)
 !write(*,*)"qlmir"
-!      write(*,*)"qlmir",qlmir(1:10,1)
-!      stop
+
+      !stop
       else
 
 
@@ -203,13 +203,13 @@ write(*,*)yukawa_in, yukawa, cutoff
 
         !zrho0 = zrhoig( igfft( igp0))
 
-        call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir)
+        call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir,cutoff)
 
 
       else
         call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
                         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                        zrhoig, qlm, zvclir, cutoff,hybrid=hybrid)
+                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid)
         zrho0 = zrhoig( igfft( igp0))
       endif
       ! evaluate interstitial potential on muffin-tin surface
@@ -260,23 +260,23 @@ write(*,*)yukawa_in, yukawa, cutoff
         deallocate( vdplmt, vdplir)
       end if
 
-if(yukawa)then
-      open(11,file='mt_rez.dat',status='replace')
-      is=1
-      lm=1
-      do ir=1, nr(is)
-         write(11,*)r(ir,is),",",dble(zvclmt (lm, ir, is))*y00
-      enddo
-      close(11)
+! if(yukawa)then
+!       open(11,file='mt_rez.dat',status='replace')
+!       is=1
+!       lm=1
+!       do ir=1, nr(is)
+!          write(11,*)r(ir,is),",",dble(zvclmt (lm, ir, is))*y00
+!       enddo
+!       close(11)
       
-      open(11,file='is_rez.dat',status='replace')
-      Do ig = 1, ngrtot
-         t1 = gpc (ig)
-         write(11,*)dble(zvclir(ig))
-      End Do
-      close(11)
-      !stop
-    endif
+!       open(11,file='is_rez.dat',status='replace')
+!       Do ig = 1, ngrtot
+!          t1 = gpc (ig)
+!          write(11,*)dble(zvclir(ig))
+!       End Do
+!       close(11)
+!       !stop
+!     endif
 
 
 
