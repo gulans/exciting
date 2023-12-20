@@ -19,7 +19,7 @@ subroutine init_bess(nrmtmax,nspecies,nrmt,r)
   real(8), intent(in) :: r(nrmtmax,nspecies)
   real(8) :: lambda
   integer :: ii,ir, is
-  nfit=1
+  nfit=4
   lambda=0.1d0
   allocate (erfc_fit(nfit,2))
   call errfun(nfit,lambda,erfc_fit)
@@ -215,12 +215,24 @@ BB1=(/3.62435558273901570d0,3.62435558273901570d0,3.62435558273901570d0,&
 
 BB2=(/0.00000000000000000d0,1.43494484832715830d0,2.93170108446797961d0,&
 4.59735152907431743d0/)
+
+
 elseif (n.eq.1)then
+
+!AA1=(/-1.14940001089277311d00/)
+!AA2=(/1.50422252025890724d00/)
+!BB1=(/3.62435558273901570d0/)
+!B2=(/1.43494484832715830d0/)
+
+!AA1=(/1d0/)
+!AA2=(/1d0/)
+!BB1=(/3.6d0/)
+!BB2=(/1.5d0/)
 
 AA1=(/1d0/)
 AA2=(/0d0/)
-BB1=(/1d0/)
-BB2=(/0d0/)
+BB1=(/4d0/)
+BB2=(/1d0/)
 
 endif
    do i = 1,n

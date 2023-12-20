@@ -430,7 +430,7 @@ end if
       call WFRelease(wf2)
       call WFRelease(prod)
 
-
+!write(*,*)"FockExchange.f90 stop"
 !stop
       Return
 End Subroutine

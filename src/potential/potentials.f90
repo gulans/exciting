@@ -62,7 +62,7 @@ module potentials
       !> complex muffin-tin charge density
       complex(dp), intent(in) :: zrhomt(:,:,:)
       !> complex interstitial charge density
-      complex(dp), intent(in) :: zrhoir(:)
+      complex(dp), intent(In) :: zrhoir(:)
       !> complex muffin-tin Coulomb potential
       complex(dp), intent(out) :: zvclmt(:,:,:) ! lm, nrmax, natoms
       !> complex interstitial Coulomb potential
@@ -104,7 +104,6 @@ endif
 if (present(zlambda_in)) then
   zlambda=zlambda_in
 endif
-
 
 
 write(*,*)"Yukawa", yukawa,"cutoff", cutoff
@@ -260,23 +259,23 @@ write(*,*)"Yukawa", yukawa,"cutoff", cutoff
         deallocate( vdplmt, vdplir)
       end if
 
-! if(yukawa)then
-!       open(11,file='mt_rez.dat',status='replace')
-!       is=1
-!       lm=1
-!       do ir=1, nr(is)
-!          write(11,*)r(ir,is),",",dble(zvclmt (lm, ir, is))*y00
-!       enddo
-!       close(11)
-      
-!       open(11,file='is_rez.dat',status='replace')
-!       Do ig = 1, ngrtot
-!          t1 = gpc (ig)
-!          write(11,*)dble(zvclir(ig))
-!       End Do
-!       close(11)
-!       !stop
-!     endif
+ if(.false.)then
+         open(11,file='mt_rez.dat',status='replace')
+       is=1
+       lm=1
+       do ir=1, nr(is)
+          write(11,*)r(ir,is),",",dble(zvclmt (lm, ir, is))*y00
+       enddo
+       close(11)
+     
+       open(11,file='is_rez.dat',status='replace')
+       Do ig = 1, ngrtot
+          t1 = gpc (ig)
+          write(11,*)dble(zvclir(ig))
+       End Do
+       close(11)
+       !stop
+     endif
 
 
 

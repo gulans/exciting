@@ -774,8 +774,10 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
   complex(dp), intent(in) :: zilmt(0:,:) 
 
   integer :: is, ia, ias, ig, ifg, l, lm, m
-  complex(dp) :: zt1,zt2
-  real(dp) :: t1
+  complex(dp) :: zt1,zt2,tbessi,zt3
+  real(dp) :: t1,tbessj
+
+
 !external functions
   Real (8) :: factnm
   External factnm
@@ -784,6 +786,7 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
 
 
   do is = 1, nspecies
+    call msbesselic1(rmt(is)*zlambda,tbessi) 
      do ia = 1, natoms(is)
       ias = idxas( ia, is)
 
@@ -796,9 +799,13 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
              lm = 0
              Do l = 0, input%groundstate%lmaxvr
                 if (l .eq. 0) then 
-                zt2 = zt1 *  fourpi * (rmt(is) ** 2) &
-               &* ((zlambda * jlgpr (0, ig, is) * (zilmt(1,is)+ (zilmt(0,is)/(zlambda*rmt(is)))))&
-               &- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is)))
+                call sbessel1 (gpc(ig)*rmt(is), tbessj)
+                zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
+               &* ((zlambda * jlgpr (l, ig, is) *  tbessi )&
+               &- (gpc(ig) *tbessj* zilmt(l,is)))
+                !zt2 = zt1 *  fourpi * (rmt(is) ** 2) &
+               !&* ((zlambda * jlgpr (0, ig, is) * (zilmt(1,is)+ (zilmt(0,is)/(zlambda*rmt(is)))))&
+               !&- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is)))
                 else
                 zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
                &* ((zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))&
@@ -811,7 +818,7 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
                 End Do
              End Do
           Else
-             t1 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
+             zt3 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
              qi (1,ias) = qi (1,ias) + t1 * zvclir (ifg)
           End If
         enddo                        
