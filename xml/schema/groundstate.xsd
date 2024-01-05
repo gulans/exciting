@@ -406,6 +406,7 @@
                   <xs:enumeration value="ps0d"/>
                   <xs:enumeration value="exc0d"/>
                   <xs:enumeration value="exc"/>
+                  <xs:enumeration value="none"/>
                 </xs:restriction>
               </xs:simpleType>
             </xs:attribute>

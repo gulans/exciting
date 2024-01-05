@@ -819,7 +819,7 @@ subroutine multipoles_ir_yukawa( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, 
              End Do
           Else
              zt3 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
-             qi (1,ias) = qi (1,ias) + t1 * zvclir (ifg)
+             qi (1,ias) = qi (1,ias) + zt3 * zvclir (ifg)
           End If
         enddo                        
     end do
