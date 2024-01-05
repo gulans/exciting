@@ -219,7 +219,7 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
 
 
 
-   if (.false.) then !Yukawa case
+   if (.true.) then !Yukawa case
       pot%mtrlm(:,:,:,1)=zzero
       potir=zzero
       do j=1, nfit
