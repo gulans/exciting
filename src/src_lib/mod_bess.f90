@@ -2,7 +2,8 @@ module modbess
 use modinput
 implicit none
 
-integer :: nfit   
+integer :: nfit  
+real(8) :: lambda 
 complex (8),allocatable :: erfc_fit(:,:)
 complex (8),allocatable :: zbessi(:,:,:,:),zbessk(:,:,:,:)
 complex (8),allocatable :: zilmt(:,:,:) ! (nfit, l, nspecies)
@@ -17,7 +18,7 @@ subroutine init_bess(nrmtmax,nspecies,nrmt,r)
   integer, intent(in) :: nspecies
   integer, intent(in) :: nrmt(nspecies)
   real(8), intent(in) :: r(nrmtmax,nspecies)
-  real(8) :: lambda
+  
   integer :: ii,ir, is
   nfit=4
   lambda=0.1d0

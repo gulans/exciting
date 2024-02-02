@@ -5,7 +5,8 @@
 !
 !
 Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
-      use modbess, only: nfit, zbessi,zbessk,erfc_fit,zilmt
+      use modbess, only: nfit, zbessi,zbessk,erfc_fit,zilmt,lambda
+      use modinteg
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
@@ -27,14 +28,14 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: nrc, iq, ig, iv (3), igq0, igk
       Integer :: ilo, loindex
       Integer :: info
-      Integer :: ifg
-      Logical :: solver
+      Integer :: ifg, ngvec1
+      Logical :: solver, cutoff, handleG0
 
-      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir
-      Complex (8) zrho01, zrho02, ztmt, zt2, ztir
-      Integer :: nr, l, m, io1, lm2, ir, if3, j
+      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x
+      Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
+      Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
 
-      Complex (8) :: potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot)
+      Complex (8) ::  potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot),rhoG0,potG0
 
 ! automatic arrays
       Real (8) :: zn (nspecies)
@@ -61,6 +62,11 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: zvcltp (:, :)
       Complex (8), Allocatable :: zfmt (:, :)
       Complex (8), Allocatable :: zwfir (:)
+
+      Complex (8), Allocatable :: rhomtig (:)
+      real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
+      Complex (8), Allocatable :: zfmt1(:),zfmt2(:)
+
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
@@ -84,6 +90,15 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv))
       Allocate (zwfir(ngkmax))
 
+      lmaxvr=input%groundstate%lmaxvr
+      
+      ngvec1=1000!ngvec
+      allocate(rhomtig(ngvec1))
+      allocate(jlgqsmallr(nrcmtmax,0:lmaxvr,ngvec1,nspecies))
+      allocate(jlgrtmp(0:lmaxvr))
+      Allocate (zfmt1(nrcmtmax),zfmt2(nrcmtmax))
+
+     
 
       if (allocated(evalfv)) deallocate(evalfv)
       allocate(evalfv(nstfv,kset%nkpt))
@@ -148,6 +163,21 @@ call timesec(ta)
          lmax = input%groundstate%lmaxvr + input%groundstate%npsden + 1
          Call genjlgpr (lmax, gqc, jlgqr)
          Call genjlgq0r (gqc(igq0), jlgq0r)
+
+!!!variables for the erfcapprox="PW"
+         do is=1,nspecies
+            do ig=1,ngvec1
+              do ir=1,nrcmt(is)
+                x=gqc(ig)*rcmt(ir,is)
+                call sbessel(lmaxvr,x,jlgrtmp)
+                jlgqsmallr(ir,:,ig,is)=jlgrtmp(:)
+              enddo
+            enddo   
+          enddo  
+
+
+
+
 call timesec(tb)
 write(*,*) 'qpt init', tb-ta
 
@@ -207,62 +237,157 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                call WFprodrs(ist2,wf2,ist3,wf1,prod)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
 
-   if ((ik.eq.jk).and.(.not.solver)) then
+
+               write(*,*) input%groundstate%hybrid%erfcapprox
+               if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.&
+               & ((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")))then 
+                  cutoff=.True.
+               else 
+                  cutoff=.False.
+               endif
+
+               if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.&
+                  & ((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")).or.&
+                  &  (input%groundstate%hybrid%erfcapprox.eq."Yukawa") ) then
+                  handleG0=.false.
+               else 
+                  handleG0=.true.
+               endif
+
+               !if ((ik.eq.jk).and.(.not.solver)) then
+               if (handleG0) then
                   Call zrhogp (gqc(igq0), jlgq0r, ylmgq(:, &
-                  & igq0), sfacgq0, prod%mtrlm(:,:,:,1), prodir(:), zrho01) 
-                  prodir(:)=prodir(:)-zrho01
-                  prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-zrho01/y00
-   endif
+                  & igq0), sfacgq0, prod%mtrlm(:,:,:,1), prodir(:), rhoG0) 
+                  prodir(:)=prodir(:)-rhoG0
+                  prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-rhoG0/y00
+               endif
 
 
   
+               pot%mtrlm(:,:,:,1)=zzero
+               potir=zzero
+               potmt0=zzero
+               potir0=zzero
+               if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then !Yukawa case
+                  do j=1, nfit
+                     Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                     & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+                     & prodir(:), potmt0, potir0, zrho02, &
+                     & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
+                     & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:))
+                     pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
+                     potir=potir+potir0 * erfc_fit(j,1)
+                  enddo
+                  do j=2, nfit
+                     Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                     & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+                     & prodir(:), potmt0, potir0, zrho02, &
+                     & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
+                     & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)))
+                     pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
+                     potir=potir+potir0 * conjg(erfc_fit(j,1))
+                  enddo
+               endif
+   
+
+               if ((input%groundstate%hybrid%erfcapprox.eq."PW").or.(input%groundstate%hybrid%erfcapprox.eq."none")) then
+                  Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                  & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
+                  & prodir(:), potmt0, potir0, zrho02, &
+                  & cutoff=cutoff, hybrid_in=.true.)
+
+                  if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
+                     pot%mtrlm(:,:,:,1)=potmt0
+                     potir=potir0
+                  endif
+               endif
+
+if (input%groundstate%hybrid%erfcapprox.eq."PW")then 
+   potir(:) = cfunir(:)*prodir(:)
+
+   Call zfftifc (3, ngrid, -1, potir(:))  !to G space
+
+   !!! Obtain Fourier coeficients of the density in the MT
+   do is=1,nspecies
+      do ia=1,natoms(is)
+         ias=idxas(ia,is)
+         do ig=1,ngvec1
+            ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq)) 
+            do l=0,lmaxvr
+               do m=-l,l 
+                  lm=idxlm(l,m)
+                  zfmt1=jlgqsmallr(:,l,ig,is)*rcmt(:,is)**2* prod%mtrlm(lm,:,ias,1)
+                  call integ_cf (nrcmt(is), is, zfmt1, zfmt2, mt_integw)
+                  zt3=zfmt2(nrcmt(is))
+                  zt4=zt3*4d0*pi*ylmgq(lm,ig)*sfacgq(ig, ias)/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
+                  potir(ifg)=potir(ifg)+zt4
+               enddo ! m
+            enddo ! l
+         enddo ! ig
+      enddo ! ia 
+   enddo ! is
+   do ig=1, ngvec1
+      ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq))   
+      If (gqc(ig) .Gt. input%structure%epslat) Then  
+         potir(ifg)=potir(ifg)*4d0*pi*exp(-gqc(ig)**2/(4d0*lambda**2))/gqc(ig)**2
+      else !!!! erfc kernels G=0 *(-1)  
+         potir(ifg)=-potir(ifg)*pi/lambda**2
+      endif
+   enddo
 
 
+   do ig=ngvec1,ngrtot!ngvec
+      ifg=igfft(ig)
+      potir(ifg)=zzero
+   enddo
+   
 
-   if (.true.) then !Yukawa case
-      pot%mtrlm(:,:,:,1)=zzero
-      potir=zzero
-      do j=1, nfit
-         Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
-         & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-         & prodir(:), potmt0, potir0, zrho02, &
-         & cutoff=input%groundstate%hybrid%singularity.eq."exc0d",hybrid_in=.true.,yukawa_in=.true., &
-         & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:))
-         pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
-         potir=potir+potir0 * erfc_fit(j,1)
+!!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:,1) (lm,ir,ias)
+   pot%mtrlm(:,:,:,1)=zzero
+   do is=1,nspecies
+      do ia=1,natoms(is)
+         ias=idxas(ia,is)
+         do ir=1,nrcmt(is)
+            do ig=1, ngvec1
+               ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
+               do l=0,lmaxvr
+                  zt1=4d0*pi*potir(ifg)*zil(l)*jlgqsmallr(ir,l,ig,is)! * sfacgq(ig, ias)
+                  do m=-l,l                      
+                     lm=idxlm(l,m)                     
+                     zt2=zt1*conjg(ylmgq(lm,ig))
+                     pot%mtrlm(lm,ir,ias,1)=pot%mtrlm(lm,ir,ias,1)+zt2
+                 
+                  enddo 
+               enddo
+            enddo
+         enddo
       enddo
-      do j=2, nfit
-         Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
-         & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-         & prodir(:), potmt0, potir0, zrho02, &
-         & cutoff=input%groundstate%hybrid%singularity.eq."exc0d",hybrid_in=.true.,yukawa_in=.true., &
-         & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)))
-         pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
-         potir=potir+potir0 * conjg(erfc_fit(j,1))
-      enddo
+   enddo
 
-   else
-      Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
-      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-      & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02, &
-      & cutoff=input%groundstate%hybrid%singularity.eq."exc0d", hybrid_in=.true.)
-   endif
-               call WFprodrs(ist2,wf2,ist3,wf1,prod)
-               prodir(:)=conjg(wf2ir(:))*wf1ir(:)
-
-
-              
+   Call zfftifc (3, ngrid, 1, potir(:)) !to realspace 
+   potir=potir0 - potir !Coulomb - erf
+   pot%mtrlm(:,:,:,1)=potmt0 - pot%mtrlm(:,:,:,1)
+endif
 
 
 
-   if ((ik.eq.jk).and.(.not.solver)) then
+
+              ! call WFprodrs(ist2,wf2,ist3,wf1,prod)
+              ! prodir(:)=conjg(wf2ir(:))*wf1ir(:)
+
+               !if ((ik.eq.jk).and.(.not.solver)) then
+               if (handleG0) then
                   Call zrhogp (gqc(igq0), jlgq0r, ylmgq(:, &
                   & igq0), sfacgq0, pot%mtrlm(:,:,:,1), potir(:), zrho01)
-
                   potir(:)=potir(:)-zrho01
                   pot%mtrlm(1,:,:,1)=pot%mtrlm(1,:,:,1)-zrho01/y00
-   endif
+               endif
 
+               if (input%groundstate%hybrid%erfcapprox.eq."PW")then
+                  potG0 = rhoG0*pi/lambda**2
+                  potir(:)=potir(:)+potG0
+                  pot%mtrlm(1,:,:,1)=pot%mtrlm(1,:,:,1)+potG0/y00
+               endif
 
    !-----------------------------------------------------------------------------------1
                call genWFonMeshOne(pot)
@@ -431,7 +556,7 @@ end if
       call WFRelease(prod)
 
 !write(*,*)"FockExchange.f90 stop"
-!stop
+stop
       Return
 End Subroutine
 !EOC

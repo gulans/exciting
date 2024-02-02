@@ -410,6 +410,23 @@
                 </xs:restriction>
               </xs:simpleType>
             </xs:attribute>
+
+ <xs:attribute ex:importance="essential" ex:unit="" name="erfcapprox" default="none">
+              <xs:annotation>
+                <xs:documentation>
+                    Type of method to obtain erfc kernel potential.
+                </xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="none"/>
+                  <xs:enumeration value="PW"/>
+                  <xs:enumeration value="Yukawa"/>
+                  <xs:enumeration value="truncatedYukawa"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+
             <xs:attribute ex:importance="essential" ex:unit="" name="excoeff" type="fortrandouble"
               default="0.25d0">
               <xs:annotation>
