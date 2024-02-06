@@ -14,6 +14,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       USE OMP_LIB
 
+      use poterf
+
       Implicit None
 ! arguments
       Integer, Intent (In) :: ikp
@@ -91,7 +93,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (zwfir(ngkmax))
 
       lmaxvr=input%groundstate%lmaxvr
-      
+      write(*,*)"lambda",lambda
       ngvec1=1000!ngvec
       allocate(rhomtig(ngvec1))
       allocate(jlgqsmallr(nrcmtmax,0:lmaxvr,ngvec1,nspecies))
@@ -198,7 +200,7 @@ write(*,*) 'genWFs',tb-ta
 
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j) REDUCTION(+:zvclmt,vxpsiirgk)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j,rhoG0) REDUCTION(+:zvclmt,vxpsiirgk)
 !write(*,*)"pēc", OMP_GET_THREAD_NUM()
          call WFInit(prod)
          call WFInit(pot)
@@ -303,68 +305,83 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                endif
 
 if (input%groundstate%hybrid%erfcapprox.eq."PW")then 
-   potir(:) = cfunir(:)*prodir(:)
-
-   Call zfftifc (3, ngrid, -1, potir(:))  !to G space
-
-   !!! Obtain Fourier coeficients of the density in the MT
-   do is=1,nspecies
-      do ia=1,natoms(is)
-         ias=idxas(ia,is)
-         do ig=1,ngvec1
-            ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq)) 
-            do l=0,lmaxvr
-               do m=-l,l 
-                  lm=idxlm(l,m)
-                  zfmt1=jlgqsmallr(:,l,ig,is)*rcmt(:,is)**2* prod%mtrlm(lm,:,ias,1)
-                  call integ_cf (nrcmt(is), is, zfmt1, zfmt2, mt_integw)
-                  zt3=zfmt2(nrcmt(is))
-                  zt4=zt3*4d0*pi*ylmgq(lm,ig)*sfacgq(ig, ias)/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
-                  potir(ifg)=potir(ifg)+zt4
-               enddo ! m
-            enddo ! l
-         enddo ! ig
-      enddo ! ia 
-   enddo ! is
-   do ig=1, ngvec1
-      ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq))   
-      If (gqc(ig) .Gt. input%structure%epslat) Then  
-         potir(ifg)=potir(ifg)*4d0*pi*exp(-gqc(ig)**2/(4d0*lambda**2))/gqc(ig)**2
-      else !!!! erfc kernels G=0 *(-1)  
-         potir(ifg)=-potir(ifg)*pi/lambda**2
-      endif
-   enddo
+   
+    call poterfpw(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir, pot%mtrlm(:,:,:,1))
 
 
-   do ig=ngvec1,ngrtot!ngvec
-      ifg=igfft(ig)
-      potir(ifg)=zzero
-   enddo
+!    potir(:) = cfunir(:)*prodir(:)
+
+!    Call zfftifc (3, ngrid, -1, potir(:))  !to G space
+
+!    !!! Obtain Fourier coeficients of the density in the MT and add it in porir
+!    do is=1,nspecies
+!       do ia=1,natoms(is)
+!          ias=idxas(ia,is)
+!          do ig=1,ngvec1
+!             ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq)) 
+!             do l=0,lmaxvr
+!                do m=-l,l 
+!                   lm=idxlm(l,m)
+!                   zfmt1=jlgqsmallr(:,l,ig,is)*rcmt(:,is)**2* prod%mtrlm(lm,:,ias,1)
+!                   call integ_cf (nrcmt(is), is, zfmt1, zfmt2, mt_integw)
+!                   zt3=zfmt2(nrcmt(is))
+!                   zt4=zt3*4d0*pi*ylmgq(lm,ig)*conjg(sfacgq(ig, ias))/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
+!                   potir(ifg)=potir(ifg)+zt4
+!                enddo ! m
+!             enddo ! l
+!          enddo ! ig
+!       enddo ! ia 
+!    enddo ! is
+
+
+
+
+!    do ig=1, ngvec1
+!       ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq))   
+!       If (gqc(ig) .Gt. input%structure%epslat) Then  
+!          potir(ifg)=potir(ifg)*4d0*pi*exp(-gqc(ig)**2/(4d0*lambda**2))/gqc(ig)**2
+!       else !!!! erfc kernels G=0 *(-1)  
+!          potir(ifg)=-potir(ifg)*pi/lambda**2
+!       endif
+!    enddo
+
+
+
+
+!    do ig=ngvec1,ngrtot!ngvec
+!       ifg=igfft(ig)
+!       potir(ifg)=zzero
+!    enddo
    
 
-!!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:,1) (lm,ir,ias)
-   pot%mtrlm(:,:,:,1)=zzero
-   do is=1,nspecies
-      do ia=1,natoms(is)
-         ias=idxas(ia,is)
-         do ir=1,nrcmt(is)
-            do ig=1, ngvec1
-               ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
-               do l=0,lmaxvr
-                  zt1=4d0*pi*potir(ifg)*zil(l)*jlgqsmallr(ir,l,ig,is)! * sfacgq(ig, ias)
-                  do m=-l,l                      
-                     lm=idxlm(l,m)                     
-                     zt2=zt1*conjg(ylmgq(lm,ig))
-                     pot%mtrlm(lm,ir,ias,1)=pot%mtrlm(lm,ir,ias,1)+zt2
+! !!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:,1) (lm,ir,ias)
+!    pot%mtrlm(:,:,:,1)=zzero
+!    do is=1,nspecies
+!       do ia=1,natoms(is)
+!          ias=idxas(ia,is)
+!          do ir=1,nrcmt(is)
+!             do ig=1, ngvec1
+!                ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
+!                do l=0,lmaxvr
+!                   zt1=4d0*pi*potir(ifg)*zil(l)*jlgqsmallr(ir,l,ig,is) * sfacgq(ig, ias)
+!                   do m=-l,l                      
+!                      lm=idxlm(l,m)                     
+!                      zt2=zt1*conjg(ylmgq(lm,ig))
+!                      pot%mtrlm(lm,ir,ias,1)=pot%mtrlm(lm,ir,ias,1)+zt2
                  
-                  enddo 
-               enddo
-            enddo
-         enddo
-      enddo
-   enddo
+!                   enddo 
+!                enddo
+!             enddo
+!          enddo
+!       enddo
+!    enddo
 
-   Call zfftifc (3, ngrid, 1, potir(:)) !to realspace 
+!    Call zfftifc (3, ngrid, 1, potir(:)) !to realspace 
+
+
+
+
+
    potir=potir0 - potir !Coulomb - erf
    pot%mtrlm(:,:,:,1)=potmt0 - pot%mtrlm(:,:,:,1)
 endif
@@ -556,7 +573,7 @@ end if
       call WFRelease(prod)
 
 !write(*,*)"FockExchange.f90 stop"
-stop
+!stop
       Return
 End Subroutine
 !EOC

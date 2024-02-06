@@ -13,6 +13,7 @@ contains
 
 subroutine init_bess(nrmtmax,nspecies,nrmt,r)
   use constants, only: zzero
+  Use modinput
   implicit none
   integer, intent(in) :: nrmtmax
   integer, intent(in) :: nspecies
@@ -20,8 +21,13 @@ subroutine init_bess(nrmtmax,nspecies,nrmt,r)
   real(8), intent(in) :: r(nrmtmax,nspecies)
   
   integer :: ii,ir, is
-  nfit=4
-  lambda=0.1d0
+  nfit=9
+  If (associated(input%groundstate%Hybrid)) Then
+    lambda=input%groundstate%Hybrid%omega
+  else
+    lambda=0.11
+  endif
+  
   allocate (erfc_fit(nfit,2))
   call errfun(nfit,lambda,erfc_fit)
 
