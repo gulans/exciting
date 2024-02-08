@@ -106,7 +106,7 @@ if (present(zlambda_in)) then
 endif
 
 
-write(*,*)"Yukawa", yukawa,"cutoff", cutoff
+
 
       allocate( qlm( lmmaxvr, natmtot), qlmir( lmmaxvr, natmtot))
       allocate( zrhoig( ngrtot))
