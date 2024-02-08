@@ -93,7 +93,7 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
          Do ia = 1, natoms (is)
            ias = idxas (ia, is)
            Do ir = 1, nr
-             rmtable (ir) = 1d0/(1d0-0.5d0*alpha**2*veffmt (1, ir, ias)*y00)
+             rmtable (ir) = 1d0/(1d0-a*veffmt (1, ir, ias)*y00)
            End Do
 !---------------------------!
 !     APW-APW integrals     !
@@ -118,7 +118,7 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
                       t2=apwfr(ir, 2, io1, l1, ias)*apwfr(ir, 2, io2, l1, ias)
                       fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir))*r2 (ir)
                     End Do
-			    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
+                    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                     t_aa ( io2, io1, l1)= gr (nr) !*4d0*pi
                     if (applyiora) then
 ! iora(1) correction

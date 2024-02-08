@@ -552,14 +552,14 @@ write(*,*) 'Matrix',tb-ta
 
 if (.true.) then
       Write(*,*) "ikp, ik, memopt:", ikp, ik
-      write(*,*) 'vnlvv real (1:14,1:14)'
-      do ist1 = 1, 6
-         write(*,'(14F13.9)') dble(vnlvv(ist1,1:6))
+      write(*,*) 'vnlvv real (1:nstfv,1:nstfv)'
+      do ist1 = 1, nstfv
+         write(*,'(14F13.9)') dble(vnlvv(ist1,1:nstfv))
       end do
       
-      write(*,*) 'vnlvv imag (1:14,1:14)--'
-      do ist1 = 1, 6
-         write(*,'(14F13.9)') dimag(vnlvv(ist1,1:6))
+      write(*,*) 'vnlvv imag (1:nstfv,1:nstfv)--'
+      do ist1 = 1, nstfv
+         write(*,'(14F13.9)') dimag(vnlvv(ist1,1:nstfv))
       end do
 end if
       
