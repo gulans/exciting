@@ -65,9 +65,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: zfmt (:, :)
       Complex (8), Allocatable :: zwfir (:)
 
-      Complex (8), Allocatable :: rhomtig (:)
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
-      Complex (8), Allocatable :: zfmt1(:),zfmt2(:)
+      
 
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
@@ -97,11 +96,9 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       lmaxvr=input%groundstate%lmaxvr
       write(*,*)"lambda",lambda
-      ngvec1=1000!ngvec
-      allocate(rhomtig(ngvec1))
-      allocate(jlgqsmallr(nrcmtmax,0:lmaxvr,ngvec1,nspecies))
-      allocate(jlgrtmp(0:lmaxvr))
-      Allocate (zfmt1(nrcmtmax),zfmt2(nrcmtmax))
+
+
+
 
      
 
@@ -175,6 +172,22 @@ call timesec(ta)
          Call genjlgq0r (gqc(igq0), jlgq0r)
 
 !!!variables for the erfcapprox="PW"
+         do ig=1, ngvec
+               if (gqc(ig).gt.6d0*dsqrt(2d0)*lambda) then ! 6*sigmas of a Gaussian
+                  ngvec1=ig
+                  write(*,*)"G(ngvec1)=",gqc(ig)
+                  exit
+               endif
+         enddo
+   
+   write(*,*)"ngvec1=",ngvec1
+       
+
+
+         
+         allocate(jlgqsmallr(nrcmtmax,0:lmaxvr,ngvec1,nspecies))
+         allocate(jlgrtmp(0:lmaxvr))
+         
          do is=1,nspecies
             do ig=1,ngvec1
               do ir=1,nrcmt(is)
@@ -445,8 +458,9 @@ write(*,*) 'vcv',tb-ta
       Allocate (wf1ir(ngrtot))
 call timesec(ta)
       Do ist1 = 1, nstsv
+         if(.false.)then
          write(*,*)"q0corr",q0corr
-         If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
+         !If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
             ! Evaluate wavefunction in real space
             wf1ir(:) = 0.d0
             Do igk = 1, Gkqset%ngk (1, ik)
@@ -491,15 +505,16 @@ call timesec(tb)
 write(*,*) 'Matrix',tb-ta
 
 if (.true.) then
+      write(*,*)"element(1,1)",dble(vnlvv(1,1)),",",imag(vnlvv(1,1))
       Write(*,*) "ikp, ik, memopt:", ikp, ik
       write(*,*) 'vnlvv real (1:nstfv,1:nstfv)'
-      do ist1 = 1, nstfv
-         write(*,'(14F13.9)') dble(vnlvv(ist1,1:nstfv))
+      do ist1 = 1, min(nstfv,14)
+         write(*,'(14F13.9)') dble(vnlvv(ist1,1:min(nstfv,14)))
       end do
       
       write(*,*) 'vnlvv imag (1:nstfv,1:nstfv)--'
-      do ist1 = 1, nstfv
-         write(*,'(14F13.9)') dimag(vnlvv(ist1,1:nstfv))
+      do ist1 = 1, min(nstfv,14)
+         write(*,'(14F13.9)') dimag(vnlvv(ist1,1:min(nstfv,14)))
       end do
 end if
       
@@ -508,6 +523,10 @@ end if
       Deallocate (wfcr1)
       Deallocate (wf1ir)
       Deallocate (zrhomt, zrhoir, zvcltp, zfmt)
+
+      Deallocate(jlgqsmallr)
+      Deallocate(jlgrtmp)
+
       call WFRelease(wf1)
       call WFRelease(wf2)
       call WFRelease(prod)
