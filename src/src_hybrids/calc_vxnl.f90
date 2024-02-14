@@ -341,6 +341,30 @@ else ! Use oepvnl
 
 endif
 
+
+
+
+if (.true.) then
+
+do ikp = 1, kset%nkpt
+  Write(*,*) "ikp:", ikp, "kset%nkpt:", kset%nkpt,"nomax:",nomax
+  write(*,*) 'vxnl real (1:nomax,1:nomax)'
+  do ie1 = 1, min(nstsv,14)
+     write(*,'(14F13.9)') dble(vxnl(ie1,1:min(nstsv,14),ikp))
+  end do
+  
+  ! write(*,*) 'vnlvv imag (1:nstfv,1:nstfv)--'
+  ! do ist1 = 1, min(nstfv,14)
+  !    write(*,'(14F13.9)') dimag(vnlvv(ist1,1:min(nstfv,14)))
+  ! end do
+enddo
+end if
+
+!rite(*,*)"calc_vxnl Stop"
+!stop
+
+
+
     call cpu_time(tend)
     return
 end subroutine

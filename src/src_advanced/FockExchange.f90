@@ -184,7 +184,12 @@ call timesec(ta)
        
 
 
-         
+         if (allocated(jlgqsmallr)) then
+            deallocate(jlgqsmallr)
+         endif
+         if (allocated(jlgrtmp)) then
+            deallocate(jlgrtmp)
+         endif
          allocate(jlgqsmallr(nrcmtmax,0:lmaxvr,ngvec1,nspecies))
          allocate(jlgrtmp(0:lmaxvr))
          
@@ -444,6 +449,7 @@ If (.true.) Then
       
                         zvclmt(:,:,ias,ist3)=zvclmt(:,:,ias,ist3)+zrhomt(:, :, ias)
                         
+
                      End Do ! ist3
                   End Do ! m
                End If ! spcore(ist2, is)
@@ -531,8 +537,8 @@ end if
       call WFRelease(wf2)
       call WFRelease(prod)
 
-!write(*,*)"FockExchange.f90 stop"
-!stop
+! write(*,*)"FockExchange.f90 stop"
+! stop
       Return
 End Subroutine
 !EOC
