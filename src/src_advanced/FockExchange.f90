@@ -33,7 +33,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: ifg, ngvec1
       Logical :: solver, cutoff, handleG0
 
-      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x
+      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
 
@@ -172,16 +172,17 @@ call timesec(ta)
          Call genjlgq0r (gqc(igq0), jlgq0r)
 
 !!!variables for the erfcapprox="PW"
+         write(*,*)"shortest g+q vec",igq0
+         gmax_pw_method=6d0*dsqrt(2d0)*lambda ! 6*sigmas of a Gaussian
+         write(*,*)"min(g+q): G(",igq0,")=", gqc(igq0),"Largest G vector for PW method:",gmax_pw_method
          do ig=1, ngvec
-               if (gqc(ig).gt.6d0*dsqrt(2d0)*lambda) then ! 6*sigmas of a Gaussian
-                  ngvec1=ig
-                  write(*,*)"G(ngvec1)=",gqc(ig)
-                  exit
+               if (gqc(ig).lt.gmax_pw_method) then ! 6*sigmas of a Gaussian
+                  ngvec1=ig+1
+                  write(*,*)"G(",ig,")=",gqc(ig)
+                  !exit
                endif
          enddo
-   
    write(*,*)"ngvec1=",ngvec1
-       
 
 
          if (allocated(jlgqsmallr)) then
@@ -358,7 +359,7 @@ endif
                   pot%mtrlm(1,:,:,1)=pot%mtrlm(1,:,:,1)-zrho01/y00
                endif
 
-               if (input%groundstate%hybrid%erfcapprox.eq."PW")then
+               if ((input%groundstate%hybrid%erfcapprox.eq."PW").and.(handleG0))then
                   potG0 = rhoG0*pi/lambda**2
                   potir(:)=potir(:)+potG0
                   pot%mtrlm(1,:,:,1)=pot%mtrlm(1,:,:,1)+potG0/y00

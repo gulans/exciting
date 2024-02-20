@@ -184,10 +184,10 @@ endif
 
       if (yukawa) then
         
-        !call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
-        !              & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
+        call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
+                      & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
         
-        call pseudocharge_rspace(input%groundstate%lmaxvr,input%groundstate%npsden,qlm,zrhoig,yukawa,zlambda,zilmt,zbessi)
+        !call pseudocharge_rspace(input%groundstate%lmaxvr,input%groundstate%npsden,qlm,zrhoig,yukawa,zlambda,zilmt,zbessi)
 
         ! open(11,file='is_pseudo_r.dat',status='replace')
         ! Do ig = 1, ngrtot
