@@ -11,7 +11,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
       Use potentials, only: coulomb_potential
-
+      use weinert, only: poisson_mt_yukawa
       USE OMP_LIB
 
       use poterf
@@ -30,7 +30,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: nrc, iq, ig, iv (3), igq0, igk
       Integer :: ilo, loindex
       Integer :: info
-      Integer :: ifg, ngvec1
+      Integer :: ifg, ngvec1, ifit
       Logical :: solver, cutoff, handleG0
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method
@@ -62,7 +62,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: zrhoir (:)
       Complex (8), Allocatable :: zvclmt (:, :, :, :)
       Complex (8), Allocatable :: zvcltp (:, :)
-      Complex (8), Allocatable :: zfmt (:, :)
+      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :)
       Complex (8), Allocatable :: zwfir (:)
 
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
@@ -87,7 +87,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (zrhomt(lmmaxvr, nrcmtmax, natmtot))
       Allocate (zrhoir(ngrtot))
       Allocate (zvcltp(ntpll, nrcmtmax))
-      Allocate (zfmt(lmmaxvr, nrcmtmax))
+      Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax))
       Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv))
       Allocate (zwfir(ngkmax))
 
@@ -435,10 +435,25 @@ If (.true.) Then
                         & ias)) ! Psi*_{a}.Psi_{nk} = rho_{a;nk}; Returns in SH)
       
 ! calculate the Coulomb potential
+                     if (input%groundstate%hybrid%erfcapprox.eq."none") then
                         Call zpotclmt (input%groundstate%ptnucl, &
                         & input%groundstate%lmaxvr, nrc, rcmt(:, is), &
-                        & 0.d0, lmmaxvr, zrhomt(:, :, ias), zfmt) ! Returns SH
-      
+                        & 0.d0, lmmaxvr, zrhomt(:, :, ias), zfmt) ! Returns SH     
+                     else
+                        zfmt=zzero
+                        do ifit=1, nfit
+                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, &
+                              & erfc_fit(ifit,2), zbessi(:,ifit,:,:), zbessk(:,ifit,:,:), is)
+                           zfmt=zfmt+zfmt0 * erfc_fit(ifit,1)
+                        enddo
+                        do ifit=2, nfit
+                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, &
+                              & conjg(erfc_fit(ifit,2)), conjg(zbessi(:,ifit,:,:)), conjg(zbessk(:,ifit,:,:)), is)
+                           zfmt=zfmt+zfmt0 * conjg(erfc_fit(ifit,1))
+                        enddo
+                     endif
+
+
                         Call zgemm ('N', 'N', ntpll, nrc, lmmaxvr, &
                         & zone, zbshthf, ntpll, zfmt, lmmaxvr, &
                         & zzero, zvcltp, ntpll) ! Returns zvcltp in SC
@@ -529,7 +544,7 @@ end if
       Deallocate (ylmgq, sfacgq)
       Deallocate (wfcr1)
       Deallocate (wf1ir)
-      Deallocate (zrhomt, zrhoir, zvcltp, zfmt)
+      Deallocate (zrhomt, zrhoir, zvcltp, zfmt, zfmt0)
 
       Deallocate(jlgqsmallr)
       Deallocate(jlgrtmp)
