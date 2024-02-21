@@ -74,8 +74,10 @@ module potentials
       logical, optional, intent(in) :: hybrid_in
       logical, optional, intent(in) :: yukawa_in
       complex(dp), optional, intent(in) :: zlambda_in
-      complex(dp), optional, intent(in) :: zbessi(nrmtmax,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies)
-      complex(dp), optional, intent(in) :: zbessk(nrmtmax,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies)   
+!      complex(dp), optional, intent(in) :: zbessi(nrmtmax,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies)
+!      complex(dp), optional, intent(in) :: zbessk(nrmtmax,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies)
+      complex(dp), optional, intent(in) :: zbessi(:,0:,:)!(nrmtmax, 0:input%groundstate%lmaxvr+input%groundstate%npsden+1, nspecies)
+      complex(dp), optional, intent(in) :: zbessk(:,0:,:) 
       complex(dp), optional, intent(in) :: zilmt(0:,:)  
       real(dp), allocatable :: vion(:,:), vdplmt(:,:,:), vdplir(:)
       complex(dp), allocatable :: qlm(:,:), qlmir(:,:), zrhoig(:)

@@ -31,7 +31,7 @@ subroutine poterfpw (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,poti
       
 
       complex (8) :: zfmt1(nrmtmax),zfmt2(nrmtmax),zt1,zt2,zt3,zt4
-      integer :: lmaxvr,is,ia,ias,ig,ifg,l,m,lm,ir
+      integer :: lmaxvr,is,ia,ias,ig,ifg,l,m,lm,ir,nr
 
       lmaxvr=input%groundstate%lmaxvr
 
@@ -41,6 +41,7 @@ Call zfftifc (3, ngrid, -1, potir(:))  !to G space
 
 !!! Obtain Fourier coeficients of the density in the MT and add it in porir
 do is=1,nspecies
+   nr=nrmt(is)
    do ia=1,natoms(is)
       ias=idxas(ia,is)
       do ig=1,ngvec1
@@ -48,9 +49,9 @@ do is=1,nspecies
          do l=0,lmaxvr
             do m=-l,l 
                lm=idxlm(l,m)
-               zfmt1=jlgqsmallr(:,l,ig,is)*rcmt(:,is)**2* rhomt(lm,:,ias)
-               call integ_cf (nrmt(is), is, zfmt1, zfmt2, mt_integw)
-               zt3=zfmt2(nrmt(is))
+               zfmt1(:nr)=jlgqsmallr(:nr,l,ig,is)*rcmt(:nr,is)**2* rhomt(lm,:nr,ias)
+               call integ_cf (nr, is, zfmt1(:nr), zfmt2(:nr), mt_integw)
+               zt3=zfmt2(nr)
                zt4=zt3*4d0*pi*ylmgq(lm,ig)*conjg(sfacgq(ig, ias))/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
                potir(ifg)=potir(ifg)+zt4
             enddo ! m
@@ -78,12 +79,13 @@ do ig=1, ngvec1
    enddo
    
 
-!!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:,1) (lm,ir,ias)
+!!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:) (lm,ir,ias)
    potmt(:,:,:)=zzero
    do is=1,nspecies
+      nr=nrmt(is)
       do ia=1,natoms(is)
          ias=idxas(ia,is)
-         do ir=1,nrmt(is)
+         do ir=1,nr
             do ig=1, ngvec1
                ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
                do l=0,lmaxvr

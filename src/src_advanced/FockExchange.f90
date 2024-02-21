@@ -443,12 +443,12 @@ If (.true.) Then
                         zfmt=zzero
                         do ifit=1, nfit
                            call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, &
-                              & erfc_fit(ifit,2), zbessi(:,ifit,:,:), zbessk(:,ifit,:,:), is)
+                              & erfc_fit(ifit,2), zbessi(:,ifit,:,is), zbessk(:,ifit,:,is), is)
                            zfmt=zfmt+zfmt0 * erfc_fit(ifit,1)
                         enddo
                         do ifit=2, nfit
                            call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, &
-                              & conjg(erfc_fit(ifit,2)), conjg(zbessi(:,ifit,:,:)), conjg(zbessk(:,ifit,:,:)), is)
+                              & conjg(erfc_fit(ifit,2)), conjg(zbessi(:,ifit,:,is)), conjg(zbessk(:,ifit,:,is)), is)
                            zfmt=zfmt+zfmt0 * conjg(erfc_fit(ifit,1))
                         enddo
                      endif

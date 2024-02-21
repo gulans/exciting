@@ -12,7 +12,8 @@ module weinert
 
   public :: surface_ir, multipoles_ir, poisson_ir
   public :: poisson_and_multipoles_mt, match_bound_mt
-  public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa, pseudocharge_rspace, poisson_mt_yukawa
+  public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa, pseudocharge_rspace
+  public :: poisson_mt_yukawa
 
   contains
 
@@ -687,35 +688,21 @@ complex(dp), intent(in) :: zrhomt(:,:)
 complex(dp), intent(out) :: zvclmt(:,:)
 !> multipole moments of the charge distribution \(q^{{\rm MT},\alpha}_{lm}\)
 complex(dp), intent(out) :: qlm(:)
-Complex (8),Intent (In) :: il(nr,0:lmax), kl(nr,0:lmax),zlambda
+Complex (8),Intent (In) :: il(:,0:), kl(:,0:),zlambda
 
 integer, intent(in) :: is
-integer :: l, m, lm, ir
+integer :: l, m, lm
 
 
-complex(dp) :: f1(nr),f2(nr),g1(nr),g2(nr),zt1,zt2
+complex(dp) :: zt1,zt2
 !external functions
 Real (8) :: factnm
 External factnm
 
 
 
-lm = 0
-Do l = 0, lmax
-  Do m= -l, l
-      lm = lm + 1
-
-      f1 = il(:,l) * r**2 * zrhomt(lm, :)
-
-      call integ_cf (nr, is, f1, g1, mt_integw)
-      f1 = kl(:,l) * g1
-
-      f2 = kl(:,l) * r**2 * zrhomt(lm, :)
-      call integ_cf (nr, is, f2, g2, mt_integw)
-      f2= il(:,l) * (g2(nr)-g2)
-      zvclmt (lm, :)=fourpi * zlambda * (f1+f2)
-   Enddo
-enddo
+call poisson_mt_yukawa( lmax, nr, r, zrhomt(:, :), zvclmt, &
+                               & zlambda, il(:,:), kl(:,:), is)
 
 lm=0
 Do l = 0, lmax
@@ -1232,7 +1219,7 @@ endif
 
   subroutine poisson_mt_yukawa( lmax, nr, r, zrhomt, zvclmt, zlambda, il, kl, is)
     use modinteg
-    use constants, only: fourpi
+    use constants, only: fourpi,zzero
     !> maximum angular momentum \(l\)
     integer, intent(in) :: lmax
     !> number of radial grid points
@@ -1244,7 +1231,7 @@ endif
     !> complex electrostatic potential \(v_{\rm sph}[n^\alpha_{lm}](r)\)
     complex(dp), intent(out) :: zvclmt(:,:)
 
-    Complex (8),Intent (In) :: il(nr,0:lmax), kl(nr,0:lmax),zlambda
+    Complex (8),Intent (In) :: il(:,0:), kl(:,0:),zlambda
     
     integer, intent(in) :: is
     integer :: l, m, lm, ir
@@ -1252,20 +1239,20 @@ endif
     complex(dp) :: f1(nr),f2(nr),g1(nr),g2(nr),zt1,zt2
 
 
-    
+    zvclmt=zzero
         
     lm = 0
     Do l = 0, lmax
       Do m= -l, l
           lm = lm + 1
           
-          f1 = il(:,l) * r**2 * zrhomt(lm, :)
+          f1 = il(:nr,l) * r(:nr)**2 * zrhomt(lm, :nr)
           call integ_cf (nr, is, f1, g1, mt_integw)
-          f1 = kl(:,l) * g1
-          f2 = kl(:,l) * r**2 * zrhomt(lm, :)
+          f1 = kl(:nr,l) * g1
+          f2 = kl(:nr,l) * r(:nr)**2 * zrhomt(lm, :nr)
           call integ_cf (nr, is, f2, g2, mt_integw)
-          f2= il(:,l) * (g2(nr)-g2)
-          zvclmt (lm, :)=fourpi * zlambda * (f1+f2)
+          f2= il(:nr,l) * (g2(nr)-g2)
+          zvclmt (lm, :nr)=fourpi * zlambda * (f1+f2)
        Enddo
     enddo
     
