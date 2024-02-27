@@ -344,7 +344,7 @@ endif
 
 
 
-if (.true.) then
+if (.false.) then
 
 do ikp = 1, kset%nkpt
   Write(*,*) "ikp:", ikp, "kset%nkpt:", kset%nkpt,"nomax:",nomax

@@ -172,6 +172,7 @@ call timesec(ta)
          Call genjlgq0r (gqc(igq0), jlgq0r)
 
 !!!variables for the erfcapprox="PW"
+      if (input%groundstate%hybrid%erfcapprox.eq."PW")then 
          write(*,*)"shortest g+q vec",igq0
          gmax_pw_method=6d0*dsqrt(2d0)*lambda ! 6*sigmas of a Gaussian
          write(*,*)"min(g+q): G(",igq0,")=", gqc(igq0),"Largest G vector for PW method:",gmax_pw_method
@@ -204,7 +205,7 @@ call timesec(ta)
             enddo   
           enddo  
 
-
+         endif
 
 
 call timesec(tb)
@@ -270,7 +271,7 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
             End Do
             Call zfftifc (3, ngrid, 1, wf2ir(:))
 
-!$OMP DO
+!$OMP DO SCHEDULE(DYNAMIC)
             Do ist3 = 1, nstfv
 
                vxpsiirtmp(:) = 0.d0
@@ -526,7 +527,7 @@ call timesec(tb)
 
 write(*,*) 'Matrix',tb-ta
 
-if (.true.) then
+if (.false.) then
       write(*,*)"element(1,1)",dble(vnlvv(1,1)),",",imag(vnlvv(1,1))
       Write(*,*) "ikp, ik, memopt:", ikp, ik
       write(*,*) 'vnlvv real (1:nstfv,1:nstfv)'
@@ -546,8 +547,13 @@ end if
       Deallocate (wf1ir)
       Deallocate (zrhomt, zrhoir, zvcltp, zfmt, zfmt0)
 
-      Deallocate(jlgqsmallr)
-      Deallocate(jlgrtmp)
+      if (allocated(jlgqsmallr)) then
+         deallocate(jlgqsmallr)
+      endif
+      if (allocated(jlgrtmp)) then
+         deallocate(jlgrtmp)
+      endif
+
 
       call WFRelease(wf1)
       call WFRelease(wf2)

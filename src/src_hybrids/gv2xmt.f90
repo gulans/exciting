@@ -28,7 +28,8 @@ call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr,&
 do i=1, 3
   call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rbshtvr, lmmaxvr, grfmt(:, :, i), &
    lmmaxvr, 0.d0, gvrho(:, :, i), lmmaxvr)
-  v2x(:,:,i)=v2xsr(:,:)*gvrho(:,:,i)
+  !v2x(:,:,i)=v2xsr(:,:)*gvrho(:,:,i)
+  v2x(:,:nr,i)=v2xsr(:,:nr)*gvrho(:,:nr,i)
   call dgemm('N', 'N', lmmaxvr, nr, lmmaxvr, 1.d0, rfshtvr, lmmaxvr, v2x(:,:,i), lmmaxvr, 0.d0, &
        v2xmt(:,:,i), lmmaxvr)
   call gradrfmt(input%groundstate%lmaxvr, nr, spr(:, is), lmmaxvr, nrmtmax, v2xmt(:,:,i), gv2xsrmt(:,:,:))
