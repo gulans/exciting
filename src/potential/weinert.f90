@@ -369,7 +369,7 @@ module weinert
     !> \[ V({\bf r}) = \sum_{\bf G} \hat{V}({\bf G+p}) \, {\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf r}} \;, \]
     !> with
     !> \[ \hat{V}({\bf G+p}) = 4\pi \frac{\hat{n}^{\rm ps}({\bf G+p})}{|{\bf G+p}|^2} \;.\]
-    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig, cutoff_in,hybrid_in)
+    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig, cutoff_in,hybrid_in,kvec_in)
       use modinput
       use mod_lattice, only: omega
       use mod_atoms, only: nspecies, natoms, idxas
@@ -410,9 +410,10 @@ module weinert
       logical, optional, intent(in) :: hybrid_in 
       !> Fourier components \(\hat{V}({\bf G+p})\) of the interstitial electrostatic potential on the FFT grid
       complex(dp), intent(out) :: zvclig(:)
+      Real(8), optional, intent(in) :: kvec_in(3) 
 
       integer :: i, is, ia, ias, igp, ngpf, ifg, ig(3)
-      real :: r_c
+      real(8) :: r_c,kvec(3)
       integer, allocatable :: igp_finite(:)
       
       logical :: cutoff, hybrid
@@ -428,10 +429,14 @@ module weinert
 else
     cutoff=.false.
 endif
-
+if (present(kvec_in)) then 
+  kvec=kvec_in
+else
+  kvec=(/0d0,0d0,0d0/)
+endif
     !if (hybrid) then
     if(.false.) then      
-          call pseudocharge_rspace(lmax,npsden,qlm,zrhoig)
+          call pseudocharge_rspace(lmax,npsden,qlm,kvec,zrhoig)
           
     else
 
@@ -970,7 +975,7 @@ End Do
 end subroutine
 
 
-subroutine pseudocharge_rspace(lmax,npsd,qlm,zvclir,yukawa_in,zlambda,zilmt,zbessi)
+subroutine pseudocharge_rspace(lmax,npsd,qlm,kvec,zvclir,yukawa_in,zlambda,zilmt,zbessi)
 
   use modinput
 use modinteg
@@ -983,13 +988,15 @@ use modinteg
   integer, intent(in) :: lmax
   integer, intent(in) :: npsd
   complex(8), intent(in) :: qlm((lmax+1)**2,natmtot)
+  Real(8), Intent (In) :: kvec(3)
   Complex (8), Intent (InOut) :: zvclir(ngrtot)
   logical, optional, intent(in) :: yukawa_in
   complex(dp),optional, intent(in) :: zlambda
   complex(dp),optional, intent(in) :: zilmt(0:,:)
   complex(dp),optional, intent(in) :: zbessi(:,0:,:)
+  
 
-  complex(dp) :: cor(ngrtot)
+  complex(dp) :: cor(ngrtot),phase
 logical :: yukawa
 
   complex (8) :: zylm((lmax+1)**2), zrp((lmax+1)**2),alm((lmax+1)**2),zf1(nrmtmax),zf2(nrmtmax)
@@ -1004,7 +1011,7 @@ logical :: yukawa
   Real (8) :: factnm
   External factnm
   
-
+write(*,*)"pseudocharge_rspace kvec",kvec
 if(present(yukawa_in))then 
   yukawa=yukawa_in
 else
@@ -1087,6 +1094,7 @@ endif
     
     
                 if (rv_abs.le.rmt(is)) then
+                    phase=exp(-cmplx(0,1,8)*sum(kvec*rv))
                     ig = (i3-1)*ngrid(2)*ngrid(1) + (i2-1)*ngrid(1) + i1
                     lm=0
                     
@@ -1107,7 +1115,7 @@ endif
             if(yukawa) then
               
               
-if(.true.)then !skaitkiski
+if(.true.)then !skaitliski
  
   lm=0
   Do l = 0, lmax
@@ -1134,12 +1142,12 @@ if(.true.)then !skaitkiski
     if (rv_abs .Gt. input%structure%epslat) then
       Do m = - l, l
         lm = lm + 1
-        cor(ig)= cor(ig) + zt1*alm(lm)*zylm(lm)
-        zvclir(ig) = zvclir(ig) + zt1*alm(lm)*zylm(lm)
+        cor(ig)= cor(ig) + zt1*alm(lm)*zylm(lm)*phase
+        zvclir(ig) = zvclir(ig) + zt1*alm(lm)*zylm(lm)*phase
       enddo
     else
-      cor(ig)= cor(ig) + zt1*alm(1)*y00
-      zvclir(ig) = zvclir(ig) + zt1*alm(1)*y00
+      cor(ig)= cor(ig) + zt1*alm(1)*y00*phase
+      zvclir(ig) = zvclir(ig) + zt1*alm(1)*y00*phase
       exit
     endif
   enddo
@@ -1176,12 +1184,12 @@ endif
                       if (rv_abs .Gt. input%structure%epslat) then
                           Do m = - l, l
                             lm = lm + 1
-                            cor(ig)=cor(ig)+zrp(lm)*t1*zylm(lm)
-                            zvclir(ig) = zvclir(ig)+zrp(lm)*t1*zylm(lm)
+                            cor(ig)=cor(ig)+zrp(lm)*t1*zylm(lm)*phase
+                            zvclir(ig) = zvclir(ig)+zrp(lm)*t1*zylm(lm)*phase
                           enddo ! m
                       else
-                          cor(ig)=cor(ig)+zrp(1)*t1*y00
-                          zvclir(ig) = zvclir(ig)+zrp(1)*t1*y00
+                          cor(ig)=cor(ig)+zrp(1)*t1*y00*phase
+                          zvclir(ig) = zvclir(ig)+zrp(1)*t1*y00*phase
                           exit   
                       endif
                     enddo ! l

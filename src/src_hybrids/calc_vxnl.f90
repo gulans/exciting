@@ -360,8 +360,8 @@ do ikp = 1, kset%nkpt
 enddo
 end if
 
-!write(*,*)"calc_vxnl Stop"
-!stop
+! write(*,*)"calc_vxnl Stop"
+! stop
 
 
 

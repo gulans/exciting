@@ -31,7 +31,7 @@ module potentials
     !> to match it with the interstitial potential on the muffin-tin sphere boundaries using the subroutines
     !> [[match_bound_mt(subroutine)]] and [[surface_ir(subroutine)]].
     subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
-                                & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt)
+                                & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,kvec_in)
 
       use constants, only: y00,zzero
       use modinput
@@ -81,7 +81,7 @@ module potentials
       complex(dp), optional, intent(in) :: zilmt(0:,:)  
       real(dp), allocatable :: vion(:,:), vdplmt(:,:,:), vdplir(:)
       complex(dp), allocatable :: qlm(:,:), qlmir(:,:), zrhoig(:)
-
+      Real(dp), optional, intent(in) :: kvec_in(3) 
       logical :: yukawa
       logical :: hybrid
       complex(dp) :: zlambda
@@ -89,7 +89,7 @@ module potentials
       integer :: is, ia, ias, ir,j
       integer :: ig, ifg, lm
     
-      real(dp) :: t1
+      real(dp) :: t1, kvec(3)
 
       if (present(hybrid_in)) then 
             hybrid=hybrid_in
@@ -107,7 +107,11 @@ if (present(zlambda_in)) then
   zlambda=zlambda_in
 endif
 
-
+if (present(kvec_in)) then 
+  kvec=kvec_in
+else
+  kvec=(/0d0,0d0,0d0/)
+endif
 
 
       allocate( qlm( lmmaxvr, natmtot), qlmir( lmmaxvr, natmtot))
@@ -189,7 +193,7 @@ endif
         call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
                       & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
         
-        !call pseudocharge_rspace(input%groundstate%lmaxvr,input%groundstate%npsden,qlm,zrhoig,yukawa,zlambda,zilmt,zbessi)
+        !call pseudocharge_rspace(input%groundstate%lmaxvr,input%groundstate%npsden,qlm,kvec,zrhoig,yukawa,zlambda,zilmt,zbessi)
 
         ! open(11,file='is_pseudo_r.dat',status='replace')
         ! Do ig = 1, ngrtot
@@ -210,7 +214,7 @@ endif
       else
         call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
                         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid)
+                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,kvec_in=kvec)
         zrho0 = zrhoig( igfft( igp0))
       endif
       ! evaluate interstitial potential on muffin-tin surface

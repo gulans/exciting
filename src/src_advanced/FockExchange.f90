@@ -33,7 +33,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: ifg, ngvec1, ifit
       Logical :: solver, cutoff, handleG0
 
-      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method
+      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method,kvec(3)
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
 
@@ -143,7 +143,8 @@ call timesec(ta)
 ! determine q-vector
          v (:) = kqset%vkc (:, ik) - kqset%vkc (:, jk)
 
-
+         kvec=v
+         write(*,*)"kvec",kvec
 
 
 
@@ -312,7 +313,7 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
-                     & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:))
+                     & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),kvec_in=kvec)
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
                      potir=potir+potir0 * erfc_fit(j,1)
                   enddo
@@ -321,7 +322,7 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
-                     & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)))
+                     & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),kvec_in=kvec)
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
                      potir=potir+potir0 * conjg(erfc_fit(j,1))
                   enddo
@@ -332,7 +333,7 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                   Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                   & prodir(:), potmt0, potir0, zrho02, &
-                  & cutoff=cutoff, hybrid_in=.true.)
+                  & cutoff=cutoff, hybrid_in=.true.,kvec_in=kvec)
 
                   if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
                      pot%mtrlm(:,:,:,1)=potmt0
@@ -559,8 +560,8 @@ end if
       call WFRelease(wf2)
       call WFRelease(prod)
 
-! write(*,*)"FockExchange.f90 stop"
-! stop
+ ! write(*,*)"FockExchange.f90 stop"
+ ! stop
       Return
 End Subroutine
 !EOC
