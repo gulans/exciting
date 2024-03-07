@@ -434,8 +434,8 @@ if (present(kvec_in)) then
 else
   kvec=(/0d0,0d0,0d0/)
 endif
-    !if (hybrid) then
-    if(.false.) then      
+    if (hybrid) then
+    !if(.false.) then      
           call pseudocharge_rspace(lmax,npsden,qlm,kvec,zrhoig)
           
     else
@@ -1052,7 +1052,7 @@ endif
   col=matmul(col,binv)
   
   
-  
+ 
   
   a1_abs=sqrt(a1(1)**2+a1(2)**2+a1(3)**2)
   a2_abs=sqrt(a2(1)**2+a2(2)**2+a2(3)**2)
@@ -1069,32 +1069,32 @@ endif
       end do
     end do
 
-    do ir1=-floor(rmt(is)/a1_abs+col(1,1)),floor(rmt(is)/a1_abs+col(1,1))
-        if (ir1.lt.0) then 
-            i1=ngrid(1)+ir1+1
-        else
-            i1=ir1+1
-        endif
-        do ir2=-floor(rmt(is)/a2_abs+col(1,2)),floor(rmt(is)/a2_abs+col(1,2))
-            if (ir2.lt.0) then
-                i2=ngrid(1)+ir2+1 
-            else 
-                i2=ir2+1
-            endif
-            do ir3=-floor(rmt(is)/a3_abs+col(1,3)),floor(rmt(is)/a3_abs+col(1,3))
-                if (ir3.lt.0) then
-                    i3=ngrid(1)+ir3+1 
-                else 
-                    i3=ir3+1
-                endif
-                rv=ir1*a1+ir2*a2+ir3*a3-ratom
+    do ir1=ceiling(col(1,1)-rmt(is)/a1_abs),floor(col(1,1)+rmt(is)/a1_abs)
+      if (ir1.lt.0) then 
+          i1=ngrid(1)+ir1+1
+      else
+          i1=ir1+1
+      endif
+      do ir2=ceiling(col(1,2)-rmt(is)/a2_abs),floor(col(1,2)+rmt(is)/a2_abs)
+          if (ir2.lt.0) then
+              i2=ngrid(2)+ir2+1 
+          else 
+              i2=ir2+1
+          endif
+          do ir3=ceiling(col(1,3)-rmt(is)/a3_abs),floor(col(1,3)+rmt(is)/a3_abs)
+              if (ir3.lt.0) then
+                  i3=ngrid(3)+ir3+1 
+              else 
+                  i3=ir3+1
+              endif
+                 rv=ir1*a1+ir2*a2+ir3*a3-ratom
     
                 rv_abs=dsqrt(rv(1)**2+rv(2)**2+rv(3)**2)
               
     
     
                 if (rv_abs.le.rmt(is)) then
-                    phase=exp(-cmplx(0,1,8)*sum(kvec*rv))
+                    phase=exp(-cmplx(0,1,8)*sum(kvec*(rv+ratom)))
                     ig = (i3-1)*ngrid(2)*ngrid(1) + (i2-1)*ngrid(1) + i1
                     lm=0
                     

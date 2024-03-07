@@ -528,7 +528,7 @@ call timesec(tb)
 
 write(*,*) 'Matrix',tb-ta
 
-if (.false.) then
+if (.true.) then
       write(*,*)"element(1,1)",dble(vnlvv(1,1)),",",imag(vnlvv(1,1))
       Write(*,*) "ikp, ik, memopt:", ikp, ik
       write(*,*) 'vnlvv real (1:nstfv,1:nstfv)'

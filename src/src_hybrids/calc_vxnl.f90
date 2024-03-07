@@ -344,7 +344,7 @@ endif
 
 
 
-if (.false.) then
+if (.true.) then
 
 do ikp = 1, kset%nkpt
   Write(*,*) "ikp:", ikp, "kset%nkpt:", kset%nkpt,"nomax:",nomax
@@ -360,8 +360,8 @@ do ikp = 1, kset%nkpt
 enddo
 end if
 
-! write(*,*)"calc_vxnl Stop"
-! stop
+!write(*,*)"calc_vxnl Stop"
+!stop
 
 
 
