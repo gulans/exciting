@@ -369,7 +369,8 @@ module weinert
     !> \[ V({\bf r}) = \sum_{\bf G} \hat{V}({\bf G+p}) \, {\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf r}} \;, \]
     !> with
     !> \[ \hat{V}({\bf G+p}) = 4\pi \frac{\hat{n}^{\rm ps}({\bf G+p})}{|{\bf G+p}|^2} \;.\]
-    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig, cutoff_in,hybrid_in,kvec_in)
+    subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig,&
+      & cutoff_in,hybrid_in,kvec_in,rpseudo_in)
       use modinput
       use mod_lattice, only: omega
       use mod_atoms, only: nspecies, natoms, idxas
@@ -406,7 +407,7 @@ module weinert
       complex(dp), intent(in) :: qlm(:,:)
       !> option for using coulomb cutoff for solving Poisson's equation
       logical, optional, intent(in) :: cutoff_in
-
+      logical, optional, intent(in) :: rpseudo_in
       logical, optional, intent(in) :: hybrid_in 
       !> Fourier components \(\hat{V}({\bf G+p})\) of the interstitial electrostatic potential on the FFT grid
       complex(dp), intent(out) :: zvclig(:)
@@ -416,7 +417,7 @@ module weinert
       real(8) :: r_c,kvec(3)
       integer, allocatable :: igp_finite(:)
       
-      logical :: cutoff, hybrid
+      logical :: cutoff, hybrid, rpseudo
 
   if (present(hybrid_in)) then 
         hybrid=hybrid_in
@@ -434,10 +435,14 @@ if (present(kvec_in)) then
 else
   kvec=(/0d0,0d0,0d0/)
 endif
-    if (hybrid) then
-    !if(.false.) then      
-          call pseudocharge_rspace(lmax,npsden,qlm,kvec,zrhoig)
-          
+if (present(rpseudo_in)) then
+  rpseudo=rpseudo_in
+else
+  rpseudo=.false.
+endif
+
+    if (rpseudo) then
+          call pseudocharge_rspace(lmax,npsden,qlm,kvec,zrhoig)   
     else
 
       ! add Fourier components of pseudodensity from multipole moments
@@ -976,9 +981,9 @@ end subroutine
 
 
 subroutine pseudocharge_rspace(lmax,npsd,qlm,kvec,zvclir,yukawa_in,zlambda,zilmt,zbessi)
-
+  use modrspace
   use modinput
-use modinteg
+  use modinteg
   use mod_atoms, only: nspecies, natoms, idxas, natmtot,atposc,spr
   use mod_Gvector, only: ngrid,ngrtot
   use mod_muffin_tin, only: rmt, nrmtmax,nrmt
@@ -996,70 +1001,40 @@ use modinteg
   complex(dp),optional, intent(in) :: zbessi(:,0:,:)
   
 
-  complex(dp) :: cor(ngrtot),phase
+  complex(dp) :: phase
 logical :: yukawa
 
-  complex (8) :: zylm((lmax+1)**2), zrp((lmax+1)**2),alm((lmax+1)**2),zf1(nrmtmax),zf2(nrmtmax)
+  complex (8) :: zrp((lmax+1)**2),alm((lmax+1)**2),zf1(nrmtmax),zf2(nrmtmax)
   complex (8) :: zt1,zt2, rr
 
-  Real (8) :: a1(3),a2(3),a3(3),rv(3),tp(2),a1_abs,a2_abs,a3_abs
-  Real (8) :: t1,t2,eps,rv_abs,ratom(3)
+   Real (8) :: t1,t2,eps,rv_abs,ratom(3), rv(3)
   real (8) :: bmat(3,3),binv(3,3), col(1,3)
-  integer :: is, ia, ias, lm, l,ig,m
+  integer :: is, ia, ias, lm, l,ig,m,igr
   integer :: i1,i2,i3,ir1,ir2,ir3,ir
   !external functions
   Real (8) :: factnm
   External factnm
   
-write(*,*)"pseudocharge_rspace kvec",kvec
+ 
+write(*,*)"rspace metode"
+
+
+
 if(present(yukawa_in))then 
   yukawa=yukawa_in
 else
   yukawa=.false.
 endif
 
-  cor=zzero
+  
 
   call zfftifc( 3, ngrid, 1, zvclir)
-  
-  ! write(*,*)"nspecies",nspecies, shape(nspecies)
-  ! write(*,*)"natoms",natoms, shape(natoms)
+
   do is=1, nspecies
   do ia=1, natoms(is)
-  ias=idxas(ia,is)
-  
-  ! write(*,*)"ngrtot",ngrtot
-  ! write(*,*)"ias", ias
-  ! write(*,*)"qlm",shape(qlm)
-  ! write(*,*)"ngrtot?",shape(zvclir)
-  ratom=atposc (:, ia, is)
-  
-  ! write(*,*)"ratom",ratom
+    ias=idxas(ia,is)
 
-
-  
-  
-  a1=input%structure%crystal%basevect(1, :)/ngrid(1)
-  a2=input%structure%crystal%basevect(2, :)/ngrid(2)
-  a3=input%structure%crystal%basevect(3, :)/ngrid(3)
-  
-  bmat(1,1:3)=a1
-  bmat(2,1:3)=a2
-  bmat(3,1:3)=a3
-  Call r3minv (bmat, binv)
-  
-  col(1,:)=ratom
-  col=matmul(col,binv)
-  
-  
- 
-  
-  a1_abs=sqrt(a1(1)**2+a1(2)**2+a1(3)**2)
-  a2_abs=sqrt(a2(1)**2+a2(2)**2+a2(3)**2)
-  a3_abs=sqrt(a3(1)**2+a3(2)**2+a3(3)**2)
-  
-  ! write(*,*)"atoma poz",col(1,1),col(1,2),col(1,3)
-  ! write(*,*)"mt izmērs",rmt(is)/a1_abs,rmt(is)/a2_abs,rmt(is)/a3_abs
+    ratom=atposc (:, ia, is)
 
     do l = 0, lmax
       t1 = factnm( 2*l + 2*npsd + 3, 2)/factnm( 2*l+1, 2)
@@ -1068,139 +1043,65 @@ endif
         zrp (lm) = (qlm(lm, ias)) * t1
       end do
     end do
-
-    do ir1=ceiling(col(1,1)-rmt(is)/a1_abs),floor(col(1,1)+rmt(is)/a1_abs)
-      if (ir1.lt.0) then 
-          i1=ngrid(1)+ir1+1
-      else
-          i1=ir1+1
-      endif
-      do ir2=ceiling(col(1,2)-rmt(is)/a2_abs),floor(col(1,2)+rmt(is)/a2_abs)
-          if (ir2.lt.0) then
-              i2=ngrid(2)+ir2+1 
-          else 
-              i2=ir2+1
-          endif
-          do ir3=ceiling(col(1,3)-rmt(is)/a3_abs),floor(col(1,3)+rmt(is)/a3_abs)
-              if (ir3.lt.0) then
-                  i3=ngrid(3)+ir3+1 
-              else 
-                  i3=ir3+1
-              endif
-                 rv=ir1*a1+ir2*a2+ir3*a3-ratom
     
-                rv_abs=dsqrt(rv(1)**2+rv(2)**2+rv(3)**2)
-              
-    
-    
-                if (rv_abs.le.rmt(is)) then
-                    phase=exp(-cmplx(0,1,8)*sum(kvec*(rv+ratom)))
-                    ig = (i3-1)*ngrid(2)*ngrid(1) + (i2-1)*ngrid(1) + i1
-                    lm=0
-                    
-                    if (rv_abs.eq.0d0) then 
-                      tp(1)=0d0
-                    else
-                      tp(1)=dacos(rv(3)/rv_abs) !theta
-                    endif
-
-
-                    if ((rv(1).eq.0d0).and.(rv(2).eq.0d0))then
-                      tp(2)= 0d0 !to avoid NaN
-                    else
-                      tp(2)= sign(1d0,rv(2))*dacos(rv(1)/dsqrt(rv(1)**2+rv(2)**2)) !phi
-                    endif
-                    call genylm(lmax, tp, zylm)
   
-            if(yukawa) then
-              
-              
-if(.true.)then !skaitliski
- 
-  lm=0
-  Do l = 0, lmax
-  zf1=zzero
-  do ir=1, nrmt(is)
-    rr=spr(ir,is)/rmt(is)
-    zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
-  enddo
-
-  call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
-  zt1=zlambda**l/(factnm(2*l+1, 2)*zf2(nrmt(is)))
-
-  Do m = - l, l
-    lm = lm + 1
-    alm(lm)=qlm(lm,ias)*zt1
-  enddo
-  enddo
-
-
-  lm=0
-  Do l = 0, lmax
+  do igr=1, rgrid_nmtpoints(ias)
+    ig=rgrid_mt_map(ias,igr)
+    rv=rgrid_mt_rv(:,ias,igr)
+    phase=exp(-cmplx(0,1,8)*sum(kvec*(rv+ratom)))
+    rv_abs=rgrid_mt_rabs(ias,igr)
     
-    zt1=(rv_abs/rmt(is))**l*(1d0-(rv_abs/rmt(is))**2)**npsd
-    if (rv_abs .Gt. input%structure%epslat) then
-      Do m = - l, l
-        lm = lm + 1
-        cor(ig)= cor(ig) + zt1*alm(lm)*zylm(lm)*phase
-        zvclir(ig) = zvclir(ig) + zt1*alm(lm)*zylm(lm)*phase
+    if(yukawa) then         
+      lm=0
+      Do l = 0, lmax
+        zf1=zzero
+        do ir=1, nrmt(is)
+          rr=spr(ir,is)/rmt(is)
+          zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
+        enddo
+        call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
+        zt1=zlambda**l/(factnm(2*l+1, 2)*zf2(nrmt(is)))
+        Do m = - l, l
+          lm = lm + 1
+          alm(lm)=qlm(lm,ias)*zt1
+        enddo ! m
+      enddo ! l
+      lm=0
+      Do l = 0, lmax
+        
+
+        zt1=(rv_abs/rmt(is))**l*(1d0-(rv_abs/rmt(is))**2)**npsd
+        if (rv_abs .Gt. input%structure%epslat) then
+          Do m = - l, l
+            lm = lm + 1
+            zvclir(ig) = zvclir(ig) + zt1*alm(lm)*rgrid_zylm(lm,ias,igr)*phase
+          enddo
+        else
+          zvclir(ig) = zvclir(ig) + zt1*alm(1)*y00*phase
+          exit
+        endif
       enddo
-    else
-      cor(ig)= cor(ig) + zt1*alm(1)*y00*phase
-      zvclir(ig) = zvclir(ig) + zt1*alm(1)*y00*phase
-      exit
-    endif
-  enddo
 
 
-else! analītiski
-
-              Do l = 0, lmax
-                t1=(rv_abs**2-rmt(is)**2)**npsd*rv_abs**l
-                zt1=zlambda**(l+npsd+1)*t1
-                t2=(-2d0)**npsd*factnm (npsd, 1)*rmt(is)**(l+npsd+2)* factnm(2*l+1, 2)
-                zt2=zilmt(l+npsd+1,is)*t2
-                zt1=zt1/zt2
-
-                if (rv_abs .Gt. input%structure%epslat) then
+          
+    else !if not Yukawa
+            lm=0
+            Do l = 0,lmax
+              t1=(rv_abs/rmt(is))**l*(1d0-rv_abs**2/rmt(is)**2)**npsd/(rmt(is)**(l+3)*2**(npsd)*factnm (npsd, 1))
+              if (rv_abs .Gt. input%structure%epslat) then
                   Do m = - l, l
                     lm = lm + 1
-                    cor(ig)= cor(ig)+zt1*zylm(lm)
-                    zvclir(ig) = zvclir(ig)+zt1*zylm(lm)
+                    zvclir(ig) = zvclir(ig)+zrp(lm)*t1*rgrid_zylm(lm,ias,igr)*phase
                   enddo ! m
-                else
-                  cor(ig)=cor(ig)+zt1*y00
-                  zvclir(ig) = zvclir(ig)+zt1*y00
-                  exit
-                endif
-              enddo !l 
-endif
-            
-            else !if not Yukawa
-                    
-                    Do l = 0,lmax
-                      t1=(rv_abs/rmt(is))**l*(1d0-rv_abs**2/rmt(is)**2)**npsd/(rmt(is)**(l+3)*2**(npsd)*factnm (npsd, 1))
-                      !if (rv_abs .Gt. 1d-6) then
-                      if (rv_abs .Gt. input%structure%epslat) then
-                          Do m = - l, l
-                            lm = lm + 1
-                            cor(ig)=cor(ig)+zrp(lm)*t1*zylm(lm)*phase
-                            zvclir(ig) = zvclir(ig)+zrp(lm)*t1*zylm(lm)*phase
-                          enddo ! m
-                      else
-                          cor(ig)=cor(ig)+zrp(1)*t1*y00*phase
-                          zvclir(ig) = zvclir(ig)+zrp(1)*t1*y00*phase
-                          exit   
-                      endif
-                    enddo ! l
+              else
+                  zvclir(ig) = zvclir(ig)+zrp(1)*t1*y00*phase
+                  exit   
+              endif
+            enddo ! l
 
-            endif !if yukawa or not
+    endif !if yukawa or not
 
-                   
-                endif 
-            enddo !ir3 z
-        enddo !ir2 y
-    enddo !ir1 x
+  enddo !igr
 
     enddo !ia
     enddo !is
@@ -1220,7 +1121,7 @@ endif
   call zfftifc( 3, ngrid, -1, zvclir)
   
   
-  
+ 
   
   end subroutine
 
@@ -1269,4 +1170,8 @@ endif
        
     end subroutine
 
+
+
+
+    
 end module weinert

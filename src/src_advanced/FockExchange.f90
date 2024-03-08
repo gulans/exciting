@@ -31,7 +31,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: ilo, loindex
       Integer :: info
       Integer :: ifg, ngvec1, ifit
-      Logical :: solver, cutoff, handleG0
+      Logical :: solver, cutoff, handleG0, rpseudo
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method,kvec(3)
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
@@ -93,7 +93,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
 
       write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
-
+      write(*,*) "rspacepseudocharge=",input%groundstate%hybrid%rspacepseudocharge
+      rpseudo=input%groundstate%hybrid%rspacepseudocharge
       lmaxvr=input%groundstate%lmaxvr
       write(*,*)"lambda",lambda
 
@@ -142,6 +143,13 @@ call timesec(ta)
 
 ! determine q-vector
          v (:) = kqset%vkc (:, ik) - kqset%vkc (:, jk)
+         
+         kvec=v
+         write(*,*)"kvec",kvec
+! generate matrix for pseudocharge construction in real-space 
+         if (rpseudo)then
+         
+         endif
 
          kvec=v
          write(*,*)"kvec",kvec
@@ -313,7 +321,8 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
-                     & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),kvec_in=kvec)
+                     & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),&
+                     & kvec_in=kvec,rpseudo_in=rpseudo)
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
                      potir=potir+potir0 * erfc_fit(j,1)
                   enddo
@@ -322,7 +331,8 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
-                     & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),kvec_in=kvec)
+                     & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),&
+                     & kvec_in=kvec, rpseudo_in=rpseudo)
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
                      potir=potir+potir0 * conjg(erfc_fit(j,1))
                   enddo
@@ -333,7 +343,8 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                   Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                   & prodir(:), potmt0, potir0, zrho02, &
-                  & cutoff=cutoff, hybrid_in=.true.,kvec_in=kvec)
+                  & cutoff=cutoff, hybrid_in=.true.,&
+                  & kvec_in=kvec,rpseudo_in=rpseudo)
 
                   if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
                      pot%mtrlm(:,:,:,1)=potmt0

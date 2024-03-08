@@ -411,6 +411,15 @@
               </xs:simpleType>
             </xs:attribute>
 
+<xs:attribute ex:importance="experimental" ex:unit="" name="rspacepseudocharge" type="xs:boolean" default="false">
+              <xs:annotation>
+                <xs:documentation>
+                  pseudcharge is constructed in real space in FockExchange.
+                </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+
+
  <xs:attribute ex:importance="essential" ex:unit="" name="erfcapprox" default="none">
               <xs:annotation>
                 <xs:documentation>

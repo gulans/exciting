@@ -17,6 +17,7 @@
 !>   Created January 2004 (JKD)
 !>   Started clean-up. 2022 (ABuccheri)
 Subroutine init0
+      use modrspace
       use modinteg
       use modbess
       Use modinput
@@ -451,6 +452,13 @@ if (allocated(mt_integw%fintw)) then
 10    Continue
 #endif
 !
+!------------------------!
+!initialize rspace module!
+!------------------------!
+if (.not.allocated(rgrid_mt_rv)) then
+      call generate_rgrid_mt_data(input%groundstate%lmaxvr)
+ endif
+
 !---------------------------------------!
 !     charge density and potentials     !
 !---------------------------------------!
