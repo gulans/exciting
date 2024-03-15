@@ -12,8 +12,8 @@ module weinert
 
   public :: surface_ir, multipoles_ir, poisson_ir
   public :: poisson_and_multipoles_mt, match_bound_mt
-  public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa, pseudocharge_rspace
-  public :: poisson_mt_yukawa
+  public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa
+  public :: poisson_mt_yukawa, pseudocharge_rspace_matrix, pseudocharge_rspace_new
 
   contains
 
@@ -370,7 +370,7 @@ module weinert
     !> with
     !> \[ \hat{V}({\bf G+p}) = 4\pi \frac{\hat{n}^{\rm ps}({\bf G+p})}{|{\bf G+p}|^2} \;.\]
     subroutine poisson_ir( lmax, npsden, ngp, gpc, ivgp, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, zrhoig, qlm, zvclig,&
-      & cutoff_in,hybrid_in,kvec_in,rpseudo_in)
+      & cutoff_in,hybrid_in,rpseudo_in,rpseudomat)
       use modinput
       use mod_lattice, only: omega
       use mod_atoms, only: nspecies, natoms, idxas
@@ -411,10 +411,9 @@ module weinert
       logical, optional, intent(in) :: hybrid_in 
       !> Fourier components \(\hat{V}({\bf G+p})\) of the interstitial electrostatic potential on the FFT grid
       complex(dp), intent(out) :: zvclig(:)
-      Real(8), optional, intent(in) :: kvec_in(3) 
-
+      complex(dp),optional, intent(in) :: rpseudomat(:,:,:)
       integer :: i, is, ia, ias, igp, ngpf, ifg, ig(3)
-      real(8) :: r_c,kvec(3)
+      real(8) :: r_c
       integer, allocatable :: igp_finite(:)
       
       logical :: cutoff, hybrid, rpseudo
@@ -430,11 +429,7 @@ module weinert
 else
     cutoff=.false.
 endif
-if (present(kvec_in)) then 
-  kvec=kvec_in
-else
-  kvec=(/0d0,0d0,0d0/)
-endif
+
 if (present(rpseudo_in)) then
   rpseudo=rpseudo_in
 else
@@ -442,7 +437,8 @@ else
 endif
 
     if (rpseudo) then
-          call pseudocharge_rspace(lmax,npsden,qlm,kvec,zrhoig)   
+
+         call pseudocharge_rspace_new(lmax,qlm,rpseudomat,zrhoig) 
     else
 
       ! add Fourier components of pseudodensity from multipole moments
@@ -980,150 +976,6 @@ End Do
 end subroutine
 
 
-subroutine pseudocharge_rspace(lmax,npsd,qlm,kvec,zvclir,yukawa_in,zlambda,zilmt,zbessi)
-  use modrspace
-  use modinput
-  use modinteg
-  use mod_atoms, only: nspecies, natoms, idxas, natmtot,atposc,spr
-  use mod_Gvector, only: ngrid,ngrtot
-  use mod_muffin_tin, only: rmt, nrmtmax,nrmt
-  use constants, only: zzero, fourpi, y00
-  implicit none
-  
-  integer, intent(in) :: lmax
-  integer, intent(in) :: npsd
-  complex(8), intent(in) :: qlm((lmax+1)**2,natmtot)
-  Real(8), Intent (In) :: kvec(3)
-  Complex (8), Intent (InOut) :: zvclir(ngrtot)
-  logical, optional, intent(in) :: yukawa_in
-  complex(dp),optional, intent(in) :: zlambda
-  complex(dp),optional, intent(in) :: zilmt(0:,:)
-  complex(dp),optional, intent(in) :: zbessi(:,0:,:)
-  
-
-  complex(dp) :: phase
-logical :: yukawa
-
-  complex (8) :: zrp((lmax+1)**2),alm((lmax+1)**2),zf1(nrmtmax),zf2(nrmtmax)
-  complex (8) :: zt1,zt2, rr
-
-   Real (8) :: t1,t2,eps,rv_abs,ratom(3), rv(3)
-  real (8) :: bmat(3,3),binv(3,3), col(1,3)
-  integer :: is, ia, ias, lm, l,ig,m,igr
-  integer :: i1,i2,i3,ir1,ir2,ir3,ir
-  !external functions
-  Real (8) :: factnm
-  External factnm
-  
- 
-write(*,*)"rspace metode"
-
-
-
-if(present(yukawa_in))then 
-  yukawa=yukawa_in
-else
-  yukawa=.false.
-endif
-
-  
-
-  call zfftifc( 3, ngrid, 1, zvclir)
-
-  do is=1, nspecies
-  do ia=1, natoms(is)
-    ias=idxas(ia,is)
-
-    ratom=atposc (:, ia, is)
-
-    do l = 0, lmax
-      t1 = factnm( 2*l + 2*npsd + 3, 2)/factnm( 2*l+1, 2)
-      do m = -l, l
-        lm = l*(l+1) + m + 1
-        zrp (lm) = (qlm(lm, ias)) * t1
-      end do
-    end do
-    
-  
-  do igr=1, rgrid_nmtpoints(ias)
-    ig=rgrid_mt_map(ias,igr)
-    rv=rgrid_mt_rv(:,ias,igr)
-    phase=exp(-cmplx(0,1,8)*sum(kvec*(rv+ratom)))
-    rv_abs=rgrid_mt_rabs(ias,igr)
-    
-    if(yukawa) then         
-      lm=0
-      Do l = 0, lmax
-        zf1=zzero
-        do ir=1, nrmt(is)
-          rr=spr(ir,is)/rmt(is)
-          zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
-        enddo
-        call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
-        zt1=zlambda**l/(factnm(2*l+1, 2)*zf2(nrmt(is)))
-        Do m = - l, l
-          lm = lm + 1
-          alm(lm)=qlm(lm,ias)*zt1
-        enddo ! m
-      enddo ! l
-      lm=0
-      Do l = 0, lmax
-        
-
-        zt1=(rv_abs/rmt(is))**l*(1d0-(rv_abs/rmt(is))**2)**npsd
-        if (rv_abs .Gt. input%structure%epslat) then
-          Do m = - l, l
-            lm = lm + 1
-            zvclir(ig) = zvclir(ig) + zt1*alm(lm)*rgrid_zylm(lm,ias,igr)*phase
-          enddo
-        else
-          zvclir(ig) = zvclir(ig) + zt1*alm(1)*y00*phase
-          exit
-        endif
-      enddo
-
-
-          
-    else !if not Yukawa
-            lm=0
-            Do l = 0,lmax
-              t1=(rv_abs/rmt(is))**l*(1d0-rv_abs**2/rmt(is)**2)**npsd/(rmt(is)**(l+3)*2**(npsd)*factnm (npsd, 1))
-              if (rv_abs .Gt. input%structure%epslat) then
-                  Do m = - l, l
-                    lm = lm + 1
-                    zvclir(ig) = zvclir(ig)+zrp(lm)*t1*rgrid_zylm(lm,ias,igr)*phase
-                  enddo ! m
-              else
-                  zvclir(ig) = zvclir(ig)+zrp(1)*t1*y00*phase
-                  exit   
-              endif
-            enddo ! l
-
-    endif !if yukawa or not
-
-  enddo !igr
-
-    enddo !ia
-    enddo !is
-
-    ! open(11,file='is_pseudo_r_cor_a.dat',status='replace')
-    ! Do ig = 1, ngrtot
-    !     write(11,*)(ig-1)*a1(1),",",dble(cor(ig))
-    ! End Do
-    ! close(11)
-    
-
-
-
-  !write(*,*)"pseudodensity_ir"
-  
-  
-  call zfftifc( 3, ngrid, -1, zvclir)
-  
-  
- 
-  
-  end subroutine
 
 
   subroutine poisson_mt_yukawa( lmax, nr, r, zrhomt, zvclmt, zlambda, il, kl, is)
@@ -1171,7 +1023,176 @@ endif
     end subroutine
 
 
+    subroutine pseudocharge_rspace_matrix(lmax,npsd,kvec,mat,yukawa_in,zlambda,zilmt,zbessi)
 
+      use modrspace
+      use modinput
+      use modinteg
+      use mod_atoms, only: nspecies, natoms, idxas, natmtot,atposc,spr
+      use mod_Gvector, only: ngrid,ngrtot
+      use mod_muffin_tin, only: rmt, nrmtmax,nrmt
+      use constants, only: zzero, fourpi, y00
+      implicit none
+      
+      integer, intent(in) :: lmax
+      integer, intent(in) :: npsd
+      Real(8), Intent (In) :: kvec(3)
+      Complex (8), Intent (Out) ::  mat(:,:,:) !(lm,ias,irg)
+      logical, optional, intent(in) :: yukawa_in
+      complex(dp),optional, intent(in) :: zlambda
+      complex(dp),optional, intent(in) :: zilmt(0:,:)
+      complex(dp),optional, intent(in) :: zbessi(:,0:,:)
+      
+    
+      complex(dp) :: phase
+      logical :: yukawa
+    
+      complex (8) :: zf1(nrmtmax),zf2(nrmtmax)
+      complex (8) :: zt1,zt2, rr
+    
+       Real (8) :: t1,t2,rv_abs,ratom(3), rv(3)
+      integer :: is, ia, ias, lm, l,ig,m,igr
+      integer :: ir
+
+
+      !external functions
+      Real (8) :: factnm
+      External factnm
+      
+      mat(:,:,:)=zzero
+    !write(*,*)"rspace metode ar matricu"
+    
+    
+    
+    if(present(yukawa_in))then 
+      yukawa=yukawa_in
+    else
+      yukawa=.false.
+    endif
+    
+      
+    
+      ! call zfftifc( 3, ngrid, 1, zvclir)
+    
+      do is=1, nspecies
+      do ia=1, natoms(is)
+        ias=idxas(ia,is)
+        ratom=atposc (:, ia, is)
+      do igr=1, rgrid_nmtpoints(ias)
+        ig=rgrid_mt_map(ias,igr)
+        rv=rgrid_mt_rv(:,ias,igr)
+        phase=exp(-cmplx(0,1,8)*sum(kvec*(rv+ratom)))
+        rv_abs=rgrid_mt_rabs(ias,igr)
+        
+        if(yukawa) then         
+          lm=0
+          Do l = 0, lmax
+            zf1=zzero
+            do ir=1, nrmt(is)
+              rr=spr(ir,is)/rmt(is)
+              zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
+            enddo
+            call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
+            zt1=zlambda**l*(rv_abs/rmt(is))**l*(1d0-(rv_abs/rmt(is))**2)**npsd/(factnm(2*l+1, 2)*zf2(nrmt(is)))
+            if (rv_abs .Gt. input%structure%epslat) then
+              Do m = - l, l
+                lm = lm + 1
+                mat(lm,ias,igr) = mat(lm,ias,igr) + zt1*rgrid_zylm(lm,ias,igr)*phase
+              enddo !m
+            else
+              lm=1
+              mat(lm,ias,igr) = mat(lm,ias,igr) + zt1*y00*phase
+              exit ! exit l loop just to get the l=0 contribution
+            endif
+          enddo ! l
+    
+    
+              
+        else !if not Yukawa
+
+
+          
+                lm=0
+                Do l = 0,lmax
+                  t1=factnm( 2*l + 2*npsd + 3, 2)*(rv_abs/rmt(is))**l*(1d0-rv_abs**2/rmt(is)**2)**npsd/(rmt(is)**(l+3)*2**(npsd)*factnm (npsd, 1)*factnm( 2*l+1, 2))
+                  if (rv_abs .Gt. input%structure%epslat) then
+                      Do m = - l, l
+                        lm = lm + 1
+                        mat(lm,ias,igr) = mat(lm,ias,igr)+t1*rgrid_zylm(lm,ias,igr)*phase
+                      enddo ! m
+                  else
+                      lm=1
+                      mat(lm,ias,igr) = mat(lm,ias,igr) + t1*y00*phase
+                      exit   ! exit l loop just to get the l=0 contribution
+                  endif
+                enddo ! l
+    
+        endif !if yukawa or not
+    
+      enddo !igr
+    
+        enddo !ia
+        enddo !is
+    
+    ! ! do is=1, nspecies
+    ! !   do ia=1, natoms(is)
+    ! !     ias=idxas(ia,is)
+    ! !     do igr=1, rgrid_nmtpoints(ias)
+    ! !       ig=rgrid_mt_map(ias,igr)
+    ! !       lm=0
+    ! !       Do l = 0,lmax
+    ! !         Do m = - l, l
+    ! !           lm = lm+1
+    ! !           zvclir(ig)=zvclir(ig) + qlm(lm,ias)*mat(lm,ias,igr)
+    ! !         enddo ! m
+    ! !       enddo
+    ! !     enddo !igr
+    ! !   enddo !ia
+    ! ! enddo !is
+
+    !   call zfftifc( 3, ngrid, -1, zvclir)
+      
+      
+    end subroutine
+
+    subroutine pseudocharge_rspace_new(lmax,qlm,rpseudomat,zvclir)
+      use modrspace, only: rgrid_mt_map, rgrid_nmtpoints
+      use mod_atoms, only: nspecies, natoms, natmtot,idxas
+      use mod_Gvector, only: ngrtot, ngrid
+      implicit none
+      
+      integer, intent(in) :: lmax
+      complex(8), intent(in) :: qlm((lmax+1)**2,natmtot)
+      complex(8), intent(in) :: rpseudomat(:,:,:)
+      Complex (8), Intent (InOut) :: zvclir(ngrtot)
+      integer :: is,ia,ias,l,m,lm,ig,igr
+
+      call zfftifc( 3, ngrid, 1, zvclir)
+
+      do is=1, nspecies
+        do ia=1, natoms(is)
+          ias=idxas(ia,is)
+          do igr=1, rgrid_nmtpoints(ias)
+            ig=rgrid_mt_map(ias,igr)
+            lm=0
+            Do l = 0,lmax
+              Do m = - l, l
+                lm = lm+1
+                zvclir(ig)=zvclir(ig) + qlm(lm,ias)*rpseudomat(lm,ias,igr)
+              enddo ! m
+            enddo
+          enddo !igr
+        enddo !ia
+      enddo !is
+  
+        
+        
+      call zfftifc( 3, ngrid, -1, zvclir)
+
+
+    end subroutine
+      
+    
 
     
 end module weinert

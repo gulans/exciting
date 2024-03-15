@@ -5,13 +5,14 @@
 !
 !
 Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
+      use modrspace, only: rgrid_max_nmtpoints
       use modbess, only: nfit, zbessi,zbessk,erfc_fit,zilmt,lambda
       use modinteg
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
       Use potentials, only: coulomb_potential
-      use weinert, only: poisson_mt_yukawa
+      use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
       USE OMP_LIB
 
       use poterf
@@ -30,10 +31,10 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: nrc, iq, ig, iv (3), igq0, igk
       Integer :: ilo, loindex
       Integer :: info
-      Integer :: ifg, ngvec1, ifit
+      Integer :: ifg, ngvec1, ifit,ifit2
       Logical :: solver, cutoff, handleG0, rpseudo
 
-      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method,kvec(3)
+      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
 
@@ -67,6 +68,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
       
+      complex(8), Allocatable :: rpseudomat(:,:,:,:) ! (ifit,lm,ias,igr)
 
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
@@ -144,15 +146,34 @@ call timesec(ta)
 ! determine q-vector
          v (:) = kqset%vkc (:, ik) - kqset%vkc (:, jk)
          
-         kvec=v
-         write(*,*)"kvec",kvec
+
 ! generate matrix for pseudocharge construction in real-space 
          if (rpseudo)then
-         
+            if (.not.allocated(rpseudomat)) then
+               if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
+                  allocate(rpseudomat(nfit*2-1,(lmaxvr+1)**2,natmtot,rgrid_max_nmtpoints))
+               else
+                  allocate(rpseudomat(1,(lmaxvr+1)**2,natmtot,rgrid_max_nmtpoints))
+               endif
+            endif
+            if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
+               ifit2=0
+               do ifit=1,nfit
+                  ifit2=ifit2+1
+                  call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+                           & yukawa_in=.true.,zlambda=erfc_fit(ifit,2),zilmt=zilmt(ifit,:,:),zbessi=zbessi(:,ifit,:,:))
+               enddo
+               do ifit=2,nfit
+                  ifit2=ifit2+1
+                  call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+                           & yukawa_in=.true.,zlambda=conjg(erfc_fit(ifit,2)),zilmt=conjg(zilmt(ifit,:,:)),zbessi=conjg(zbessi(:,ifit,:,:)))
+               enddo
+
+            else
+               call pseudocharge_rspace_matrix(lmaxvr,input%groundstate%npsden,v,rpseudomat(1,:,:,:))
+            endif
          endif
 
-         kvec=v
-         write(*,*)"kvec",kvec
 
 
 
@@ -256,9 +277,13 @@ write(*,*) 'genWFs',tb-ta
 
          write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
 
+
+
+
+         
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j,rhoG0) REDUCTION(+:zvclmt,vxpsiirgk)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j,ifit2,rhoG0) REDUCTION(+:zvclmt,vxpsiirgk)
 !write(*,*)"pēc", OMP_GET_THREAD_NUM()
          call WFInit(prod)
          call WFInit(pot)
@@ -316,23 +341,26 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                potmt0=zzero
                potir0=zzero
                if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then !Yukawa case
+                  ifit2=0
                   do j=1, nfit
+                     ifit2=ifit2+1
                      Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),&
-                     & kvec_in=kvec,rpseudo_in=rpseudo)
+                     & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
                      potir=potir+potir0 * erfc_fit(j,1)
                   enddo
                   do j=2, nfit
+                     ifit2=ifit2+1
                      Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),&
-                     & kvec_in=kvec, rpseudo_in=rpseudo)
+                     & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
                      potir=potir+potir0 * conjg(erfc_fit(j,1))
                   enddo
@@ -344,7 +372,7 @@ write(*,*)"nomax",nomax,"nstfv",nstfv
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                   & prodir(:), potmt0, potir0, zrho02, &
                   & cutoff=cutoff, hybrid_in=.true.,&
-                  & kvec_in=kvec,rpseudo_in=rpseudo)
+                  & rpseudo_in=rpseudo,rpseudomat=rpseudomat(1,:,:,:))
 
                   if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
                      pot%mtrlm(:,:,:,1)=potmt0
@@ -539,7 +567,7 @@ call timesec(tb)
 
 write(*,*) 'Matrix',tb-ta
 
-if (.true.) then
+if (.false.) then
       write(*,*)"element(1,1)",dble(vnlvv(1,1)),",",imag(vnlvv(1,1))
       Write(*,*) "ikp, ik, memopt:", ikp, ik
       write(*,*) 'vnlvv real (1:nstfv,1:nstfv)'
@@ -571,8 +599,8 @@ end if
       call WFRelease(wf2)
       call WFRelease(prod)
 
- ! write(*,*)"FockExchange.f90 stop"
- ! stop
+!  write(*,*)"FockExchange.f90 stop"
+!  stop
       Return
 End Subroutine
 !EOC

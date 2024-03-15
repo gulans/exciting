@@ -31,7 +31,7 @@ module potentials
     !> to match it with the interstitial potential on the muffin-tin sphere boundaries using the subroutines
     !> [[match_bound_mt(subroutine)]] and [[surface_ir(subroutine)]].
     subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
-                                & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,kvec_in,rpseudo_in)
+                                & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,rpseudo_in,rpseudomat)
 
       use constants, only: y00,zzero
       use modinput
@@ -81,8 +81,9 @@ module potentials
       complex(dp), optional, intent(in) :: zilmt(0:,:)  
       real(dp), allocatable :: vion(:,:), vdplmt(:,:,:), vdplir(:)
       complex(dp), allocatable :: qlm(:,:), qlmir(:,:), zrhoig(:)
-      Real(dp), optional, intent(in) :: kvec_in(3)
       logical, optional, intent(in) :: rpseudo_in
+      complex(dp), optional, intent(in) :: rpseudomat(:,:,:)
+
       logical :: yukawa
       logical :: hybrid, rpseudo
       complex(dp) :: zlambda
@@ -90,7 +91,8 @@ module potentials
       integer :: is, ia, ias, ir,j
       integer :: ig, ifg, lm
     
-      real(dp) :: t1, kvec(3)
+      real(dp) :: t1
+
 
       if (present(hybrid_in)) then 
             hybrid=hybrid_in
@@ -106,12 +108,6 @@ endif
 
 if (present(zlambda_in)) then
   zlambda=zlambda_in
-endif
-
-if (present(kvec_in)) then 
-  kvec=kvec_in
-else
-  kvec=(/0d0,0d0,0d0/)
 endif
 
 if (present(rpseudo_in)) then
@@ -197,7 +193,8 @@ endif
 
       if (yukawa) then
         if (rpseudo) then
-          call pseudocharge_rspace(input%groundstate%lmaxvr,input%groundstate%npsden,qlm,kvec,zrhoig,yukawa,zlambda,zilmt,zbessi)
+          call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
+         
         else
           call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
                         & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
@@ -219,9 +216,15 @@ endif
 
 
       else
-        call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
+        if (rpseudo) then
+          call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
                         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,kvec_in=kvec,rpseudo_in=rpseudo)
+                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=rpseudo,rpseudomat=rpseudomat)
+        else
+          call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
+                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=.false.)
+        endif
         zrho0 = zrhoig( igfft( igp0))
       endif
       ! evaluate interstitial potential on muffin-tin surface
