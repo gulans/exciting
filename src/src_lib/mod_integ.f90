@@ -103,8 +103,8 @@ endif
 
 
 do isp=1, nspecies
-write(*,*)"species",isp,"mt",nrmt(isp),"atom",nratom(isp)
-write(*,*)"r(mt)",r(nrmt(isp),isp),"r(inf)",r(nratom(isp),isp)
+!write(*,*)"species",isp,"mt",nrmt(isp),"atom",nratom(isp)
+!write(*,*)"r(mt)",r(nrmt(isp),isp),"r(inf)",r(nratom(isp),isp)
 
 call gen_icoef_one_grid(nrmt(isp),&
           r(1:nrmt(isp),isp),iNpoints,dNpoints,&

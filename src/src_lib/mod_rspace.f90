@@ -30,7 +30,7 @@ subroutine generate_rgrid_mt_data(lmax)
   real(8) :: rgrid_mt_rv_tmp(3,natmtot,int(ngrtot/natmtot))
   integer :: rgrid_mt_map_tmp(natmtot,int(ngrtot/natmtot))
 
-write(*,*)lmax
+
 
   a1=input%structure%crystal%basevect(1, :)/ngrid(1)
   a2=input%structure%crystal%basevect(2, :)/ngrid(2)
@@ -139,17 +139,17 @@ write(*,*)lmax
     enddo !ia
   enddo !is
 
-  open(11,file='rgrid_mod_1.dat',status='replace')
-  ias=1
-  write(*,*)"rgrid_nmtpoints(ias)",rgrid_nmtpoints(ias)
-  do ig=1, rgrid_nmtpoints(ias)
-    do lm=1,lmax**2
-      ias=1
-      !write(11,*)rgrid_mt_map(ias,ig),rgrid_mt_rabs(ias,ig)
-      write(11,*)rgrid_zylm(lm,ias,ig)
-    enddo
-  enddo
-  close(11)
+  ! open(11,file='rgrid_mod_1.dat',status='replace')
+  ! ias=1
+  ! write(*,*)"rgrid_nmtpoints(ias)",rgrid_nmtpoints(ias)
+  ! do ig=1, rgrid_nmtpoints(ias)
+  !   do lm=1,lmax**2
+  !     ias=1
+  !     !write(11,*)rgrid_mt_map(ias,ig),rgrid_mt_rabs(ias,ig)
+  !     write(11,*)rgrid_zylm(lm,ias,ig)
+  !   enddo
+  ! enddo
+  ! close(11)
 
 
 end subroutine 

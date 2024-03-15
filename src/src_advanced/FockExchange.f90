@@ -94,11 +94,11 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (zwfir(ngkmax))
 
 
-      write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
-      write(*,*) "rspacepseudocharge=",input%groundstate%hybrid%rspacepseudocharge
+      !write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
+      !write(*,*) "rspacepseudocharge=",input%groundstate%hybrid%rspacepseudocharge
       rpseudo=input%groundstate%hybrid%rspacepseudocharge
       lmaxvr=input%groundstate%lmaxvr
-      write(*,*)"lambda",lambda
+      !write(*,*)"lambda",lambda
 
 
 
@@ -203,17 +203,17 @@ call timesec(ta)
 
 !!!variables for the erfcapprox="PW"
       if (input%groundstate%hybrid%erfcapprox.eq."PW")then 
-         write(*,*)"shortest g+q vec",igq0
+         !write(*,*)"shortest g+q vec",igq0
          gmax_pw_method=6d0*dsqrt(2d0)*lambda ! 6*sigmas of a Gaussian
-         write(*,*)"min(g+q): G(",igq0,")=", gqc(igq0),"Largest G vector for PW method:",gmax_pw_method
+         !write(*,*)"min(g+q): G(",igq0,")=", gqc(igq0),"Largest G vector for PW method:",gmax_pw_method
          do ig=1, ngvec
                if (gqc(ig).lt.gmax_pw_method) then ! 6*sigmas of a Gaussian
                   ngvec1=ig+1
-                  write(*,*)"G(",ig,")=",gqc(ig)
+                  !write(*,*)"G(",ig,")=",gqc(ig)
                   !exit
                endif
          enddo
-   write(*,*)"ngvec1=",ngvec1
+   !write(*,*)"ngvec1=",ngvec1
 
 
          if (allocated(jlgqsmallr)) then
@@ -275,14 +275,14 @@ write(*,*) 'genWFs',tb-ta
             endif
          endif
 
-         write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
+         !write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
 
 
 
 
          
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
-write(*,*)"nomax",nomax,"nstfv",nstfv
+!write(*,*)"nomax",nomax,"nstfv",nstfv
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j,ifit2,rhoG0) REDUCTION(+:zvclmt,vxpsiirgk)
 !write(*,*)"pēc", OMP_GET_THREAD_NUM()
          call WFInit(prod)
@@ -417,9 +417,7 @@ endif
                Call zfftifc (3, ngrid,-1,vxpsiirtmp)
 
 
-do j=1,10
-!write(*,*) ist3,",",OMP_GET_THREAD_NUM(),",",j,"," ,dble(vxpsiirtmp(j)),",",imag(vxpsiirtmp(j))
-enddo
+
 
 
                Do igk=1, Gkqset%ngk (1, ik)
@@ -522,7 +520,7 @@ write(*,*) 'vcv',tb-ta
 call timesec(ta)
       Do ist1 = 1, nstsv
          if(.false.)then
-         write(*,*)"q0corr",q0corr
+         !write(*,*)"q0corr",q0corr
          !If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
             ! Evaluate wavefunction in real space
             wf1ir(:) = 0.d0
@@ -533,7 +531,7 @@ call timesec(ta)
             Call zfftifc (3, ngrid, 1, wf1ir(:))
 
 !!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method
-write(*,*)"FockExchange korekcija notiek"
+!write(*,*)"FockExchange korekcija notiek"
 
             ! Apply q=0 correction to MT part
             vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
