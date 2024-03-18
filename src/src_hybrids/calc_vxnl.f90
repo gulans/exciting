@@ -305,7 +305,7 @@ else ! Use oepvnl
         call timesec(ta)
         call FockExchange (ik, sxs2*kiw(1,ik) ,vxnl(:, :, ik),vxpsiir,vxpsimt)
         call timesec(tb)
-        if (rank==0) write(*,*) 'FockExchange',tb-ta
+        if (rank==0) write(*,*) 'FockExchange :',tb-ta
 
         do ie1 = 1, nstfv
 ! making sure that the exchange matrix is Hermitian 
@@ -317,7 +317,7 @@ else ! Use oepvnl
         call timesec(ta)
         call calcACE (ik, vxnl(:, :, ik),vxpsiir,vxpsimt)
         call timesec(tb)
-        if (rank==0) write(*,*) 'calcACE',tb-ta
+        if (rank==0) write(*,*) 'calcACE :',tb-ta
 
       End Do
 

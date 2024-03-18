@@ -157,22 +157,47 @@ call timesec(ta)
                endif
             endif
             if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
-               ifit2=0
-               do ifit=1,nfit
-                  ifit2=ifit2+1
-                  call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
-                           & yukawa_in=.true.,zlambda=erfc_fit(ifit,2),zilmt=zilmt(ifit,:,:),zbessi=zbessi(:,ifit,:,:))
-               enddo
-               do ifit=2,nfit
-                  ifit2=ifit2+1
-                  call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
-                           & yukawa_in=.true.,zlambda=conjg(erfc_fit(ifit,2)),zilmt=conjg(zilmt(ifit,:,:)),zbessi=conjg(zbessi(:,ifit,:,:)))
-               enddo
 
-            else
+!!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ifit,ifit2)
+!!$OMP DO
+!                do ifit=1,nfit
+!                   ifit2=ifit
+!                   write(*,*)OMP_GET_THREAD_NUM(),ifit2
+!                   call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+!                            & yukawa_in=.true.,zlambda=erfc_fit(ifit,2),zilmt=zilmt(ifit,:,:),zbessi=zbessi(:,ifit,:,:))
+!                enddo
+!!$OMP END DO NOWAIT
+!!$OMP DO                              
+!                do ifit=2,nfit
+!                   ifit2=nfit+ifit-1
+!                   write(*,*)OMP_GET_THREAD_NUM(),ifit2               
+!                   call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+!                            & yukawa_in=.true.,zlambda=conjg(erfc_fit(ifit,2)),zilmt=conjg(zilmt(ifit,:,:)),zbessi=conjg(zbessi(:,ifit,:,:)))
+!                enddo
+!!$OMP END DO
+!!$OMP END PARALLEL
+
+
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ifit,ifit2)
+!$OMP DO
+               do ifit2=1,nfit*2-1
+                  if (ifit2.le.nfit) then
+                     ifit=ifit2
+                     call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+                              & yukawa_in=.true.,zlambda=erfc_fit(ifit,2),zilmt=zilmt(ifit,:,:),zbessi=zbessi(:,ifit,:,:))
+                  else
+                     ifit=ifit2-nfit+1
+                     call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+                              & yukawa_in=.true.,zlambda=conjg(erfc_fit(ifit,2)),zilmt=conjg(zilmt(ifit,:,:)),zbessi=conjg(zbessi(:,ifit,:,:)))
+                  endif
+               enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+            else 
                call pseudocharge_rspace_matrix(lmaxvr,input%groundstate%npsden,v,rpseudomat(1,:,:,:))
-            endif
-         endif
+            endif !Yukawa
+         endif ! rpseudo
 
 
 
@@ -239,8 +264,7 @@ call timesec(ta)
 
 
 call timesec(tb)
-write(*,*) 'qpt init', tb-ta
-
+write(*,*) 'qpt_init :', tb-ta
 ! calculate the wavefunctions for occupied states
 
 call timesec(ta)
@@ -249,7 +273,7 @@ call timesec(ta)
          call genWFinMT(wf2)
          call genWFonMesh(wf2)
 call timesec(tb)
-write(*,*) 'genWFs',tb-ta
+write(*,*) 'genWFs :',tb-ta
 
 
          solver = (input%groundstate%hybrid%singularity.ne."exc")
@@ -439,7 +463,7 @@ endif
 !$OMP END PARALLEL
 
 call timesec(ta)
-write(*,*) 'omp loop',ta-tb
+write(*,*) 'omp_loop :',ta-tb
          vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
 
@@ -513,7 +537,7 @@ If (.true.) Then
       End Do ! is
 End If
 call timesec(tb)
-write(*,*) 'vcv',tb-ta
+write(*,*) 'vcv :',tb-ta
 
       vxpsimt=vxpsimt+zvclmt
       Allocate (wf1ir(ngrtot))
@@ -563,7 +587,7 @@ call timesec(ta)
       End Do ! ist1
 call timesec(tb)
 
-write(*,*) 'Matrix',tb-ta
+write(*,*) 'Matrix :',tb-ta
 
 if (.false.) then
       write(*,*)"element(1,1)",dble(vnlvv(1,1)),",",imag(vnlvv(1,1))

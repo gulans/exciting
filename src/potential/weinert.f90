@@ -1048,9 +1048,11 @@ end subroutine
       logical :: yukawa
     
       complex (8) :: zf1(nrmtmax),zf2(nrmtmax)
-      complex (8) :: zt1,zt2, rr
-    
-       Real (8) :: t1,t2,rv_abs,ratom(3), rv(3)
+      complex (8) :: zt1, zt2
+      complex (8) :: rinteg(0:lmax,nspecies) !(l,is)
+      complex (8) :: zldep(0:lmax)
+      Real (8) :: rr,t1,t2,rv_abs,ratom(3), rv(3) , ldep(0:lmax)
+
       integer :: is, ia, ias, lm, l,ig,m,igr
       integer :: ir
 
@@ -1070,10 +1072,32 @@ end subroutine
       yukawa=.false.
     endif
     
-      
+    if (yukawa)then
+      do is=1, nspecies
+        Do l = 0, lmax
+          zf1=zzero
+          do ir=1, nrmt(is)
+            rr=spr(ir,is)/rmt(is)
+            zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
+          enddo
+          call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
+          rinteg(l,is)=zf2(nrmt(is))
+        enddo
+      enddo
+    endif
     
-      ! call zfftifc( 3, ngrid, 1, zvclir)
-    
+
+    if (yukawa)then
+      Do l = 0, lmax
+        zldep(l)=zlambda**l/factnm(2*l+1, 2)
+      enddo
+    else
+      Do l = 0, lmax
+        ldep(l)=factnm( 2*l + 2*npsd + 3, 2)/(2**(npsd)*factnm (npsd, 1)*factnm( 2*l+1, 2))
+      enddo
+    endif
+
+
       do is=1, nspecies
       do ia=1, natoms(is)
         ias=idxas(ia,is)
@@ -1087,13 +1111,7 @@ end subroutine
         if(yukawa) then         
           lm=0
           Do l = 0, lmax
-            zf1=zzero
-            do ir=1, nrmt(is)
-              rr=spr(ir,is)/rmt(is)
-              zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
-            enddo
-            call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
-            zt1=zlambda**l*(rv_abs/rmt(is))**l*(1d0-(rv_abs/rmt(is))**2)**npsd/(factnm(2*l+1, 2)*zf2(nrmt(is)))
+            zt1=zldep(l)*(rv_abs/rmt(is))**l*(1d0-(rv_abs/rmt(is))**2)**npsd/rinteg(l,is)
             if (rv_abs .Gt. input%structure%epslat) then
               Do m = - l, l
                 lm = lm + 1
@@ -1114,7 +1132,7 @@ end subroutine
           
                 lm=0
                 Do l = 0,lmax
-                  t1=factnm( 2*l + 2*npsd + 3, 2)*(rv_abs/rmt(is))**l*(1d0-rv_abs**2/rmt(is)**2)**npsd/(rmt(is)**(l+3)*2**(npsd)*factnm (npsd, 1)*factnm( 2*l+1, 2))
+                  t1=ldep(l)*(rv_abs/rmt(is))**l*(1d0-rv_abs**2/rmt(is)**2)**npsd/(rmt(is)**(l+3))
                   if (rv_abs .Gt. input%structure%epslat) then
                       Do m = - l, l
                         lm = lm + 1
