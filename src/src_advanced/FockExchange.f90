@@ -39,7 +39,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
 
       Complex (8) ::  potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot),rhoG0,potG0
-
+      Real (8) :: time_coul, tc, td , time_fft, time_prod, time_rs, time_misc, time_critical
 ! automatic arrays
       Real (8) :: zn (nspecies)
       Complex (8) sfacgq0 (natmtot)
@@ -55,7 +55,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: potir (:)
       Complex (8), Allocatable :: ylmgq (:, :)
       Complex (8), Allocatable :: sfacgq (:, :)
-      Complex (8), Allocatable :: vxpsiirtmp (:)
+      Complex (8), Allocatable :: vxpsiirtmp (:),vxpsigktmp (:)
       Complex (8), Allocatable :: wfcr1 (:, :)
       Complex (8), Allocatable :: wf1ir (:)
       Complex (8), Allocatable :: wf2ir (:)
@@ -85,6 +85,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (ylmgq(lmmaxvr, ngvec))
       Allocate (sfacgq(ngvec, natmtot))
       Allocate (vxpsiirtmp(ngrtot))
+      Allocate (vxpsigktmp(ngkmax))
       Allocate (wfcr1(ntpll, nrcmtmax))
       Allocate (zrhomt(lmmaxvr, nrcmtmax, natmtot))
       Allocate (zrhoir(ngrtot))
@@ -92,6 +93,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax))
       Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv))
       Allocate (zwfir(ngkmax))
+
 
 
       !write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
@@ -307,8 +309,17 @@ write(*,*) 'genWFs :',tb-ta
          
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 !write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,potmt0,potir0,j,ifit2,rhoG0) REDUCTION(+:zvclmt,vxpsiirgk)
-!write(*,*)"pēc", OMP_GET_THREAD_NUM()
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td) REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical)
+! !xREDUCTION(+:zvclmt)
+! !REDUCTION(+:vxpsiirgk)        
+
+         !write(*,*)"pēc", OMP_GET_THREAD_NUM()
+         time_coul=0d0
+         time_fft=0d0
+         time_prod=0d0
+         time_rs=0d0
+         time_misc=0d0
+         time_critical=0d0
          call WFInit(prod)
          call WFInit(pot)
 
@@ -322,6 +333,7 @@ write(*,*) 'genWFs :',tb-ta
 
          Do ist2 = 1, nomax
 
+            call timesec(tc)
             wf2ir(:) = 0.d0
             Do igk = 1, Gkqset%ngk (1, jk)
                ifg = igfft (Gkqset%igkig(igk, 1, jk))
@@ -329,24 +341,32 @@ write(*,*) 'genWFs :',tb-ta
             End Do
             Call zfftifc (3, ngrid, 1, wf2ir(:))
 
+            call timesec(td)
+            time_fft=time_fft+td-tc
 !$OMP DO SCHEDULE(DYNAMIC)
             Do ist3 = 1, nstfv
 
                vxpsiirtmp(:) = 0.d0
+               call timesec(tc)          
                wf1ir(:) = 0.d0 
                Do igk = 1, Gkqset%ngk (1, ik)
                   ifg = igfft (Gkqset%igkig(igk, 1, ik))
                   wf1ir(ifg) = t1*wf1%gk(igk, ist3)
                End Do
                Call zfftifc (3, ngrid, 1, wf1ir(:))
+               call timesec(td)
+               time_fft=time_fft+td-tc
 
    ! calculate the complex overlap density
    !-----------------------------------------------------------------------------------
-
+               call timesec(tc)
                call WFprodrs(ist2,wf2,ist3,wf1,prod)
+               call timesec(td)
+               time_rs=time_rs+td-tc
+               call timesec(tc)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
-
-
+               call timesec(td)
+               time_prod=time_prod+td-tc
                
 
 
@@ -359,7 +379,7 @@ write(*,*) 'genWFs :',tb-ta
                endif
 
 
-  
+               call timesec(tc)
                pot%mtrlm(:,:,:,1)=zzero
                potir=zzero
                potmt0=zzero
@@ -403,6 +423,8 @@ write(*,*) 'genWFs :',tb-ta
                      potir=potir0
                   endif
                endif
+               call timesec(td)
+               time_coul=time_coul+td-tc
 
 if (input%groundstate%hybrid%erfcapprox.eq."PW")then  
    call poterfpw(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir, pot%mtrlm(:,:,:,1))
@@ -431,25 +453,45 @@ endif
                endif
 
    !-----------------------------------------------------------------------------------1
+   call timesec(tc)
                call genWFonMeshOne(pot)
                pot%mtmesh=conjg(pot%mtmesh)
-               call WFprodrs(1,pot,ist2,wf2,prod)
-               vxpsiirtmp(:) = potir(:)*wf2ir(:)*wkptnr(jk)*cfunir(:)
+   call timesec(td)
+   time_misc=time_misc+td-tc
 
+   call timesec(tc)
+               call WFprodrs(1,pot,ist2,wf2,prod)
+   call timesec(td)
+   time_rs=time_rs+td-tc
+
+   call timesec(tc)
+               vxpsiirtmp(:) = potir(:)*wf2ir(:)
+               vxpsiirtmp(:) = vxpsiirtmp(:)*cfunir(:)
+   call timesec(td)
+   time_prod=time_prod+td-tc
    ! ----------------------------------------------------------------------------------
                ! Calculate Fourier transform of vxpsiirtmp(r)
+               call timesec(tc)
                Call zfftifc (3, ngrid,-1,vxpsiirtmp)
 
-
-
-
-
                Do igk=1, Gkqset%ngk (1, ik)
-                  vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
+      
+                  vxpsigktmp(igk)= vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega)*wkptnr(jk)
                End Do
 
-               zvclmt(:,:,:,ist3)=zvclmt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+               call timesec(td)
+               time_fft=time_fft+td-tc
 
+               call timesec(tc)
+!$OMP CRITICAL
+               Do igk=1, Gkqset%ngk (1, ik)
+                  vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsigktmp(igk)
+               End Do
+               zvclmt(:,:,:,ist3)=zvclmt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+!$OMP END CRITICAL
+               call timesec(td)
+               time_critical=time_critical+td-tc
+               
             End Do ! ist3
 !$OMP END DO NOWAIT
          End Do ! ist2
@@ -463,6 +505,12 @@ endif
 !$OMP END PARALLEL
 
 call timesec(ta)
+write(*,*) 'time_coul :', time_coul
+write(*,*) 'time_fft :', time_fft
+write(*,*) 'time_prod :', time_prod
+write(*,*) 'time_misc :', time_misc
+write(*,*) 'time_rs :', time_rs
+write(*,*) 'time_critical :', time_critical
 write(*,*) 'omp_loop :',ta-tb
          vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
@@ -542,35 +590,33 @@ write(*,*) 'vcv :',tb-ta
       vxpsimt=vxpsimt+zvclmt
       Allocate (wf1ir(ngrtot))
 call timesec(ta)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist1,ist3,ztir,igk,ztmt)
+!$OMP DO collapse(2)
       Do ist1 = 1, nstsv
-         if(.false.)then
-         !write(*,*)"q0corr",q0corr
-         !If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
-            ! Evaluate wavefunction in real space
-            wf1ir(:) = 0.d0
-            Do igk = 1, Gkqset%ngk (1, ik)
-               ifg = igfft (Gkqset%igkig(igk, 1, ik))
-               wf1ir(ifg) = t1*wf1%gk(igk, ist1)
-            End Do
-            Call zfftifc (3, ngrid, 1, wf1ir(:))
 
 !!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method
-!write(*,*)"FockExchange korekcija notiek"
+!          if(.false.)then
+!          !write(*,*)"q0corr",q0corr
+!          !If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
+!             ! Evaluate wavefunction in real space
+!             wf1ir(:) = 0.d0
+!             Do igk = 1, Gkqset%ngk (1, ik)
+!                ifg = igfft (Gkqset%igkig(igk, 1, ik))
+!                wf1ir(ifg) = t1*wf1%gk(igk, ist1)
+!             End Do
+!             Call zfftifc (3, ngrid, 1, wf1ir(:))
+! !write(*,*)"FockExchange korekcija notiek"
+!             ! Apply q=0 correction to MT part
+!             vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
 
-            ! Apply q=0 correction to MT part
-            vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
-
-            ! Apply correction to IR part and roll back correction to momentum space
-            vxpsiirtmp(:) = q0corr*wf1ir(:)*cfunir(:)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method//
-
-            Call zfftifc (3, ngrid,-1,vxpsiirtmp)
-            Do igk=1, Gkqset%ngk (1, ik)
-               vxpsiirgk(igk, ist1)=vxpsiirgk(igk, ist1)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
-            End Do
-         End If 
-
+!             ! Apply correction to IR part and roll back correction to momentum space
+!             vxpsiirtmp(:) = q0corr*wf1ir(:)*cfunir(:)
+!             Call zfftifc (3, ngrid,-1,vxpsiirtmp)
+!             Do igk=1, Gkqset%ngk (1, ik)
+!                vxpsiirgk(igk, ist1)=vxpsiirgk(igk, ist1)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
+!             End Do
+!          End If 
+! !!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method//
          ! Write(*,*) 'ist1=',ist1
          Do ist3 = 1, nstsv
 
@@ -585,6 +631,7 @@ call timesec(ta)
 
          End Do ! ist3
       End Do ! ist1
+!$OMP END PARALLEL
 call timesec(tb)
 
 write(*,*) 'Matrix :',tb-ta
