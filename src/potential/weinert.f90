@@ -14,7 +14,7 @@ module weinert
   public :: poisson_and_multipoles_mt, match_bound_mt
   public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa
   public :: poisson_mt_yukawa, pseudocharge_rspace_matrix, pseudocharge_rspace_new
-
+  public :: multipoles_ir2
   contains
 
     !> This subroutine evaluates an interstitial function given by the Fourier series
@@ -1211,6 +1211,350 @@ end subroutine
     end subroutine
       
     
+    subroutine multipoles_ir2( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qi, zlambda,zilmt)
+    use modinput
+    use mod_atoms, only: nspecies, natoms, idxas,natmtot
+    use mod_muffin_tin, only: rmt,nrmtmax,nrmt
+    use constants, only: fourpi,y00,zil,zzero
+    !> maximum angular momentum \(l\)
+    integer, intent(in) :: lmax
+    !> total number of \({\bf G+p}\) vectors
+    integer, intent(in) :: ngvec
+    !> lengths of \({\bf G+p}\) vectors
+    real(dp), intent(in) :: gpc(:)
+    !> integer components \({\bf G}\) of \({\bf G+p}\) vectors
+    !integer, intent(in) :: ivgp(:,:)
+    !> spherical Bessel functions \(j_l(|{\bf G+p}| R_\alpha)\)
+    real(dp), intent(in) :: jlgpr(0:,:,:)
+    !> spherical harmonics \(Y_{lm}(\widehat{\bf G+p})\)
+    complex(dp), intent(in) :: ylmgp(:,:)
+    !> structure factors \({\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf \tau}_\alpha}\)
+    complex(dp), intent(in) :: sfacgp(:,:)
+    !> bounds for integer components of \({\bf G}\)
+    !integer, intent(in) :: intgv(3,2)
+    !> map from integer components of \({\bf G}\) vectors to \({\bf G}\) vector index
+    !integer, intent(in) :: ivgig(intgv(1,1):,intgv(2,1):,intgv(3,1):)
+    !> map from \({\bf G}\) vector index to point in FFT grid
+    integer, intent(in) :: igfft(:)
+    !> Fourier components \(\hat{f}({\bf G+p})\) of the function on the FFT grid
+    complex(dp), intent(in) :: zvclir(:)
+    !> multipole moments of the function's extension inside the muffin-tin spheres
+    complex(dp), intent(out) :: qi(:,:)
+    complex(dp),optional, intent(in) :: zlambda
+    complex(dp),optional, intent(in) :: zilmt(0:,:) 
+  
+    integer :: is, ia, ias, ig, ifg, l, lm, m
+    complex(dp) :: zt1,zt2,tbessi,zt3
+    real(dp) :: t1,tbessj
+    logical :: yukawa
 
+    integer :: firstnonzeroG,lmmaxvr
+    Complex (8) :: sf(natmtot)
+    Complex (8) :: zlm ((lmax+1)**2), zlm2((lmax+1)**2)
+    real(8):: rmtl (0:lmax+3, nspecies)
+  !external functions
+    Real (8) :: factnm
+    External factnm
+  
+    lmmaxvr=(lmax+1)**2
+
+    if (present(zlambda)) then
+      yukawa=.true.
+    else
+      yukawa=.false.
+    endif
+
+
+
+
+    qi (:, :) = zzero
+  
+
+
+  if (.not.yukawa) then
+    ! compute (R_mt)^l
+    Do is = 1, nspecies
+      rmtl (0, is) = 1.d0
+      Do l = 1, input%groundstate%lmaxvr + 3
+         rmtl (l, is) = rmtl (l-1, is) * rmt (is)
+      End Do
+    End Do
+    if (gpc(1) .lt. input%structure%epslat) Then
+      firstnonzeroG=2
+    else
+      firstnonzeroG=1
+    endif
+!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
+!$OMP DO 
+          Do ig = firstnonzeroG, ngvec
+            sf(:)=sfacgp(ig,:)
+            t1 = 1.d0 / gpc(ig)
+            zt1 = zvclir (ig) * t1 
+            zlm(:)=zt1*conjg (ylmgp(:, ig))
+
+            Do is = 1, nspecies
+              lm = 0
+              Do l = 0, lmax
+                  zlm2(lm+1:lm+1+2*l) = jlgpr (l+1, ig, is) * zlm(lm+1:lm+1+2*l)
+                  lm=lm+1+2*l
+              End Do
+                       
+              Do ia = 1, natoms(is)
+                ias = idxas (ia, is)
+                qi (1:lmmaxvr,ias) = qi (1:lmmaxvr,ias) + sf (ias) * zlm2(1:lmmaxvr)
+              End Do
+            End Do
+          End Do
+!$OMP END DO
+!$OMP END PARALLEL
+
+    Do is = 1, nspecies
+       Do ia = 1, natoms (is)
+         ias = idxas (ia, is)
+         lm = 0
+         do l = 0, lmax
+           qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * fourpi * zil (l) * rmtl (l+3, is) / rmt(is) 
+           lm=lm+1+2*l
+         enddo
+       End Do
+    End Do
+
+    if (gpc(1) .lt. input%structure%epslat) Then
+      
+      Do is = 1, nspecies
+        Do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+          t1 = fourpi * y00 * rmtl (3, is) / 3.d0
+          qi (1,ias) = qi (1,ias) + t1 * zvclir (1)
+        End Do
+      End Do
+    endif
+
+
+
+
+  else ! yukawa
+    do is = 1, nspecies
+      call msbesselic1(rmt(is)*zlambda,tbessi) 
+       do ia = 1, natoms(is)
+        ias = idxas( ia, is)
+  
+          Do ig = 1, ngvec
+            ifg = ig !igfft (ig) !because zvclir is sorted
+            
+            If (gpc(ig) .Gt. input%structure%epslat) Then
+               zt1 = zvclir (ifg) * sfacgp (ig, ias)/((gpc(ig) ** 2)+(zlambda ** 2))
+               
+               lm = 0
+               Do l = 0, input%groundstate%lmaxvr
+                  if (l .eq. 0) then 
+                  call sbessel1 (gpc(ig)*rmt(is), tbessj)
+                  zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
+                 &* ((zlambda * jlgpr (l, ig, is) *  tbessi )&
+                 &- (gpc(ig) *tbessj* zilmt(l,is)))
+                  !zt2 = zt1 *  fourpi * (rmt(is) ** 2) &
+                 !&* ((zlambda * jlgpr (0, ig, is) * (zilmt(1,is)+ (zilmt(0,is)/(zlambda*rmt(is)))))&
+                 !&- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is)))
+                  else
+                  zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
+                 &* ((zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))&
+                 &- (gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is)))
+                  endif
+  
+                  Do m = - l, l
+                     lm = lm + 1
+                     qi (lm, ias) = qi (lm, ias) + zt2 * conjg (ylmgp(lm, ig))
+                  End Do
+               End Do
+            Else
+               zt3 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
+               qi (1,ias) = qi (1,ias) + zt3 * zvclir (ifg)
+            End If
+          enddo                        
+      end do
+    end do
+  endif! yukawa or not
+  
+  end subroutine
+  
+  
+  subroutine pseudocharge_gspace2( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qlm, zlambda, zilmt)
+    use mod_lattice, only: omega
+    use modinput
+    use mod_atoms, only: nspecies, natoms, idxas, natmtot
+    use mod_muffin_tin, only: rmt,nrmtmax,nrmt
+    use constants, only: fourpi,y00,zil
+    !> maximum angular momentum \(l\)
+    integer, intent(in) :: lmax
+    !> total number of \({\bf G+p}\) vectors
+    integer, intent(in) :: ngvec
+    !> lengths of \({\bf G+p}\) vectors
+    real(dp), intent(in) :: gpc(:)
+    !> integer components \({\bf G}\) of \({\bf G+p}\) vectors
+    !integer, intent(in) :: ivgp(:,:)
+    !> spherical Bessel functions \(j_l(|{\bf G+p}| R_\alpha)\)
+    real(dp), intent(in) :: jlgpr(0:,:,:)
+    !> spherical harmonics \(Y_{lm}(\widehat{\bf G+p})\)
+    complex(dp), intent(in) :: ylmgp(:,:)
+    !> structure factors \({\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf \tau}_\alpha}\)
+    complex(dp), intent(in) :: sfacgp(:,:)
+    !> bounds for integer components of \({\bf G}\)
+    !integer, intent(in) :: intgv(3,2)
+    !> map from integer components of \({\bf G}\) vectors to \({\bf G}\) vector index
+    !integer, intent(in) :: ivgig(intgv(1,1):,intgv(2,1):,intgv(3,1):)
+    !> map from \({\bf G}\) vector index to point in FFT grid
+    integer, intent(in) :: igfft(:)
+    !> Fourier components \(\hat{f}({\bf G+p})\) of the function on the FFT grid
+    complex(dp), intent(inout) :: zvclir(:)
+    !> multipole moments of the function's extension inside the muffin-tin spheres
+    complex(dp), intent(in) :: qlm(:,:)
+    complex(dp),optional, intent(in) :: zlambda
+    complex(dp),optional, intent(in) :: zilmt(0:,:)
+  
+    complex(dp) :: zrp((lmax+1)**2)
     
+    
+    integer :: is, ia, ias, ig, ifg, l, lm, m,npsd
+    complex(dp) :: zt1,zsum1, zsum2
+    real(dp) :: t1,t2, t3,z1,fpo
+
+    logical :: yukawa
+    integer :: lmmaxvr, firstnonzeroG
+    complex(dp) :: zrp2((lmax+1)**2,natmtot), sf(natmtot)
+    Complex (8) :: zlm ((lmax+1)**2), zlm2((lmax+1)**2), zlm3((lmax+1)**2)
+  !external functions
+    Real (8) :: factnm, one_over_rmtl(0:lmax,nspecies)
+    External factnm
+    lmmaxvr=(lmax+1)**2
+  if (present(zlambda))then
+    yukawa=.true.
+  else
+    yukawa=.false.
+  endif
+
+  fpo = fourpi/omega
+  npsd=input%groundstate%npsden
+
+  if (gpc(1) .lt. input%structure%epslat) Then
+    firstnonzeroG=2
+  else
+    firstnonzeroG=1
+  endif
+
+  if(.not.yukawa) then
+  ! compute (R_mt)^l
+    Do is = 1, nspecies
+      Do l = 0, lmax
+        one_over_rmtl(l, is) = rmt(is)**(-l)
+      End Do
+    End Do
+
+    Do is = 1, nspecies
+      Do ia = 1, natoms (is)
+         ias = idxas (ia, is)
+         lm = 0
+         Do l = 0, lmax
+          t1 = factnm (2*(l+npsd)+3, 2) / factnm (2*l+1, 2)
+          Do m = - l, l
+              lm = lm + 1
+              zrp2 (lm,ias) = qlm(lm, ias) * t1 * fpo * conjg (zil(l))
+          End Do !m
+        End Do !l
+      End Do !ia
+    End Do !is
+  ! add the pseudocharge and real interstitial densities in G-space
+! !$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,t2,zsum,m,l,lm,t3,is,ia,ias,sf,zlm,zlm2,zlm3) SHARED(input,gpc,zvclir,rmt,qi,ngvec,ylmgp,jlgpr,zil,rmtl,zrp2,sfacgp,firstnonzeroG,vclig,idxas,nspecies,natoms,lmmaxvr,one_over_rmtl)
+! !$OMP DO    
+          Do ig = firstnonzeroG, ngvec
+            sf(:)=conjg(sfacgp(ig,:))     
+            Do is = 1, nspecies
+              t1 = gpc (ig) * rmt (is)
+              t2 = 1d0/ (t1 ** (npsd+1))
+              zlm(:) = t2 * ylmgp (:, ig) 
+   
+              zlm2 = 0d0
+              Do ia = 1, natoms (is)
+                ias = idxas (ia, is)
+                zlm2(:)=zlm2(:)+zrp2(:,ias)*sf(ias)                
+              End Do
+              
+              lm = 0
+              Do l = 0, lmax
+                t3 = jlgpr (npsd+l+1, ig, is) * one_over_rmtl(l, is) 
+                zlm3(lm+1:lm+1+2*l) = t3 * zlm (lm+1:lm+1+2*l) 
+                lm=lm+1+2*l
+              End Do 
+              Do lm = 1, lmmaxvr
+                zvclir (ig) = zvclir (ig) + zlm2(lm) * zlm3(lm)
+              End Do
+            End Do !is
+          End Do !ig
+!    !$OMP END DO
+!    !$OMP END PARALLEL
+   
+         if (firstnonzeroG.eq.2) then
+           Do is = 1, nspecies
+             Do ia = 1, natoms (is)
+               ias = idxas (ia, is) 
+               t1 = y00 / factnm (2*npsd+3, 2)
+               zvclir (1) = zvclir (1) + t1 * zrp2 (1,ias)              
+             End Do
+           End Do
+         endif
+          
+
+
+
+
+  else !if yukawa
+
+  
+    do is = 1, nspecies
+      do ia = 1, natoms(is)
+        ias = idxas( ia, is)
+        lm=0
+        Do l = 0, lmax
+          t1 = 1d0 / (factnm (2*l+1, 2))
+          Do m = - l, l
+              lm = lm + 1
+              zrp (lm) = qlm(lm, ias) * t1
+              !write(*,*)"qlm",qlm(lm, ias),t1
+          End Do
+        End Do
+
+        Do ig = 1, ngvec
+          ifg = ig ! igfft (ig) !becouse zvclir is sorted
+          If (gpc(ig) .Gt. input%structure%epslat) Then
+            z1 = gpc (ig)
+            zt1 = fpo * conjg (sfacgp(ig, ias))/(z1 ** (npsd+1))
+            lm = 0
+            Do l = 0, lmax
+                zsum1 = (jlgpr (npsd+l+1, ig, is)*(zlambda ** (l+npsd+1))/ zilmt(npsd+l+1,is))* conjg(zil(l))
+                lm = lm + 1
+                zsum2 = zrp (lm) * ylmgp (lm, ig)
+                Do m = - l + 1, l
+                  lm = lm + 1
+                  zsum2 = zsum2 + zrp (lm) * ylmgp (lm, ig)
+                End Do !m
+                zvclir (ifg) = zvclir (ifg) +  zt1 * zsum1 * zsum2 
+            End Do !l
+      
+          Else
+            zt1 = (fpo * y00 * (rmt(is) ** (npsd+1))&
+              &* (zlambda ** (npsd+1))) / ((factnm (2*npsd+3, 2))* zilmt(npsd+1,is))
+            
+            zvclir (ifg) = zvclir (ifg) + zt1 * qlm(1, ias) 
+          End If
+        End Do! ig
+      End Do !ia
+    End Do !is
+  endif !if yukawa or not
+  !do ig=1,20
+  !  ifg = igfft (ig)
+  !  write(*,*)zvclir (ifg)
+  !enddo
+  end subroutine
+
+
+
 end module weinert

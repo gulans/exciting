@@ -11,7 +11,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
-      Use potentials, only: coulomb_potential
+      Use potentials, only: coulomb_potential2
       use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
       USE OMP_LIB
 
@@ -388,7 +388,7 @@ write(*,*) 'genWFs :',tb-ta
                   ifit2=0
                   do j=1, nfit
                      ifit2=ifit2+1
-                     Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                     Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
@@ -399,7 +399,7 @@ write(*,*) 'genWFs :',tb-ta
                   enddo
                   do j=2, nfit
                      ifit2=ifit2+1
-                     Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                     Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                      & prodir(:), potmt0, potir0, zrho02, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
@@ -412,7 +412,7 @@ write(*,*) 'genWFs :',tb-ta
    
 
                if ((input%groundstate%hybrid%erfcapprox.eq."PW").or.(input%groundstate%hybrid%erfcapprox.eq."none")) then
-                  Call coulomb_potential (nrcmt, rcmt, ngvec, gqc, igq0, &
+                  Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
                   & prodir(:), potmt0, potir0, zrho02, &
                   & cutoff=cutoff, hybrid_in=.true.,&
@@ -668,8 +668,8 @@ end if
       call WFRelease(wf2)
       call WFRelease(prod)
 
-!  write(*,*)"FockExchange.f90 stop"
-!  stop
+  !write(*,*)"FockExchange.f90 stop"
+  !stop
       Return
 End Subroutine
 !EOC
