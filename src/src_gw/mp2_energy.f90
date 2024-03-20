@@ -72,7 +72,7 @@ if (.false.) then
       end do
       if (a.eq.b) write(*,*) a, E_mp2
     end do
-
+    write(*,*)"--------all bands done------------"
     
     write(*,*)"-------------------core-core---------------------"
 
@@ -92,8 +92,8 @@ if (.false.) then
       end do
       if (a.eq.b) write(*,*) a, E_mp2
     end do
-
-write(*,*)"-------------------core-valence---------------------"
+    write(*,*)"core-core E_MP2", E_mp2
+!write(*,*)"-------------------core-valence---------------------"
 
     E_mp2 = 0._dp
     do ipair=1,N_virt**2
@@ -110,7 +110,7 @@ write(*,*)"-------------------core-valence---------------------"
       end do
       if (a.eq.b) write(*,*) a, E_mp2
     end do
-
+    write(*,*)"core-val E_MP2", E_mp2
 
     write(*,*)"------------------valence-valence---------------------"
     E_mp2 = 0._dp
@@ -129,26 +129,70 @@ write(*,*)"-------------------core-valence---------------------"
       end do
       if (a.eq.b) write(*,*) a, E_mp2
     end do
-
+    write(*,*)"val-val E_MP2", E_mp2
 
 
 
 
     deallocate(pair_a,pair_b)
 else
-    do i=1, N_occ
-      do j=1, N_occ
-        do a=1, N_virt
-          do b=1, N_virt
+allocate(pair_a(N_virt**2))
+    allocate(pair_b(N_virt**2))
+    ipair=0
+   ! !$omp parallel default(shared) private(ipair, a, b)
+  !!  ipair=0
+    do maxvirt=1,N_virt
+   ! !$omp do
+      do a=1,maxvirt-1
+        ipair=ipair+1
+        pair_a(ipair)=a
+        pair_b(ipair)=maxvirt
+      enddo
+   ! !$omp end do
+   ! !$omp do
+      do b=1,maxvirt-1
+        ipair=ipair+1
+        pair_a(ipair)=maxvirt
+        pair_b(ipair)=b
+      enddo
+   ! !$omp end do
+   ! !$omp barrier
+      ipair=ipair+1
+      pair_a(ipair)=maxvirt
+      pair_b(ipair)=maxvirt
+    enddo
+!!$omp end parallel 
+!!$omp parallel default(shared)
+!!$omp do
+    do ipair=1,N_virt**2
+      a=pair_a(ipair)
+      b=pair_b(ipair)
+      do i=1, N_occ
+        do j=1, N_occ
             denominator = energies_occ(i) + energies_occ(j) - energies_virt(a) - energies_virt(b)
             int_ijab = dot_multiply(gamma_ph(:, a, i), gamma_hp(:, j, b))
             int_abji = dot_multiply( gamma_hp(:, i, b), gamma_ph(:, a, j))
             counter = real(int_ijab * (2 * conjg(int_ijab) - int_abji), dp)
             E_mp2 = E_mp2 + counter / denominator
-          end do
         end do
       end do
+      if (a.eq.b) write(*,*) a, E_mp2
     end do
+
+
+!    do i=1, N_occ
+!      do j=1, N_occ
+!        do a=1, N_virt
+!          do b=1, N_virt
+!            denominator = energies_occ(i) + energies_occ(j) - energies_virt(a) - energies_virt(b)
+!            int_ijab = dot_multiply(gamma_ph(:, a, i), gamma_hp(:, j, b))
+!            int_abji = dot_multiply( gamma_hp(:, i, b), gamma_ph(:, a, j))
+!            counter = real(int_ijab * (2 * conjg(int_ijab) - int_abji), dp)
+!            E_mp2 = E_mp2 + counter / denominator
+!          end do
+!        end do
+!      end do
+!    end do
 endif
 write(*,*)"MP22", E_mp2
   end subroutine

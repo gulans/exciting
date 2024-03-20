@@ -29,6 +29,7 @@ subroutine genppts (reducep, tfbz, ngridp, boxl, nppt, ipmap, &
     real(8) :: v1 (3), v2 (3), v3 (3)
     real(8) :: b (3, 3), s (3, 3), t1, t2
     logical, allocatable :: done(:)
+    integer :: ivptemp(3,ngridp(1)*ngridp(2)*ngridp(3))
 
     ! tetrahedron library related variables
     integer(4) :: nsym
@@ -104,8 +105,8 @@ subroutine genppts (reducep, tfbz, ngridp, boxl, nppt, ipmap, &
 
       if (allocated(iwkp)) deallocate(iwkp)
       allocate(iwkp(nppt))
-      if (allocated(ivk)) deallocate(ivk)
-      allocate(ivk(3,nppt))
+!      if (allocated(ivk)) deallocate(ivk)
+!      allocate(ivk(3,nppt))
 
       ntet = 6*nppt
       if (allocated(wtet)) deallocate(wtet)
@@ -116,7 +117,7 @@ subroutine genppts (reducep, tfbz, ngridp, boxl, nppt, ipmap, &
       ! LibBZInt library call
       call kgen_exciting(bvec,nsym,symmat, &
       &                  ngridp,ikloff,dkloff, &
-      &                  nppt,ivk,dvk,ik2ikp,ikp2ik,iwkp, &
+      &                  nppt,ivptemp,dvk,ik2ikp,ikp2ik,iwkp, &
       &                  ntet,tnodes,wtet,tvol,mnd)
 
       ip = 0
@@ -129,7 +130,12 @@ subroutine genppts (reducep, tfbz, ngridp, boxl, nppt, ipmap, &
       end do
       end do
 
-      ivp = ivk
+!write(*,*) '+++++++++++'
+!write(*,*) size(ivp),size(ivk)
+!write(*,*) nppt, ngridp(1)*ngridp(2)*ngridp(3) 
+
+!write(*,*) '+++++++++++'
+      ivp(1:3,1:nppt) = ivptemp(1:3,1:nppt)
       do ip = 1, nppt
         vpl(:,ip) = dble(ivp(:,ip))/dble(dvk)
         call r3mv(bvec,vpl(:,ip),vpc(:,ip))
@@ -251,6 +257,6 @@ subroutine genppts (reducep, tfbz, ngridp, boxl, nppt, ipmap, &
 #endif
 
     deallocate(symmat)
-
+    write(*,*) 'genppts done'
     Return
 End Subroutine

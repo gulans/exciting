@@ -409,6 +409,7 @@ module weinert
       integer :: i, is, ia, ias, igp, ngpf, ifg, ig(3)
       real :: r_c
       integer, allocatable :: igp_finite(:)
+      logical :: usecutoff
     
       ! add Fourier components of pseudodensity from multipole moments
       do is = 1, nspecies
@@ -423,9 +424,12 @@ module weinert
       igp_finite = pack( [(i, i=1, ngp)], [(gpc(i) > input%structure%epslat, i=1, ngp)])
       ngpf = size( igp_finite)
 
-
-
-      if (present(cutoff).and.(cutoff)) then
+      if (present(cutoff)) then
+        usecutoff=cutoff
+      else
+        usecutoff=.false.
+      endif
+      if (usecutoff) then
         r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
         zvclig = zrhoig*twopi*r_c**2
 !$omp parallel default(shared) private(i,igp,ig,ifg)

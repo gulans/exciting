@@ -106,6 +106,7 @@ Subroutine genlofr
 ! set up the target vector
                b (:) = 0.d0
                b (lorbord(ilo, is)) = 1.d0
+!               write(*,*)"before dgesv genlofr"
                Call dgesv (lorbord(ilo, is), 1, a, np, ipiv, b, np, &
               & info)
                If (info .Ne. 0) Then

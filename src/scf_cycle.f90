@@ -208,12 +208,14 @@ subroutine scf_cycle(verbosity)
           ! No updates of core and valence radial functions during hybrids run
           call gencore          ! generate the core wavefunctions and densities
           ! find the first linearization energies 
-          if (iscl==1) then 
+          if (iscl==1) then
+             write(*,*)"if woth select los" 
              call select_local_orbital_trial_energies(nlorb, lorbord, lorbl, lorbn, nspecies, idxas, nrmt, spr, veffmt(1,:,:), lorbe0) 
              call select_apw_trial_energies(maxapword, maxlapw, apwn(:, 0:, :), nspecies, idxas, nrmt, spr, veffmt(1,:,:), apwe0(:, 0:, :))
           endif
           call linengy          ! find the new linearization energies
           if (rank==0) call writelinen
+          write(*,*)"before genlofr", tlast
           call genapwfr         ! generate the APW radial functions
           call genlofr(tlast)   ! generate the local-orbital radial functions
           ! compute recommendations for local orbital trial energies

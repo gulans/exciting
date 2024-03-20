@@ -177,7 +177,12 @@ write(*,*)"expand evec"
 call timesec(ta)
 write(*,*) 'expand_products',nstdf
             call expand_products(ik, iq, 1,  ndim, ndim, mstart, mend, -1, minmmat)
-            call expand_products(ik, iq, 1,  nstdf, nstdf, 1, ndim, -1, minmmat2)                   
+!            call expand_products(ik, iq, 1,  nstdf, nstdf, 1, ndim, -1, minmmat2)                   
+            do ie1 = 1, nocc
+                do ie2 = mstart, mend
+                        minmmat2(:,ie2, ie1) = minmmat(:, ie1, ie2)!conjg(minmmat(:, ie1, ie2))
+                 enddo
+            enddo
 call timesec(tb)
 
 write(*,*) 'expand_products done, time = ',tb-ta 

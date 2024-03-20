@@ -217,14 +217,143 @@ contains
 
   end subroutine CC4S_out_grid_vectors_element
 
+
+
+ subroutine write_file_cc4s(coulomb_vertex,nproc)
+#ifdef MPI  
+   use iso_fortran_env, only: int64
+   use mpi_f08, only: mpi_file_open, mpi_file_iread_at, mpi_file_iwrite_at, mpi_wait, &
+    MPI_DATATYPE, MPI_COMM, MPI_DOUBLE_COMPLEX, MPI_FILE, MPI_REQUEST, MPI_OFFSET_KIND, &
+    MPI_STATUS, MPI_INFO_NULL, MPI_MODE_CREATE, MPI_MODE_RDONLY, MPI_MODE_WRONLY, &
+    MPI_SUCCESS, MPI_COMM_WORLD, MPI_ORDER_FORTRAN, MPI_STATUS_IGNORE
+#endif    
+     implicit none
+   !subroutine for vertex file writing. Parallelisation on the last dim of coulomb_vertex      
+   complex(dp), intent(in)  :: coulomb_vertex(:, :, :)
+   integer, intent(in) :: nproc
+#ifdef MPI
+  
+   !mpi_cart_create
+   integer, parameter :: ndims=3
+   !number of processes in each dimension
+   integer :: dims(ndims)
+   logical :: periods(ndims), reorder
+   TYPE(MPI_Comm) :: comm
+   
+   !mpi_comm_rank
+   integer :: myrank
+   !mpi_cart_coords
+   integer :: coords(ndims)
+
+   !mpi_create_subarray
+   integer (kind=MPI_OFFSET_KIND):: disp, offset    
+   integer :: ierr
+   integer :: vertex_shape(ndims), starts(ndims), subvertex_shape(ndims), subvertex_start_coord(ndims)
+   complex(dp), allocatable :: subvertex(:,:,:)
+   
+   TYPE(MPI_Datatype) :: subarr 
+   character(len=200) :: coulomb_vertex_filename_bin = "CoulombVertex.elements"
+   !> File handle for coulomb vertex
+   TYPE(MPI_File) :: coulomb_vertex_filehandle
+   integer(int64) :: nbytes, i1, i2, i3
+   integer :: i
+   i1 = size(coulomb_vertex, 1)
+   i2 = size(coulomb_vertex, 2)
+   i3 = size(coulomb_vertex, 3)
+   disp=0 
+   offset=0
+
+
+
+   call MPI_Barrier(MPI_COMM_WORLD,ierr)
+   !this defines the parallelisation scheme, parallelisation on the last dim of coulomb_vertex
+   dims(1) = 1
+   dims(2) = 1
+   dims(3) = nproc
+   periods = .false.
+   reorder = .false.
+   call MPI_CART_CREATE(MPI_COMM_WORLD,ndims, dims, periods, reorder, comm, ierr)
+   call MPI_COMM_RANK(comm, myrank, ierr)
+   call MPI_Cart_coords(comm, myrank, ndims, coords, ierr)
+
+
+   vertex_shape = shape(coulomb_vertex)
+   subvertex_shape = vertex_shape
+   subvertex_shape(3) = i3/nproc
+   !write(*,*)"before o if ", subvertex_shape(:)
+   if ((mod(i3, nproc).ne.0.).and.(myrank==(nproc-1)))  subvertex_shape(3) = i3/nproc!+mod(i3,nproc) 
+!   write(*,*)"nproc", nproc, myrank, "myrank", subvertex_shape(:) 
+  call MPI_Barrier(comm, ierr) 
+   !write(*,*)"coords", coords(:)
+   subvertex_start_coord(1) = coords(1)*subvertex_shape(1)
+   subvertex_start_coord(2) = coords(2)*subvertex_shape(2)
+   subvertex_start_coord(3) = coords(3)*subvertex_shape(3)
+   !if ((mod(i3, nproc).ne.0.).and.(myrank==(nproc-1))) then
+   !       write(*,*)  "if statement on"
+   !       subvertex_start_coord(3) = coords(3)*subvertex_shape(3) 
+   !endif
+   if ((mod(i3, nproc).ne.0.).and.(myrank==(nproc-1)))  subvertex_shape(3) = i3/nproc+mod(i3,nproc)
+  call MPI_Barrier(comm, ierr)
+   write(*,*) "sub_start",  subvertex_start_coord(:),"myrank", myrank, "mod i3/nproc", mod(i3,nproc)
+ call MPI_Barrier(comm, ierr)
+
+   write(*,*)"nproc", nproc, myrank, "myrank", subvertex_shape(:)
+   call MPI_Barrier(comm, ierr)
+   call MPI_Type_create_subarray(ndims, vertex_shape, subvertex_shape, subvertex_start_coord, &
+     &MPI_ORDER_FORTRAN, MPI_DOUBLE_COMPLEX, subarr, ierr)
+   
+
+   !copy only the subvertex part of coulomb vertex for further writing
+   write(*,*)"subvertex after create subarray", subvertex_shape(3), subvertex_start_coord(3), subvertex_start_coord(3)+subvertex_shape(3)
+   allocate(subvertex(i1, i2, subvertex_shape(3)))
+   write(*,*)"--------------", shape(subvertex)
+   subvertex = coulomb_vertex(:,:,(subvertex_start_coord(3)+1):(subvertex_start_coord(3)+subvertex_shape(3)))   
+   
+
+!   write(*,*)"before file open", shape(subvertex)
+
+   call MPI_Type_commit(subarr, ierr)
+   call MPI_File_open(comm, coulomb_vertex_filename_bin, MPI_MODE_WRONLY + MPI_MODE_CREATE, &
+                  &MPI_INFO_NULL, coulomb_vertex_filehandle, ierr)
+ !  write(*,*) coulomb_vertex_filehandle, "fh", myrank
+   call MPI_File_set_view(coulomb_vertex_filehandle, disp, MPI_DOUBLE_COMPLEX, &
+           &subarr,'native' ,MPI_INFO_NULL, ierr)
+   
+   
+   i1 = size(subvertex, 1)
+   i2 = size(subvertex, 2)
+   i3 = size(subvertex, 3)
+   nbytes = i1*i2*i3
+ ! write(*,*)"myrank, subvertex size", myrank, nbytes
+   write(*,*)"sub shape", shape(subvertex), i3
+   
+   
+   call MPI_File_write_at_all(coulomb_vertex_filehandle, offset, subvertex,nbytes, MPI_DOUBLE_COMPLEX, &
+          &MPI_STATUS_IGNORE, ierr)
+                             ! MPI_File_write_at_all(fh, offset, buf, count, datatype, status, ierror)
+!write(*,*)"after write"
+   call MPI_File_close(coulomb_vertex_filehandle, ierr) 
+#endif
+
+ end subroutine
+
+
+
+
+
+
+
+
+
+
   ! Copied from cc4s-aims
   ! Assume that full vertex for one (k,q)-pair is to be written,
   ! therefore neglect OAF_subsizes and OAF_starts and replace MPI_write_all
   ! by MPI_write_at
-  subroutine CC4S_parallel_writing_cmplx(coulomb_vertex, fh, &
-                &  curr_kq_pair, CC4S_n_spin, CC4S_nuf_states)
+  subroutine CC4S_parallel_writing_cmplx_new(coulomb_vertex, fh, &
+                &  curr_kq_pair, CC4S_n_spin, CC4S_nuf_states, myrank, nranks)
 
-
+   use iso_fortran_env, only: int64
 #ifdef MPI
     use mpi
 #endif
@@ -251,15 +380,99 @@ contains
     integer, intent(in) :: CC4S_n_spin
     ! Number of unfrozen states (in exciting always equal to total number of states?)
     integer, intent(in) :: CC4S_nuf_states
+    
+    integer, intent(in) :: myrank
+    integer, intent(in) :: nranks
+
+    !local
+    integer :: ierr, cut
+    integer :: subarr, vertex_shape(3), subvertex_shape(3), subvertex_start_coord(3)
+    complex(dp), allocatable :: arr(:,:,:)
+#ifdef MPI
+    !integer(kind=MPI_OFFSET_KIND) :: offset
+    integer(int64) :: nbytes, offset, offset1, factor, i1, i2, i3
+
+    cut = 1000
+    i1 = size(coulomb_vertex, 1)
+    i2 = size(coulomb_vertex, 2)
+    i3 = size(coulomb_vertex, 3)
+
+     offset = 0
+
+     vertex_shape = shape(coulomb_vertex)
+     subvertex_shape = vertex_shape
+     subvertex_start_coord(:) = 0
+     if (nranks>1) then
+     if (myrank==0) subvertex_shape(1) = cut
+     if (myrank==1) subvertex_start_coord(1) = cut
+     if (myrank==1) subvertex_shape(1) = i1-cut
+     if (myrank==0) offset = 16*cut*(CC4S_nuf_states**2)*CC4S_n_spin*curr_kq_pair 
+     if (myrank==1) offset=16*(i1)*(CC4S_nuf_states**2)*CC4S_n_spin*curr_kq_pair     
+     end if
+    !CC4S always expects a complex vertex, even if the imaginary part is 0
+     call MPI_Type_create_subarray(3, vertex_shape, subvertex_shape, subvertex_start_coord, &
+     &MPI_ORDER_FORTRAN, MPI_DOUBLE_COMPLEX, subarr, ierr)
+
+     call MPI_Type_commit(subarr, ierr)
+
+    ! Number of basis vectors (G-vectors, auxiliary field functions, or mixed basis functions )
+    n_basis_vectors = size(coulomb_vertex, dim=1)
+    nbytes = i1*i2*i3
+    write(*,*)"offset, nbytes, size()", offset, nbytes, size(coulomb_vertex)
+    !offset = 16*n_basis_vectors*(CC4S_nuf_states**2)*CC4S_n_spin*curr_kq_pair*myrank/nranks
+    !offset = 0
+    call MPI_File_set_view(fh, offset, MPI_DOUBLE_COMPLEX, subarr, 'native', MPI_INFO_NULL, ierr)
+    
+        write(*,*)"nbytes", nbytes, "sizeof",  sizeof(coulomb_vertex)
+    write(*, *) "Write to file Coulomb Vertex of size (MB):", sizeof(coulomb_vertex) / (1024._dp)**2
+    ! TODO(Max): Replace by MPI_file_write_at for parallel writing
+    !call MPI_File_write_at(fh, offset, coulomb_vertex, nbytes, MPI_DOUBLE_COMPLEX, &
+    !       &MPI_STATUS_IGNORE, ierr)
+    call MPI_File_write_all(fh, coulomb_vertex, nbytes, MPI_DOUBLE_COMPLEX, &
+            &MPI_STATUS_IGNORE, ierr)
+    !call MPI_File_write_at(fh, coulomb_vertex, nbytes, MPI_DOUBLE_COMPLEX, &
+             !&MPI_STATUS_IGNORE, ierr)
+#endif
+  end subroutine CC4S_parallel_writing_cmplx_new
+
+
+
+  subroutine CC4S_parallel_writing_cmplx(coulomb_vertex, fh, &
+                &  curr_kq_pair, CC4S_n_spin, CC4S_nuf_states, myrank, nranks)
+
+   use iso_fortran_env, only: int64
+#ifdef MPI
+    use mpi
+#endif
+
+    implicit none
+
+
+complex(dp), intent(in)  :: coulomb_vertex(:, :, :)
+    integer, intent(in) :: fh !MPI File handle
+    ! Number of basis vectors (= number of G-vectors or number of auxiliary field vectors) used for construction of Coulomb-Vertex
+    integer :: n_basis_vectors
+    ! Index of (k,q)-pair (=1 for Gamma only calculation)
+    integer, intent(in) :: curr_kq_pair
+    integer, intent(in) :: CC4S_n_spin
+    ! Number of unfrozen states (in exciting always equal to total number of states?)
+    integer, intent(in) :: CC4S_nuf_states
+    integer, intent(in) :: myrank
+    integer, intent(in) :: nranks
 
 
     !local
     integer :: ierr
     integer :: subarr
-    integer :: nbytes
 #ifdef MPI
     integer(kind=MPI_OFFSET_KIND) :: offset
+    integer(int64) :: nbytes, offset1, factor, i1, i2, i3
 
+!    cut = 1000
+    i1 = size(coulomb_vertex, 1)
+    i2 = size(coulomb_vertex, 2)
+    i3 = size(coulomb_vertex, 3)
+nbytes = i1*i2*i3
     !CC4S always expects a complex vertex, even if the imaginary part is 0
     ! call MPI_Type_create_subarray(3, OAF_sizes, OAF_subsizes, OAF_starts, &
     ! &MPI_ORDER_FORTRAN, MPI_DOUBLE_COMPLEX, subarr, ierr)
@@ -274,15 +487,78 @@ contains
     offset = 0
     ! call MPI_File_set_view(fh, offset, MPI_DOUBLE_COMPLEX, subarr, 'native', MPI_INFO_NULL, ierr)
 
-    nbytes = size(coulomb_vertex)
-    write(*, *) "Write to file Coulomb Vertex of size (MB):", sizeof(coulomb_vertex) / (1024._dp)**2
+    !nbytes = size(coulomb_vertex)
+    write(*, *) "Write to file Coulomb Vertex of size (MB):", nbytes, sizeof(coulomb_vertex) / (1024._dp)**2
     ! TODO(Max): Replace by MPI_file_write_at for parallel writing
     !call MPI_File_write_at(fh, offset, coulomb_vertex, nbytes, MPI_DOUBLE_COMPLEX, &
     !       &MPI_STATUS_IGNORE, ierr)
     call MPI_File_write(fh, coulomb_vertex, nbytes, MPI_DOUBLE_COMPLEX, &
             &MPI_STATUS_IGNORE, ierr)
 #endif
-  end subroutine CC4S_parallel_writing_cmplx
+end subroutine CC4S_parallel_writing_cmplx
+
+
+
+
+
+
+ !subroutine CC4S_parallel_io_cmplx(OAF_arr, fh, OAF_sizes, OAF_subsizes, OAF_starts, &
+ !                &max_singval, curr_kq_pair)
+ !
+ !      !use calculation_data, only: CC4S_n_states, CC4S_n_spin, CC4S_nuf_states
+ !      use mpi
+ !      implicit none
+ !
+ !      !PURPOSE: Primarily to be used to write the OAF Coulomb vertex to
+ !      !file in parallel. It assumes that a file object has already been
+ !      !opened via MPI_File_open.
+ !
+ !      !input
+ !      integer, dimension(3), intent(in) :: OAF_sizes, OAF_subsizes, OAF_starts
+ !      double complex, dimension(OAF_subsizes(1), OAF_subsizes(2), OAF_subsizes(3)), &
+ !              &intent(in)  :: OAF_arr
+ !      integer, intent(in) :: fh !MPI File handle
+ !      integer, intent(in) :: max_singval
+ !      integer, intent(in) :: curr_kq_pair
+ !
+ !      !local
+ !      integer :: ierr
+ !      integer :: subarr
+ !
+ !      integer(kind=MPI_OFFSET_KIND) :: offset
+ !      integer :: nbytes
+ !
+ !      !CC4S always expects a complex vertex, even if the imaginary part is 0
+ !      call MPI_Type_create_subarray(3, OAF_sizes, OAF_subsizes, OAF_starts, &
+ !              &MPI_ORDER_FORTRAN, MPI_DOUBLE_COMPLEX, subarr, ierr)
+ !
+ !      call MPI_Type_commit(subarr, ierr)
+ !
+ !      offset=16*max_singval*(CC4S_nuf_states**2)*CC4S_n_spin*curr_kq_pair
+ !
+ !      call MPI_File_set_view(fh, offset, MPI_DOUBLE_COMPLEX, subarr, 'native', MPI_INFO_NULL, ierr)
+ !
+ !      nbytes=size(OAF_arr)
+ !      call MPI_File_write_all(fh, OAF_arr, nbytes, MPI_DOUBLE_COMPLEX, &
+ !              &MPI_STATUS_IGNORE, ierr)
+ !
+ !end subroutine CC4S_parallel_io_cmplx
+ !
+ !
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   ! Assume that full vertex for one (k,q)-pair is to be written,
   ! therefore neglect OAF_subsizes and OAF_starts and replace MPI_read_all

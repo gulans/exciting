@@ -151,7 +151,50 @@
             </xs:attribute>
           </xs:complexType>
         </xs:element>
-
+	<xs:element ex:importance="experimental" ex:unit="" name="cc4s" maxOccurs="1" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Contains all routines for writing quantities needed by cc4s.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:annotation>
+              <xs:documentation>Compute matrix elements of the planewave for given band combinations and write to binaray direct access file.</xs:documentation>
+            </xs:annotation>
+            <xs:attribute ex:importance="expert" ex:unit="" name="bandcombinations" type="xs:integer" default="1">
+              <xs:annotation>
+                <xs:documentation>Type of matrix element generation (band-combinations). Should only be
+                referenced for experimental features. </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute ex:importance="experimental" ex:unit="" name="dogammaonly" type="xs:boolean" default="true">
+              <xs:annotation>
+                <xs:documentation>
+                      True if only the Gamma point is considered in the contstruction of the Coulomb vertex, i.e. k = q = k+q = 0. 
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute ex:importance="experimental" ex:unit="" name="dooptimizedvertex" type="xs:boolean" default="false">
+              <xs:annotation>
+                <xs:documentation>
+                      True if the Coulomb Vertex should be transformed from the planewave basis to the optimized auxiliary field basis.
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute ex:importance="experimental" ex:unit="" name="dotests" type="xs:boolean" default="false">
+              <xs:annotation>
+                <xs:documentation>
+                      True if simple tests should be run. Currently implemented: 1) 1s Coulomb integral 2) Exact exchange energy
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+            <xs:attribute ex:importance="experimental" ex:unit="" name="nauxfieldfunctions" type="xs:integer" >
+              <xs:annotation>
+                <xs:documentation>
+                      Number of auxiliary field functions used when transforming the Coulomb Vertex from the planewave basis to the optimized auxiliary field basis.
+                  </xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
         <xs:element ex:importance="expert" ex:unit="" name="writekpathweights" minOccurs="0" maxOccurs="1">
           <xs:annotation>
             <xs:documentation>
@@ -1980,7 +2023,15 @@
                               occupancies.</xs:documentation>
                           </xs:annotation>
                         </xs:enumeration>
-
+			<xs:enumeration value="cc4s_interface">
+                          <xs:annotation>
+                            <xs:appinfo>
+                              <oldnr>432</oldnr>
+                            </xs:appinfo>
+                            <xs:documentation>Calculate q-dependent matrix
+                              elements.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
                         <xs:enumeration value="tetcalccw">
                           <xs:annotation>
                             <xs:appinfo>

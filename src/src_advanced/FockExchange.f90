@@ -9,6 +9,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
       Use potentials, only: coulomb_potential
+      USE OMP_LIB
       Implicit None
 ! arguments
       Integer, Intent (In) :: ikp
@@ -59,7 +60,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 ! external functions
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
-
+      integer :: thread
 ! allocate local arrays
       Allocate (vtest(3))
       Allocate (vgqc(3, ngvec))
@@ -78,12 +79,12 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv))
       Allocate (zwfir(ngkmax))
 
-
+write(*,*)nrcmtmax, ngkmax, "parametri"
       if (allocated(evalfv)) deallocate(evalfv)
       allocate(evalfv(nstfv,kset%nkpt))
       
       ! test comment for push
-
+write(*,*)nrcmtmax, ngkmax, nrmtmax
       evalfv(:,:) = 0.d0
       Do ik = 1, nkpt
          Call getevalfv(kset%vkl(:,ik), evalfv(:,ik))
@@ -160,39 +161,39 @@ write(*,*) 'genWFs',tb-ta
          
          zvclmt (:, :, :, :) = 0.d0
 
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp) REDUCTION(+:zvclmt,vxpsiirgk)
-
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp) 
          call WFInit(prod)
          call WFInit(pot)
-
+!write(*,*)"after init wf"
          Allocate(pot%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
          Allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
+         !write(*,*)"after po and prod"
          Allocate (wf1ir(ngrtot))
          Allocate (wf2ir(ngrtot))
          Allocate (prodir(ngrtot))
          Allocate (potir(ngrtot))
+         pot%mtrlm(:,:,:,:) = 0.d0
+         zrho01 = 0.d0
+!$OMP DO
+         Do ist3 = 1, nstfv
 
-
-         Do ist2 = 1, nomax
-
-            wf2ir(:) = 0.d0
-            Do igk = 1, Gkqset%ngk (1, jk)
-               ifg = igfft (Gkqset%igkig(igk, 1, jk))
-               wf2ir(ifg) = t1*wf2%gk(igk, ist2)
+            wf1ir(:) = 0.d0
+            Do igk = 1, Gkqset%ngk (1, ik)
+               ifg = igfft (Gkqset%igkig(igk, 1, ik))
+               wf1ir(ifg) = t1*wf1%gk(igk, ist3)
             End Do
-            Call zfftifc (3, ngrid, 1, wf2ir(:))
+            Call zfftifc (3, ngrid, 1, wf1ir(:))
 
-   !$OMP DO
-            Do ist3 = 1, nstfv
+ ! !$OMP DO
+            Do ist2 = 1, nomax
 
                vxpsiirtmp(:) = 0.d0
-               wf1ir(:) = 0.d0 
-               Do igk = 1, Gkqset%ngk (1, ik)
-                  ifg = igfft (Gkqset%igkig(igk, 1, ik))
-                  wf1ir(ifg) = t1*wf1%gk(igk, ist3)
+               wf2ir(:) = 0.d0 
+               Do igk = 1, Gkqset%ngk (1, jk)
+                  ifg = igfft (Gkqset%igkig(igk, 1, jk))
+                  wf2ir(ifg) = t1*wf2%gk(igk, ist2)
                End Do
-               Call zfftifc (3, ngrid, 1, wf1ir(:))
+               Call zfftifc (3, ngrid, 1, wf2ir(:))
 
    ! calculate the complex overlap density
    !-----------------------------------------------------------------------------------
@@ -211,8 +212,8 @@ write(*,*) 'genWFs',tb-ta
                   & prodir(:), pot%mtrlm(:,:,:,1), potir(:), zrho02, &
                   & cutoff=input%groundstate%hybrid%singularity.eq."exc0d")
 
-               call WFprodrs(ist2,wf2,ist3,wf1,prod)
-               prodir(:)=conjg(wf2ir(:))*wf1ir(:)
+!               call WFprodrs(ist2,wf2,ist3,wf1,prod)
+!               prodir(:)=conjg(wf2ir(:))*wf1ir(:)
 
    if ((ik.eq.jk).and.(.not.solver)) then
                   Call zrhogp (gqc(igq0), jlgq0r, ylmgq(:, &
@@ -234,15 +235,24 @@ write(*,*) 'genWFs',tb-ta
                Do igk=1, Gkqset%ngk (1, ik)
                   vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
                End Do
-
+ 
+!write(*,*)omp_get_thread_num(), "ist2=", ist2, "ist3=", ist3
                zvclmt(:,:,:,ist3)=zvclmt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+               
+            End Do ! ist2
 
-            End Do ! ist3
-!$OMP END DO NOWAIT
-         End Do ! ist2
+             !Do igk=1, Gkqset%ngk (1, ik)
+             !     vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
+             !  End Do
+!!$OMP END DO NOWAIT
+!!$OMP END DO
+!zvclmt(:,:,:,ist3)=zvclmt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
 
+         End Do ! ist3
+        !$OMP END DO         
          call WFRelease(prod)
          call WFRelease(pot)
+         Deallocate (wf1ir)
          Deallocate (wf2ir)
          Deallocate (prodir)
          Deallocate (potir)
@@ -251,6 +261,8 @@ write(*,*) 'genWFs',tb-ta
 
 call timesec(ta)
 write(*,*) 'omp loop',ta-tb
+
+
          vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
 

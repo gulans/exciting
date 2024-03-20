@@ -45,10 +45,10 @@ subroutine task_gw()
     !===========================================================================
     ! Initialization
     !===========================================================================
-
+write(*,*)"before init GW", myrank
     ! prepare GW global data
     call init_gw()
-
+write(*,*)"after init GW", myrank    
     !=================================================
     ! Calculate the diagonal matrix elements of the
     ! DFT exchange-correlation potential
@@ -109,35 +109,35 @@ subroutine task_gw()
 
     ! initialize self-energy arrays
     call init_selfenergy(ibgw, nbgw, kset%nkpt)
-
+write(*,*)"init_selfenergy"
     !===========================================================================
     ! Main loop: BZ integration
     !===========================================================================
 
-#ifdef MPI
-    call set_mpi_group(kqset%nkpt)
-    call mpi_set_range(nproc_row, &
-    &                  myrank_row, &
-    &                  kqset%nkpt, 1, &
-    &                  iqstart, iqend)
-    call mpi_set_range(nproc_col, &
-    &                  myrank_col, &
-    &                  freq%nomeg, 1, &
-    &                  iomstart, iomend, &
-    &                  iomcnt, iomdsp)
-    ! write(*,*) "myrank_row, iqstart, iqend =", myrank_row, iqstart, iqend
-    ! write(*,*) "myrank_col, iomstart, iomend =", myrank_col, iomstart, iomend
-    ! write(*,*) 'iomcnt: ', iomcnt(0:nproc_col-1)
-    ! write(*,*) 'iomdsp: ', iomdsp(0:nproc_col-1)
-#else
+ !#ifdef MPI
+ !    call set_mpi_group(1)
+ !    call mpi_set_range(nproc_row, &
+ !    &                  myrank_row, &
+ !    &                  1, 1, &
+ !    &                  iqstart, iqend)
+ !    call mpi_set_range(nproc_col, &
+ !    &                  myrank_col, &
+ !    &                  1, 1, &
+ !    &                  iomstart, iomend, &
+ !    &                  iomcnt, iomdsp)
+ !     write(*,*) "myrank_row, iqstart, iqend =", myrank_row, iqstart, iqend
+ !     write(*,*) "myrank_col, iomstart, iomend =", myrank_col, iomstart, iomend
+ !    ! write(*,*) 'iomcnt: ', iomcnt(0:nproc_col-1)
+ !    ! write(*,*) 'iomdsp: ', iomdsp(0:nproc_col-1)
+ !#else
     iqstart = 1
     iqend = kqset%nkpt
     iomstart = 1
     iomend = freq%nomeg
-#endif
-
+!#endif
+!write(*,*)"after mpi_set ", myrank_row, myrank_col, iqend
     if (myrank==0) call boxmsg(fgw,'=','GW cycle')
-
+write(*,*)"start q point loop"
     ! each process does a subset
     do iq = iqstart, iqend
 
@@ -147,7 +147,7 @@ subroutine task_gw()
       end if
 
       Gamma = gammapoint(kqset%vqc(:,iq))
-
+write(*,*)"after gamma"
       !========================================
       ! Calculate interstitial basis functions
       !========================================
@@ -159,17 +159,18 @@ subroutine task_gw()
       ! Calculate the bare Coulomb potential
       !======================================
       call calcbarcmb(iq)
-
+write(*,*)"calcbarcmb"
       !===============================
       ! Calculate \Sigma^{x}_{kn}(q)
       !===============================
       call calcselfx(iq)
-
+write(*,*)"calc selfx"
       if (input%gw%taskname /= 'g0w0-x') then
         !========================================
         ! Set v-diagonal MB and reduce its size
         !========================================
         if (vccut) then
+          write(*,*)"vcut"
           mbsiz = matsiz
           if (allocated(barc)) deallocate(barc)
           allocate(barc(matsiz,mbsiz))
@@ -178,6 +179,7 @@ subroutine task_gw()
             barc(:,im) = vmat(:,im)*sqrt(vc)
           end do
         else
+          write(*,*)"setbarcev"      
           call setbarcev(input%gw%barecoul%barcevtol)
         end if
         call delete_coulomb_potential
@@ -187,10 +189,13 @@ subroutine task_gw()
         call init_dielectric_function(mbsiz, iomstart, iomend, Gamma)
         select case (trim(input%gw%scrcoul%scrtype))
           case('ppm','PPM')
+             write(*,*)"epsilon"
             call calcepsilon_ppm(iq, iomstart, iomend)
           case default
             write(*,*)"mp2-full"
-            call calcmp2_full(iq, iomstart, iomend)
+            !call calcmp2_full(1, iomstart, iomend)
+            !call calcmp2_frozen(1, iomstart, iomend)
+             call calcmp2(1, iomstart, iomend)
             !call calcepsilon(iq, iomstart, iomend)
             !==========================================
             ! Calculate the screened Coulomb potential

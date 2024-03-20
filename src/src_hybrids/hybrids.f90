@@ -10,6 +10,7 @@ Subroutine hybrids
     Use modmpi
     Use scl_xml_out_Module
     Use mod_hybrids
+    Use trial_energy_selection, only: select_local_orbital_trial_energies, select_apw_trial_energies
 !
 ! !DESCRIPTION:
 !   Main routine for Hartree-Fock based hybrid functionals.
@@ -214,7 +215,7 @@ Subroutine hybrids
                 splittfile = .False.
                 call MTInitAll(mt_hscf)
                 call hmlint(mt_hscf)
-                call calc_vxnl()
+call calc_vxnl()
 !                write(*,*)"afer calc_vxnl------"
                 do ik = 1, 14
                         write(*,'(14F13.9)') dble(vxnl(ik,1:14, :))
@@ -229,8 +230,8 @@ Subroutine hybrids
                      !  write(*,*)dble(vxnl(ik,ik, 1))
                        conv_emp = conv_emp+ dble(vxnl(ik,ik, 1))**2
                 end do
-                write(*,*)conv_emp-conv_old, "convergence criteria--------------"
-                if ((conv_emp-conv_old).lt.1e-5) then
+                write(*,*)(conv_emp-conv_old)**2, "convergence criteria--------------"
+                if ((((conv_emp-conv_old)**2)/nstfv).lt.1e-6) then
                         exit
                 end if
                 call flushifc(60)
@@ -284,7 +285,8 @@ Subroutine hybrids
       ! Calculate the non-local potential
       !-----------------------------------
       call timesec(ts0)
-      call calc_vxnl()
+ !     call calc_vxnl_re()
+ call calc_vxnl()
       call timesec(ts1)
       if ((input%groundstate%outputlevelnumber>1) .and.rank==0) then
         write(60,*)

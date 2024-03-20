@@ -118,7 +118,7 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
                       t2=apwfr(ir, 2, io1, l1, ias)*apwfr(ir, 2, io2, l1, ias)
                       fr (ir) = (0.5d0*t2*rmtable(ir) + 0.5d0*angular*t1*rmtable(ir)*r2inv(ir))*r2 (ir)
                     End Do
-			    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
+                    Call fderiv (-1, nr, spr(:, is), fr, gr, cf)
                     t_aa ( io2, io1, l1)= gr (nr) !*4d0*pi
                     if (applyiora) then
 ! iora(1) correction

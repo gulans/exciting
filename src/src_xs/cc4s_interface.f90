@@ -289,7 +289,8 @@ contains
 
       ! Write in parallel to file
 #ifdef MPI
-        call CC4S_parallel_writing_cmplx(coulomb_vertex_g_basis, coulomb_vertex_filehandle,  curr_kq_pair(iq_gamma, ik_gamma), CC4S_n_spin, nst1)
+        call CC4S_parallel_writing_cmplx(coulomb_vertex_g_basis, coulomb_vertex_filehandle,  curr_kq_pair(iq_gamma, ik_gamma),&
+        &CC4S_n_spin, nst1,0,1)
         write (*, *) 'Vertex written for iq, ik: ', iq_gamma, ik_gamma
 #endif
  
@@ -310,7 +311,8 @@ contains
 
         ! Write in parallel to file
 #ifdef MPI
-        call CC4S_parallel_writing_cmplx(coulomb_vertex_g_basis, coulomb_vertex_filehandle, curr_kq_pair(iq, ik), CC4S_n_spin, nst1)
+        call CC4S_parallel_writing_cmplx(coulomb_vertex_g_basis, coulomb_vertex_filehandle, curr_kq_pair(iq, ik), CC4S_n_spin,&
+        &nst1,0,1)
         write (*, *) 'Vertex written for iq, ik: ', iq, ik
 #endif
 
