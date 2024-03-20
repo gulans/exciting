@@ -1269,7 +1269,11 @@ end subroutine
 
     qi (:, :) = zzero
   
-
+    if (gpc(1) .lt. input%structure%epslat) Then
+      firstnonzeroG=2
+    else
+      firstnonzeroG=1
+    endif
 
   if (.not.yukawa) then
     ! compute (R_mt)^l
@@ -1279,11 +1283,7 @@ end subroutine
          rmtl (l, is) = rmtl (l-1, is) * rmt (is)
       End Do
     End Do
-    if (gpc(1) .lt. input%structure%epslat) Then
-      firstnonzeroG=2
-    else
-      firstnonzeroG=1
-    endif
+
 !$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
 !$OMP DO 
           Do ig = firstnonzeroG, ngvec
@@ -1297,14 +1297,14 @@ end subroutine
               Do l = 0, lmax
                   zlm2(lm+1:lm+1+2*l) = jlgpr (l+1, ig, is) * zlm(lm+1:lm+1+2*l)
                   lm=lm+1+2*l
-              End Do
+              End Do !l
                        
               Do ia = 1, natoms(is)
                 ias = idxas (ia, is)
                 qi (1:lmmaxvr,ias) = qi (1:lmmaxvr,ias) + sf (ias) * zlm2(1:lmmaxvr)
-              End Do
-            End Do
-          End Do
+              End Do !ia
+            End Do !is
+          End Do !ig
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -1313,7 +1313,7 @@ end subroutine
          ias = idxas (ia, is)
          lm = 0
          do l = 0, lmax
-           qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * fourpi * zil (l) * rmtl (l+3, is) / rmt(is) 
+           qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * fourpi * zil (l) * rmtl (l+3, is) / rmt(is) ! šo va riznest ārā
            lm=lm+1+2*l
          enddo
        End Do
@@ -1334,45 +1334,98 @@ end subroutine
 
 
   else ! yukawa
-    do is = 1, nspecies
-      call msbesselic1(rmt(is)*zlambda,tbessi) 
-       do ia = 1, natoms(is)
-        ias = idxas( ia, is)
+
+!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,zlambda,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,zilmt,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
+!$OMP DO 
+          Do ig = firstnonzeroG, ngvec
+            sf(:)=sfacgp(ig,:)
+            zt1 = 1.d0 / (gpc(ig)**2 + zlambda**2)
+            zt1 = zvclir (ig) * zt1 
+            zlm(:)=zt1*conjg (ylmgp(:, ig))
+
+            Do is = 1, nspecies
+              zlm2(1)=(zlambda * jlgpr (0, ig, is) * (zilmt(1,is) + (zilmt(0,is)/(zlambda*rmt(is)))))&
+                       &- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is))
+              zlm2(1) = zlm2(1) * zlm(1)
+
+              lm = 1
+              Do l = 1, lmax
+                  zlm2(lm+1:lm+1+2*l) = (zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))-(gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is))
+                  zlm2(lm+1:lm+1+2*l)=zlm2(lm+1:lm+1+2*l)*zlm(lm+1:lm+1+2*l)
+                  lm=lm+1+2*l
+              End Do !l
+                       
+              Do ia = 1, natoms(is)
+                ias = idxas (ia, is)
+                qi (1:lmmaxvr,ias) = qi (1:lmmaxvr,ias) + sf (ias) * zlm2(1:lmmaxvr)
+              End Do !ia
+            End Do !is
+          End Do !ig
+!$OMP END DO
+!$OMP END PARALLEL
+
+    Do is = 1, nspecies
+      t1=fourpi*rmt(is)**2
+      Do ia = 1, natoms (is)
+        ias = idxas (ia, is)
+        lm = 0
+        do l = 0, lmax
+          qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * t1 * zil (l) * zlambda**(-l) * factnm (2*l+1, 2) 
+          lm=lm+1+2*l
+        enddo
+      End Do
+    End Do
+
+    if (gpc(1) .lt. input%structure%epslat) Then
+      
+      
+      Do is = 1, nspecies
+        Do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+
+          zt1 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
+          qi (1,ias) = qi (1,ias) + zt1 * zvclir (1)
+
+        End Do
+      End Do
+    endif
+
+!!!Vecā metode
+
+    ! do is = 1, nspecies
+    !    do ia = 1, natoms(is)
+    !     ias = idxas( ia, is)
   
-          Do ig = 1, ngvec
-            ifg = ig !igfft (ig) !because zvclir is sorted
+    !       Do ig = 1, ngvec
+    !         ifg = ig !igfft (ig) !because zvclir is sorted
             
-            If (gpc(ig) .Gt. input%structure%epslat) Then
-               zt1 = zvclir (ifg) * sfacgp (ig, ias)/((gpc(ig) ** 2)+(zlambda ** 2))
+    !         If (gpc(ig) .Gt. input%structure%epslat) Then
+    !            zt1 = zvclir (ifg) * sfacgp (ig, ias)/((gpc(ig) ** 2)+(zlambda ** 2))
                
-               lm = 0
-               Do l = 0, input%groundstate%lmaxvr
-                  if (l .eq. 0) then 
-                  call sbessel1 (gpc(ig)*rmt(is), tbessj)
-                  zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
-                 &* ((zlambda * jlgpr (l, ig, is) *  tbessi )&
-                 &- (gpc(ig) *tbessj* zilmt(l,is)))
-                  !zt2 = zt1 *  fourpi * (rmt(is) ** 2) &
-                 !&* ((zlambda * jlgpr (0, ig, is) * (zilmt(1,is)+ (zilmt(0,is)/(zlambda*rmt(is)))))&
-                 !&- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is)))
-                  else
-                  zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
-                 &* ((zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))&
-                 &- (gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is)))
-                  endif
+    !            lm = 0
+    !            Do l = 0, input%groundstate%lmaxvr
+    !               if (l .eq. 0) then
+    !                 zt2 = zt1 *  fourpi * (rmt(is) ** 2) &
+    !                   &* ((zlambda * jlgpr (0, ig, is) * (zilmt(1,is)+ (zilmt(0,is)/(zlambda*rmt(is)))))&
+    !                   &- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is)))
+    !               else
+    !                 zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
+    !                   &* ((zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))&
+    !                   &- (gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is)))
+    !               endif
   
-                  Do m = - l, l
-                     lm = lm + 1
-                     qi (lm, ias) = qi (lm, ias) + zt2 * conjg (ylmgp(lm, ig))
-                  End Do
-               End Do
-            Else
-               zt3 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
-               qi (1,ias) = qi (1,ias) + zt3 * zvclir (ifg)
-            End If
-          enddo                        
-      end do
-    end do
+    !               Do m = - l, l
+    !                  lm = lm + 1
+    !                  qi (lm, ias) = qi (lm, ias) + zt2 * conjg (ylmgp(lm, ig))
+    !               End Do
+    !            End Do
+    !         Else
+    !            zt3 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
+    !            qi (1,ias) = qi (1,ias) + zt3 * zvclir (ifg)
+    !         End If
+    !       enddo                        
+    !   end do
+    ! end do
   endif! yukawa or not
   
   end subroutine
