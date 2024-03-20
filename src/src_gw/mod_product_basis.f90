@@ -7,7 +7,8 @@ module mod_product_basis
     !     mixed basis (general)  !
     !----------------------------!
     ! Size of the mixed basis
-    integer(4) :: matsiz, matsizmax, mbsiz
+    integer(8) :: matsiz
+    integer(4) :: matsizmax, mbsiz
  
     ! Matrix elements M^i_nm and \tilde{M}^i_nm
     complex(8), allocatable :: minmmat(:,:,:)

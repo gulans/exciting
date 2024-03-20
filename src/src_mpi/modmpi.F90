@@ -1829,6 +1829,44 @@ end subroutine find_2d_grid
   end subroutine distribute_loop
 
 
+  subroutine setup_2_layer_proc_groups(n_supra_groups, supra_group, infra_group)
+
+    integer, intent(in) :: n_supra_groups
+    type(procgroup), intent(out) :: infra_group, supra_group
+    integer :: n_infra_groups, key, color
+
+    integer(4) :: jerr = 0
+    logical :: jflag
+
+#ifdef MPI
+    Call setup_proc_groups(n_supra_groups, supra_group)
+
+    n_infra_groups = mpiglobal%procs/n_supra_groups
+
+    infra_group%id = mod(mpiglobal%rank, n_supra_groups)
+
+    color = infra_group%id
+    key = mpiglobal%rank
+
+    call mpi_comm_split(mpiglobal%comm, color, key, infra_group%mpi%comm, infra_group%mpi%ierr)
+
+    if(infra_group%mpi%ierr .ne. 0) then
+      write (*, '("setup_proc_groups@rank",i3," (ERROR ",i3,"):",a)')&
+        & mpiglobal%rank, infra_group%mpi%ierr, "com split failed."
+      call terminate
+    end if
+
+    call mpi_comm_size(infra_group%mpi%comm, infra_group%mpi%procs, infra_group%mpi%ierr)
+    call mpi_comm_rank(infra_group%mpi%comm, infra_group%mpi%rank,  infra_group%mpi%ierr)
+
+    if (jerr /= 0) then
+      write (*, *) "Error (setup_2_layer_proc_groups): ierr =", jerr
+    end if
+
+#endif
+
+end subroutine setup_2_layer_proc_groups
+
 
 
 end module modmpi

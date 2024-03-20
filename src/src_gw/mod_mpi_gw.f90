@@ -80,6 +80,7 @@ contains
         ! otherwise, the residual k-points are equally assigned to non-root processes
         ! starting from the last one
         if (np==1) then
+        !if (.true.) then
           istart = i0
           iend = i0+num-1
           icount(1) = num
