@@ -204,37 +204,66 @@ qlm = qlm - qlmir
 
 
 
-! solve Poisson's equation in interstitial region
-! if (yukawa) then
-!   call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
-!     & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm,zlambda,zilmt)
-! else
-!   call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
-!     & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm)
-! endif
+ ! !solve Poisson's equation in interstitial region
+if (yukawa) then
+  call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
+    & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm,zlambda,zilmt)
+else
+  call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
+    & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm)
+endif
+
+! write(*,*)"pseudo.dat"
+! open(11,file='pseudo.dat',status='replace')
+!   do ig=1, ngp
+!     !i=igfft(ii)
+!     write(11,*)dble(zrhoig_sort(ig)),imag(zrhoig_sort(ig))
+!   enddo
+!   close(11)
+! stop
+! write(*,*)"blivums"
+! do ig=1, 20
+!   write(*,*)dble(zrhoig_sort(ig)),imag(zrhoig_sort(ig))
+! enddo
 
 if (yukawa) then
-  if (rpseudo) then
-    call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
-  else
-    call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
-      & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
-  endif
+  call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff, zlambda=zlambda)
+else
+  call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff)
+endif
+! write(*,*)"potencials"
+! do ig=1, 20
+!   write(*,*)dble(zvclir(ig)),imag(zvclir(ig))
+! enddo
+! stop
 
-  call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir,cutoff)
 
-else !if not yukawa
-  if (rpseudo) then
-    call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=rpseudo,rpseudomat=rpseudomat)
-  else
-    call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=.false.)
-  endif !if rpseudo or not
-    zrho0 = zrhoig( igfft( igp0))
-endif !if Yukawa or not
+! if (yukawa) then
+!   if (rpseudo) then
+!     call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
+!   else
+!     call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
+!       & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
+!   endif
+
+!   call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir,cutoff)
+
+! else !if not yukawa
+!   if (rpseudo) then
+!     call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
+!         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+!         zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=rpseudo,rpseudomat=rpseudomat)
+!   else
+!     call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
+!         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+!         zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=.false.)
+!   endif !if rpseudo or not
+!     zrho0 = zrhoig( igfft( igp0))
+! endif !if Yukawa or not
+
+
+
+
 
 ! evaluate interstitial potential on muffin-tin surface
 call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
