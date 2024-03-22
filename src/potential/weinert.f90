@@ -438,7 +438,7 @@ endif
 
     if (rpseudo) then
 
-         call pseudocharge_rspace_new(lmax,qlm,rpseudomat,zrhoig) 
+          call pseudocharge_rspace_new(lmax,qlm,rpseudomat,zrhoig) 
     else
 
       ! add Fourier components of pseudodensity from multipole moments
@@ -1195,7 +1195,7 @@ end subroutine
       integer, intent(in) :: lmax
       complex(8), intent(in) :: qlm((lmax+1)**2,natmtot)
       complex(8), intent(in) :: rpseudomat(:,:,:)
-      Complex (8), Intent (InOut) :: zvclir(ngrtot)
+      Complex (8), Intent (InOut) :: zvclir(ngrtot)      
       integer :: is,ia,ias,l,m,lm,ig,igr
 
       call zfftifc( 3, ngrid, 1, zvclir)
@@ -1537,7 +1537,7 @@ end subroutine
 
 
   ! add the pseudocharge and real interstitial densities in G-space
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,t2,m,l,lm,t3,is,ia,ias,sf,zlm,zlm2,zlm3) SHARED(lmax,input,gpc,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,zrp2,sfacgp,firstnonzeroG,idxas,nspecies,natoms,lmmaxvr,npsd)
+!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,t1,t2,l,lm,t3,is,ia,ias,sf,zlm,zlm2,zlm3) SHARED(lmax,gpc,zvclir,rmt,ngvec,ylmgp,jlgpr,zrp2,sfacgp,firstnonzeroG,idxas,nspecies,natoms,lmmaxvr,npsd)
 !$OMP DO    
           Do ig = firstnonzeroG, ngvec
             sf(:)=conjg(sfacgp(ig,:))     
@@ -1584,11 +1584,11 @@ end subroutine
 
   else !if yukawa
 
-lm=0
 
 do is=1, nspecies
   Do ia = 1, natoms (is)
     ias = idxas (ia, is)
+    lm=0
     do l=0, lmax
       t1=fpo / factnm (2*l+1, 2)
       zt1=t1*zlambda**(npsd+l+1) * conjg(zil(l))
@@ -1605,7 +1605,7 @@ enddo!is
 
 
   ! add the pseudocharge and real interstitial densities in G-space
-!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,t2,m,l,lm,t3,is,ia,ias,sf,zlm,zlm2,zlm3) SHARED(lmax,input,gpc,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,zrp2,sfacgp,firstnonzeroG,idxas,nspecies,natoms,lmmaxvr,npsd)
+!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,t1,l,lm,t3,is,ia,ias,sf,zlm,zlm2,zlm3) SHARED(lmax,gpc,zvclir,rmt,ngvec,ylmgp,jlgpr,zrp2,sfacgp,firstnonzeroG,idxas,nspecies,natoms,lmmaxvr,npsd)
 !$OMP DO   
           Do ig = firstnonzeroG, ngvec
             sf(:)=conjg(sfacgp(ig,:))

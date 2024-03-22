@@ -205,14 +205,25 @@ qlm = qlm - qlmir
 
 
  ! !solve Poisson's equation in interstitial region
-if (yukawa) then
-  call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
-    & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm,zlambda,zilmt)
+if(rpseudo)then
+  do ig=1, ngp   
+    ifg = igfft (ig)
+    zrhoig(ifg)=zrhoig_sort(ig)
+  enddo
+  call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
+  do ig=1, ngp
+    ifg = igfft (ig)
+    zrhoig_sort(ig)=zrhoig(ifg)
+  enddo
 else
-  call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
-    & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm)
+  if (yukawa) then
+    call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
+      & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm,zlambda,zilmt)
+  else
+    call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
+      & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm)
+  endif
 endif
-
 ! write(*,*)"pseudo.dat"
 ! open(11,file='pseudo.dat',status='replace')
 !   do ig=1, ngp
@@ -226,11 +237,13 @@ endif
 !   write(*,*)dble(zrhoig_sort(ig)),imag(zrhoig_sort(ig))
 ! enddo
 
+
 if (yukawa) then
   call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff, zlambda=zlambda)
 else
   call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff)
 endif
+
 ! write(*,*)"potencials"
 ! do ig=1, 20
 !   write(*,*)dble(zvclir(ig)),imag(zvclir(ig))

@@ -112,8 +112,8 @@ subroutine generate_rgrid_mt_data(lmax)
     do ia=1, natoms(is)
       ias=idxas(ia,is)
   
-      rgrid_mt_rv (:,ias,:) = rgrid_mt_rv_tmp(:,ias,1:rgrid_nmtpoints(ias))
-      rgrid_mt_map(ias,:) = rgrid_mt_map_tmp(ias,1:rgrid_nmtpoints(ias))
+      rgrid_mt_rv (:,ias,1:rgrid_nmtpoints(ias)) = rgrid_mt_rv_tmp(:,ias,1:rgrid_nmtpoints(ias))
+      rgrid_mt_map(ias,1:rgrid_nmtpoints(ias)) = rgrid_mt_map_tmp(ias,1:rgrid_nmtpoints(ias))
 
       do ig=1, rgrid_nmtpoints(ias)
         rv=rgrid_mt_rv(:,ias,ig)

@@ -310,8 +310,7 @@ write(*,*) 'genWFs :',tb-ta
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 !write(*,*)"nomax",nomax,"nstfv",nstfv
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td) REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical)
-! !xREDUCTION(+:zvclmt)
-! !REDUCTION(+:vxpsiirgk)        
+      
 
          !write(*,*)"pēc", OMP_GET_THREAD_NUM()
          time_coul=0d0
@@ -668,8 +667,8 @@ end if
       call WFRelease(wf2)
       call WFRelease(prod)
 
- ! write(*,*)"FockExchange.f90 stop"
- ! stop
+!  write(*,*)"FockExchange.f90 stop"
+!  stop
       Return
 End Subroutine
 !EOC
