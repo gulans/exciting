@@ -93,7 +93,7 @@ complex(dp) :: zlambda
 integer :: is, ia, ias, ir,j
 integer :: ig, ifg, lm
 
-real(dp) :: t1, ta, tb
+real(dp) :: t1, ta, tb,tc,td,te,tf
 
 complex(dp), allocatable :: zrhoig_sort(:)
 real(dp) :: maxrhog
@@ -205,16 +205,26 @@ qlm = qlm - qlmir
 
 
  ! !solve Poisson's equation in interstitial region
+call timesec(ta)
+
 if(rpseudo)then
+  call timesec(ta)
   do ig=1, ngp   
     ifg = igfft (ig)
     zrhoig(ifg)=zrhoig_sort(ig)
   enddo
+  call timesec(tb)
+
   call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
+
+  call timesec(tc)
   do ig=1, ngp
     ifg = igfft (ig)
     zrhoig_sort(ig)=zrhoig(ifg)
   enddo
+  call timesec(td)
+  !write(*,*)"kartošana2x :",td-tc+tb-ta
+  !write(*,*)"konstrueshana :",tc-tb 
 else
   if (yukawa) then
     call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
@@ -224,6 +234,9 @@ else
       & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm)
   endif
 endif
+call timesec(tb)
+!write(*,*)"pseudoch :",tb-ta
+!stop
 ! write(*,*)"pseudo.dat"
 ! open(11,file='pseudo.dat',status='replace')
 !   do ig=1, ngp
@@ -237,13 +250,15 @@ endif
 !   write(*,*)dble(zrhoig_sort(ig)),imag(zrhoig_sort(ig))
 ! enddo
 
-
+call timesec(ta)
 if (yukawa) then
   call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff, zlambda=zlambda)
 else
   call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff)
 endif
-
+call timesec(tb)
+!write(*,*)"poisson_ir",tb-ta
+!stop
 ! write(*,*)"potencials"
 ! do ig=1, 20
 !   write(*,*)dble(zvclir(ig)),imag(zvclir(ig))

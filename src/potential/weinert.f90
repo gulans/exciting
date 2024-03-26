@@ -1050,7 +1050,7 @@ end subroutine
       integer, intent(in) :: lmax
       integer, intent(in) :: npsd
       Real(8), Intent (In) :: kvec(3)
-      Complex (8), Intent (Out) ::  mat(:,:,:) !(lm,ias,irg)
+      Complex (8), Intent (Out) ::  mat(:,:,:) !(lm,irg,ias)
       logical, optional, intent(in) :: yukawa_in
       complex(dp),optional, intent(in) :: zlambda
       complex(dp),optional, intent(in) :: zilmt(0:,:)
@@ -1116,7 +1116,7 @@ end subroutine
         ias=idxas(ia,is)
         ratom=atposc (:, ia, is)
       do igr=1, rgrid_nmtpoints(ias)
-        ig=rgrid_mt_map(ias,igr)
+        ig=rgrid_mt_map(igr,ias)
         rv=rgrid_mt_rv(:,ias,igr)
         phase=exp(-cmplx(0,1,8)*sum(kvec*(rv+ratom)))
         rv_abs=rgrid_mt_rabs(ias,igr)
@@ -1128,11 +1128,11 @@ end subroutine
             if (rv_abs .Gt. input%structure%epslat) then
               Do m = - l, l
                 lm = lm + 1
-                mat(lm,ias,igr) = mat(lm,ias,igr) + zt1*rgrid_zylm(lm,ias,igr)*phase
+                mat(lm,igr,ias) = mat(lm,igr,ias) + zt1*rgrid_zylm(lm,ias,igr)*phase
               enddo !m
             else
               lm=1
-              mat(lm,ias,igr) = mat(lm,ias,igr) + zt1*y00*phase
+              mat(lm,igr,ias) = mat(lm,igr,ias) + zt1*y00*phase
               exit ! exit l loop just to get the l=0 contribution
             endif
           enddo ! l
@@ -1149,11 +1149,11 @@ end subroutine
                   if (rv_abs .Gt. input%structure%epslat) then
                       Do m = - l, l
                         lm = lm + 1
-                        mat(lm,ias,igr) = mat(lm,ias,igr)+t1*rgrid_zylm(lm,ias,igr)*phase
+                        mat(lm,igr,ias) = mat(lm,igr,ias)+t1*rgrid_zylm(lm,ias,igr)*phase
                       enddo ! m
                   else
                       lm=1
-                      mat(lm,ias,igr) = mat(lm,ias,igr) + t1*y00*phase
+                      mat(lm,igr,ias) = mat(lm,igr,ias) + t1*y00*phase
                       exit   ! exit l loop just to get the l=0 contribution
                   endif
                 enddo ! l
@@ -1195,31 +1195,59 @@ end subroutine
       integer, intent(in) :: lmax
       complex(8), intent(in) :: qlm((lmax+1)**2,natmtot)
       complex(8), intent(in) :: rpseudomat(:,:,:)
-      Complex (8), Intent (InOut) :: zvclir(ngrtot)      
-      integer :: is,ia,ias,l,m,lm,ig,igr
+      Complex (8), Intent (InOut) :: zvclir(ngrtot)   
+      complex (8) :: zt1
+      integer :: is,ia,ias,l,m,lm,ig,igr,lmmax
+      real(8) :: ta,tb,tc,td
 
+      ! external functions
+      Complex (8) :: zdotc
+      External :: zdotc
+
+      call timesec(ta)
       call zfftifc( 3, ngrid, 1, zvclir)
+      call timesec(tb)
 
+      lmmax=(lmax+1)**2
+! !$OMP PARALLEL DEFAULT(NONE) PRIVATE(is,ia,ias,igr,ig,zt1) SHARED(idxas,nspecies,natoms,rgrid_mt_map,qlm,rpseudomat,rgrid_nmtpoints,zvclir) 
       do is=1, nspecies
         do ia=1, natoms(is)
           ias=idxas(ia,is)
+
+! !$OMP DO SCHEDULE(DYNAMIC)
           do igr=1, rgrid_nmtpoints(ias)
-            ig=rgrid_mt_map(ias,igr)
-            lm=0
-            Do l = 0,lmax
-              Do m = - l, l
-                lm = lm+1
-                zvclir(ig)=zvclir(ig) + qlm(lm,ias)*rpseudomat(lm,ias,igr)
-              enddo ! m
-            enddo
+            ig=rgrid_mt_map(igr,ias)
+            zt1=sum(qlm(:,ias)*rpseudomat(:,igr,ias))
+            !zt1=zdotc(lmmax, qlm(:,ias), 1, rpseudomat(:,igr,ias), 1)
+            zvclir(ig)=zvclir(ig)+zt1
           enddo !igr
+! !$OMP END DO NOWAIT
         enddo !ia
       enddo !is
+! !$OMP END PARALLEL 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      ! do is=1, nspecies
+      !   do ia=1, natoms(is)
+      !     ias=idxas(ia,is)
+      !     do igr=1, rgrid_nmtpoints(ias)
+      !       ig=rgrid_mt_map(igr,ias)
+      !       lm=0
+      !       Do l = 0,lmax
+      !         Do m = - l, l
+      !           lm = lm+1
+      !           zvclir(ig)=zvclir(ig) + qlm(lm,ias)*rpseudomat(lm,igr,ias)
+      !         enddo ! m
+      !       enddo
+      !     enddo !igr
+      !   enddo !ia
+      ! enddo !is
   
         
-        
+      call timesec(tc)
       call zfftifc( 3, ngrid, -1, zvclir)
-
+      call timesec(td)
+      !write(*,*)"fft 2x:",td-tc+tb-ta
+      !write(*,*)"rekinasana :",tc-tb
 
     end subroutine
       

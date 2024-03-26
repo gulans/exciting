@@ -68,7 +68,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
       
-      complex(8), Allocatable :: rpseudomat(:,:,:,:) ! (ifit,lm,ias,igr)
+      complex(8), Allocatable :: rpseudomat(:,:,:,:) ! (ifit,lm,igr,ias)
 
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
@@ -153,9 +153,9 @@ call timesec(ta)
          if (rpseudo)then
             if (.not.allocated(rpseudomat)) then
                if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
-                  allocate(rpseudomat(nfit*2-1,(lmaxvr+1)**2,natmtot,rgrid_max_nmtpoints))
+                  allocate(rpseudomat(nfit*2-1,(lmaxvr+1)**2,rgrid_max_nmtpoints,natmtot))
                else
-                  allocate(rpseudomat(1,(lmaxvr+1)**2,natmtot,rgrid_max_nmtpoints))
+                  allocate(rpseudomat(1,(lmaxvr+1)**2,rgrid_max_nmtpoints,natmtot))
                endif
             endif
             if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then

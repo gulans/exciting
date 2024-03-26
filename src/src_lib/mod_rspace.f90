@@ -7,7 +7,7 @@ integer,allocatable    :: rgrid_nmtpoints(:) !(ias)
 integer                :: rgrid_max_nmtpoints
 real (8),allocatable   :: rgrid_mt_rv(:,:,:) !(3,ias,ig)
 real (8),allocatable   :: rgrid_mt_rabs(:,:) !(ias,ig)
-integer,allocatable    :: rgrid_mt_map(:,:)  !(ias,ig)
+integer,allocatable    :: rgrid_mt_map(:,:)  !(ig,ias)
 complex(8),allocatable :: rgrid_zylm(:,:,:)  !(lm,ias,ig)
 
 
@@ -15,7 +15,7 @@ contains
 
 subroutine generate_rgrid_mt_data(lmax)
   use modinput
-  use mod_Gvector, only: ngrtot, ngrid
+  use mod_Gvector, only: ngrtot, ngrid, ngvec
   use mod_atoms, only: nspecies, natoms, atposc, idxas
   use mod_muffin_tin, only: rmt
   use constants, only: zzero
@@ -28,7 +28,7 @@ subroutine generate_rgrid_mt_data(lmax)
   integer :: is,ia,ias,ir1,ir2,ir3,i1,i2,i3,ig,lm
   real(8) :: tp(2)
   real(8) :: rgrid_mt_rv_tmp(3,natmtot,int(ngrtot/natmtot))
-  integer :: rgrid_mt_map_tmp(natmtot,int(ngrtot/natmtot))
+  integer :: rgrid_mt_map_tmp(int(ngrtot/natmtot),natmtot)
 
 
 
@@ -56,25 +56,31 @@ subroutine generate_rgrid_mt_data(lmax)
       ratom_i(1)=col(1,1)
       ratom_i(2)=col(1,2)
       ratom_i(3)=col(1,3)
-    ! write(*,*)"atoma poz",col(1,1),col(1,2),col(1,3)
-    ! write(*,*)"mt izmērs",rmt(is)/a1_abs,rmt(is)/a2_abs,rmt(is)/a3_abs
+      !write(*,*)"atoma poz",col(1,1),col(1,2),col(1,3)
+      !write(*,*)"mt izmērs",rmt(is)/a1_abs,rmt(is)/a2_abs,rmt(is)/a3_abs
 
   
-      do ir1=ceiling(ratom_i(1)-rmt(is)/a1_abs),floor(ratom_i(1)+rmt(is)/a1_abs)
+      do ir1=floor(ratom_i(1)-rmt(is)/a1_abs-20),ceiling(ratom_i(1)+rmt(is)/a1_abs+20)
         if (ir1.lt.0) then 
           i1=ngrid(1)+ir1+1
+        elseif (ir1.gt.(ngrid(1)-1)) then
+          i1=-ngrid(1)+ir1+1
         else
           i1=ir1+1
         endif
-        do ir2=ceiling( ratom_i(2)-rmt(is)/a2_abs),floor( ratom_i(2)+rmt(is)/a2_abs)
+        do ir2=floor( ratom_i(2)-rmt(is)/a2_abs-20),ceiling( ratom_i(2)+rmt(is)/a2_abs+20)
           if (ir2.lt.0) then
             i2=ngrid(2)+ir2+1 
-          else 
+          elseif (ir2.gt.(ngrid(2)-1)) then
+            i2=-ngrid(2)+ir2+1
+          else
             i2=ir2+1
           endif
-          do ir3=ceiling(ratom_i(3)-rmt(is)/a3_abs),floor(ratom_i(3)+rmt(is)/a3_abs)
+          do ir3=floor(ratom_i(3)-rmt(is)/a3_abs-20),ceiling(ratom_i(3)+rmt(is)/a3_abs+20)
             if (ir3.lt.0) then
-              i3=ngrid(3)+ir3+1 
+              i3=ngrid(3)+ir3+1
+            elseif (ir3.gt.(ngrid(3)-1)) then
+              i3=-ngrid(3)+ir3+1
             else 
               i3=ir3+1
             endif
@@ -85,8 +91,20 @@ subroutine generate_rgrid_mt_data(lmax)
               rgrid_nmtpoints(ias) = rgrid_nmtpoints(ias) + 1
               ig = (i3-1)*ngrid(2)*ngrid(1) + (i2-1)*ngrid(1) + i1
               
+              if(ig.gt.ngrtot)then
+                write(*,*)"ig,ngrtot"
+                write(*,*)ig,ngrtot
+                write(*,*)"i1,i2,i3"
+                write(*,*)i1,i2,i3
+                write(*,*)"ir1,ir2,ir3"
+                write(*,*)ir1,ir2,ir3
+                write(*,*)"ratom"
+                write(*,*)ratom
+                stop
+              endif
+
               rgrid_mt_rv_tmp(:,ias,rgrid_nmtpoints(ias))=rv
-              rgrid_mt_map_tmp(ias,rgrid_nmtpoints(ias))=ig            
+              rgrid_mt_map_tmp(rgrid_nmtpoints(ias),ias)=ig            
             endif
 !write(*,*)ir1,ir2,ir3
           enddo !ir1
@@ -100,7 +118,7 @@ subroutine generate_rgrid_mt_data(lmax)
   rgrid_max_nmtpoints=maxval(rgrid_nmtpoints(:))
   
   allocate( rgrid_mt_rv(3,natmtot,rgrid_max_nmtpoints) )
-  allocate( rgrid_mt_map(natmtot,rgrid_max_nmtpoints) )
+  allocate( rgrid_mt_map(rgrid_max_nmtpoints,natmtot) )
   allocate( rgrid_mt_rabs(natmtot,rgrid_max_nmtpoints) )
   allocate( rgrid_zylm((lmax+1)**2,natmtot,rgrid_max_nmtpoints) )
   rgrid_mt_rv=0d0
@@ -113,7 +131,7 @@ subroutine generate_rgrid_mt_data(lmax)
       ias=idxas(ia,is)
   
       rgrid_mt_rv (:,ias,1:rgrid_nmtpoints(ias)) = rgrid_mt_rv_tmp(:,ias,1:rgrid_nmtpoints(ias))
-      rgrid_mt_map(ias,1:rgrid_nmtpoints(ias)) = rgrid_mt_map_tmp(ias,1:rgrid_nmtpoints(ias))
+      rgrid_mt_map(1:rgrid_nmtpoints(ias),ias) = rgrid_mt_map_tmp(1:rgrid_nmtpoints(ias),ias)
 
       do ig=1, rgrid_nmtpoints(ias)
         rv=rgrid_mt_rv(:,ias,ig)
@@ -139,7 +157,32 @@ subroutine generate_rgrid_mt_data(lmax)
     enddo !ia
   enddo !is
 
-  ! open(11,file='rgrid_mod_1.dat',status='replace')
+  open(11,file='rgrid_info.dat',status='replace')
+  write(11,*)"ngrtot",ngrtot
+  write(11,*)"ngvec",ngvec
+  write(11,*)"rgrid_max_nmtpoints:",rgrid_max_nmtpoints
+  write(11,*)"ias, rgrid_nmtpoints(ias)"
+  do is=1, nspecies
+    do ia=1, natoms(is)
+      ias=idxas(ia,is)
+      write(11,*)ias, rgrid_nmtpoints(ias)
+    enddo
+  enddo
+  close(11)
+
+
+
+  open(11,file='rgrid_mt_vec1.dat',status='replace')
+  do is=1, 1!nspecies
+    do ia=1, 1!natoms(is)
+      ratom=atposc (:, ia, is) 
+      ias=idxas(ia,is)
+      do ig=1, rgrid_nmtpoints(ias)
+        write(11,*)ias, rgrid_mt_rv(1,ias,ig)+ratom(1),rgrid_mt_rv(2,ias,ig)+ratom(2),rgrid_mt_rv(3,ias,ig)+ratom(3)
+      enddo
+    enddo
+  enddo
+  close(11)
   ! ias=1
   ! write(*,*)"rgrid_nmtpoints(ias)",rgrid_nmtpoints(ias)
   ! do ig=1, rgrid_nmtpoints(ias)
