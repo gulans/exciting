@@ -292,12 +292,26 @@ call timesec(tb)
 
 
 
+! call timesec(ta)
+! ! evaluate interstitial potential on muffin-tin surface
+! call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
+!     ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+!      zvclir, qlmir)
+! call timesec(tb)
+! write(*,*)qlmir(1,1)
+! write(*,*)qlmir(1,2)
+! write(*,*)qlmir(2,1)
+! write(*,*)qlmir(2,2)
+! write(*,*)"surface_ir",tb-ta
+! stop
 
-! evaluate interstitial potential on muffin-tin surface
-call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
-ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-zvclir, qlmir)
+call timesec(ta)
+call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
+call timesec(tb)
+! write(*,*)"surface_ir",tb-ta
 
+
+call timesec(ta)
 ! match muffin-tin and interstitial potential on muffin-tin boundaries
 do is = 1, nspecies
 do ia = 1, natoms(is)
@@ -306,13 +320,10 @@ call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:
 vmad(ias) = vmad(ias) + dble( qlmir(1,ias) ) * y00 - vion(nr(is),is)
 end do
 end do
-!if(yukawa)then    
-!do ig=1, 10
-!  ifg = igfft (ig)
-!write(*,*)"gatavs ,",zvclir(ifg)
-!enddo
-!stop
-!endif
+call timesec(tb)
+
+write(*,*)"match_bound_mt",tb-ta
+
 
 
 
@@ -320,6 +331,11 @@ end do
 
 
 ! Fourier transform interstitial potential to real space
+zrhoig_sort=zvclir
+do ig=1, ngp   
+  ifg = igfft (ig)
+  zvclir(ifg)=zrhoig_sort(ig)
+enddo
 call zfftifc( 3, ngrid, 1, zvclir)
 
 deallocate( vion, zrhoig, qlm, qlmir)

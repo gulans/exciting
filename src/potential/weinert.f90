@@ -14,7 +14,7 @@ module weinert
   public :: poisson_and_multipoles_mt, match_bound_mt
   public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa
   public :: poisson_mt_yukawa, pseudocharge_rspace_matrix, pseudocharge_rspace_new
-  public :: multipoles_ir2, pseudocharge_gspace2, poisson_ir2
+  public :: multipoles_ir2, pseudocharge_gspace2, poisson_ir2, surface_ir2
   contains
 
     !> This subroutine evaluates an interstitial function given by the Fourier series
@@ -1766,7 +1766,7 @@ if (.not.yukawa)then
   If (cutoff) Then
 
     Do ig = 1, ngvec
-      ifg=igfft(ig)
+      ifg=ig!igfft(ig)
       If (gpc(ig) .Gt. input%structure%epslat) Then 
         zvclir (ifg) = fourpi * zrhoir (ig)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
       Else
@@ -1776,7 +1776,7 @@ if (.not.yukawa)then
 
  Else! cutof
     Do ig = 1, ngvec
-      ifg=igfft(ig)
+      ifg=ig!igfft(ig)
        If (gpc(ig) .Gt. input%structure%epslat) Then
         zvclir (ifg) = fourpi * zrhoir (ig) / (gpc(ig)**2)
        Else
@@ -1789,7 +1789,7 @@ else ! if yukawa
 
 
   Do ig = 1, ngvec
-    ifg=igfft(ig)
+    ifg=ig!igfft(ig)
   if (cutoff) then
   
     If (gpc(ig) .Gt. input%structure%epslat) Then
@@ -1810,6 +1810,65 @@ else ! if yukawa
 endif! if yukawa or not
   
   !stop
+  end subroutine
+
+
+
+  ! call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
+
+subroutine surface_ir2( lmax, ngvec,  jlgpr, ylmgp, sfacgp, vclig, vilm2)
+     ! use mod_atoms, only: nspecies, natoms, idxas
+     ! use mod_muffin_tin, only: rmt
+      use mod_atoms, only: natmtot, nspecies,natoms, idxas
+      use constants, only: fourpi,zil
+
+      integer, intent(in) :: lmax
+      integer, intent(in) :: ngvec
+      real(dp), intent(in) :: jlgpr(0:,:,:)
+      complex(dp), intent(in) :: ylmgp(:,:)
+      complex(dp), intent(in) :: sfacgp(:,:)
+      complex(dp), intent(in) :: vclig(:)
+
+      complex(dp), intent(out) :: vilm2(:,:)
+
+      integer :: ig, l,m, lm, is, ia, ias
+      Complex (8) :: zlm ((lmax+1)**2),zlm2((lmax+1)**2)
+      Complex (8) :: sf(natmtot)
+
+          vilm2  = 0.d0
+! !$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,l,lm,is,ia,ias,zlm,zlm2,sf) SHARED(vclig,ngvec,ylmgp,jlgpr,sfacgp,nspecies,natoms,idxas,lmax) REDUCTION(+:vilm2)
+! !$OMP DO  
+      Do ig = 1, ngvec
+        zlm(:) = vclig (ig) *conjg (ylmgp(:, ig))
+        sf(:)=sfacgp(ig,:)
+        Do is = 1, nspecies
+          lm = 0
+          Do l = 0, lmax
+             zlm2(lm+1:lm+1+2*l) = jlgpr (l, ig, is) * zlm(lm+1:lm+1+2*l)
+             lm=lm+1+2*l
+          End Do
+
+          Do ia = 1, natoms (is)
+            ias = idxas (ia, is)
+            vilm2 (:,ias) = vilm2 (:,ias) + sf (ias) * zlm2(:)
+          End Do
+        End Do
+      End Do     
+! !$OMP END DO
+! !$OMP END PARALLEL
+  Do is = 1, nspecies
+    Do ia = 1, natoms (is)
+      ias = idxas (ia, is)
+      lm = 0
+      Do l = 0, lmax
+        Do m = - l, l
+            lm = lm + 1
+            vilm2 (lm,ias) = vilm2 (lm,ias) * fourpi * zil (l) 
+        End Do !m
+      End Do!l
+    enddo!ia
+  enddo!ia
+      
   end subroutine
 
 end module weinert
