@@ -83,7 +83,7 @@ do ir1=0,ngrid(1)-1
     enddo
   enddo
 enddo
-write(*,*)"count_by_cfunir",count_by_cfunir
+!write(*,*)"count_by_cfunir",count_by_cfunir
 else 
   do is=1, nspecies
     do ia=1, natoms(is)

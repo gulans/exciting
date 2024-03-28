@@ -98,6 +98,7 @@ real(dp) :: t1, ta, tb,tc,td,te,tf
 complex(dp), allocatable :: zrhoig_sort(:)
 real(dp) :: maxrhog
 integer :: ngp2
+complex(dp) :: zvclir_tmp(ngrtot)
 
 if (present(hybrid_in)) then 
 hybrid=hybrid_in
@@ -174,13 +175,8 @@ ig=ngp
     ig=ig-1 
   enddo
   ngp2=ig+1
-  
-call timesec(tb)
+ 
 
-
-
-
-call timesec(ta)
 if (yukawa) then
   call multipoles_ir2( input%groundstate%lmaxvr, ngp2, gpc, &
     & jlgpr, ylmgp, sfacgp, igfft, &
@@ -190,14 +186,7 @@ else
     & jlgpr, ylmgp, sfacgp, igfft, &
     zrhoig_sort, qlmir)
 endif
-call timesec(tb)
 
-!write(*,*)"multipoles:",tb-ta
-
-!  do lm=1,10
-!    write(*,*)qlmir(lm,1)
-!  enddo
-!  stop
 
 ! take difference of muffin-tin and interstitial multipole moments
 qlm = qlm - qlmir
@@ -205,7 +194,6 @@ qlm = qlm - qlmir
 
 
  ! !solve Poisson's equation in interstitial region
-call timesec(ta)
 
 if(rpseudo)then
   call timesec(ta)
@@ -213,11 +201,7 @@ if(rpseudo)then
     ifg = igfft (ig)
     zrhoig(ifg)=zrhoig_sort(ig)
   enddo
-  call timesec(tb)
-
   call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
-
-  call timesec(tc)
   do ig=1, ngp
     ifg = igfft (ig)
     zrhoig_sort(ig)=zrhoig(ifg)
@@ -235,20 +219,7 @@ else
   endif
 endif
 call timesec(tb)
-!write(*,*)"pseudoch :",tb-ta
-!stop
-! write(*,*)"pseudo.dat"
-! open(11,file='pseudo.dat',status='replace')
-!   do ig=1, ngp
-!     !i=igfft(ii)
-!     write(11,*)dble(zrhoig_sort(ig)),imag(zrhoig_sort(ig))
-!   enddo
-!   close(11)
-! stop
-! write(*,*)"blivums"
-! do ig=1, 20
-!   write(*,*)dble(zrhoig_sort(ig)),imag(zrhoig_sort(ig))
-! enddo
+
 
 call timesec(ta)
 if (yukawa) then
@@ -257,58 +228,26 @@ else
   call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff)
 endif
 call timesec(tb)
-!write(*,*)"poisson_ir",tb-ta
-!stop
-! write(*,*)"potencials"
-! do ig=1, 20
-!   write(*,*)dble(zvclir(ig)),imag(zvclir(ig))
-! enddo
-! stop
 
+  ! zrhoig_sort(1:ngp)=zvclir(1:ngp)
+  ! zvclir(:)=zzero
+  ! do ig=1, ngp   
+  !  ifg = igfft (ig)
+  !  zvclir(ifg)=zrhoig_sort(ig)
+  ! enddo
 
-! if (yukawa) then
-!   if (rpseudo) then
-!     call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
-!   else
-!     call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
-!       & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
-!   endif
-
-!   call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir,cutoff)
-
-! else !if not yukawa
-!   if (rpseudo) then
-!     call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-!         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-!         zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=rpseudo,rpseudomat=rpseudomat)
-!   else
-!     call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-!         ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-!         zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=.false.)
-!   endif !if rpseudo or not
-!     zrho0 = zrhoig( igfft( igp0))
-! endif !if Yukawa or not
-
-
-
-
-! call timesec(ta)
-! ! evaluate interstitial potential on muffin-tin surface
-! call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
-!     ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-!      zvclir, qlmir)
-! call timesec(tb)
-! write(*,*)qlmir(1,1)
-! write(*,*)qlmir(1,2)
-! write(*,*)qlmir(2,1)
-! write(*,*)qlmir(2,2)
-! write(*,*)"surface_ir",tb-ta
-! stop
 
 call timesec(ta)
-call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
-call timesec(tb)
-! write(*,*)"surface_ir",tb-ta
+
+
+  ! call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
+  !      ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+  !      zvclir, qlmir)
+
+  call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
+
+  call timesec(tb)
+!  write(*,*)"surface_ir",tb-ta
 
 
 call timesec(ta)
@@ -322,7 +261,7 @@ end do
 end do
 call timesec(tb)
 
-write(*,*)"match_bound_mt",tb-ta
+!write(*,*)"match_bound_mt",tb-ta
 
 
 
@@ -331,14 +270,15 @@ write(*,*)"match_bound_mt",tb-ta
 
 
 ! Fourier transform interstitial potential to real space
-zrhoig_sort=zvclir
-do ig=1, ngp   
-  ifg = igfft (ig)
-  zvclir(ifg)=zrhoig_sort(ig)
-enddo
+  zrhoig_sort(1:ngp)=zvclir(1:ngp)
+  zvclir(:)=zzero
+  do ig=1, ngp   
+   ifg = igfft (ig)
+   zvclir(ifg)=zrhoig_sort(ig)
+  enddo
 call zfftifc( 3, ngrid, 1, zvclir)
 
-deallocate( vion, zrhoig, qlm, qlmir)
+deallocate( vion, zrhoig, qlm, qlmir,zrhoig_sort)
 
 ! add dipole correction
 if( (iscl > 0) .and. input%groundstate%dipolecorrection) then

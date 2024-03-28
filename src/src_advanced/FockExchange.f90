@@ -74,6 +74,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 ! external functions
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
+      logical :: print_times
+      print_times=.False.
 
 ! allocate local arrays
       Allocate (vtest(3))
@@ -97,8 +99,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
 
       !write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
-      !write(*,*) "rspacepseudocharge=",input%groundstate%hybrid%rspacepseudocharge
-      rpseudo=input%groundstate%hybrid%rspacepseudocharge
+      !write(*,*) "rpseudo=",input%groundstate%hybrid%rpseudo
+      rpseudo=input%groundstate%hybrid%rpseudo
       lmaxvr=input%groundstate%lmaxvr
       !write(*,*)"lambda",lambda
 
@@ -266,7 +268,7 @@ call timesec(ta)
 
 
 call timesec(tb)
-write(*,*) 'qpt_init :', tb-ta
+if (print_times) write(*,*) 'qpt_init :', tb-ta
 ! calculate the wavefunctions for occupied states
 
 call timesec(ta)
@@ -275,7 +277,7 @@ call timesec(ta)
          call genWFinMT(wf2)
          call genWFonMesh(wf2)
 call timesec(tb)
-write(*,*) 'genWFs :',tb-ta
+if (print_times) write(*,*) 'genWFs :',tb-ta
 
 
          solver = (input%groundstate%hybrid%singularity.ne."exc")
@@ -504,13 +506,15 @@ endif
 !$OMP END PARALLEL
 
 call timesec(ta)
-write(*,*) 'time_coul :', time_coul
-write(*,*) 'time_fft :', time_fft
-write(*,*) 'time_prod :', time_prod
-write(*,*) 'time_misc :', time_misc
-write(*,*) 'time_rs :', time_rs
-write(*,*) 'time_critical :', time_critical
-write(*,*) 'omp_loop :',ta-tb
+if (print_times) then
+   write(*,*) 'time_coul :', time_coul
+   write(*,*) 'time_fft :', time_fft
+   write(*,*) 'time_prod :', time_prod
+   write(*,*) 'time_misc :', time_misc
+   write(*,*) 'time_rs :', time_rs
+   write(*,*) 'time_critical :', time_critical
+   write(*,*) 'omp_loop :',ta-tb
+endif
          vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
 
@@ -584,7 +588,7 @@ If (.true.) Then
       End Do ! is
 End If
 call timesec(tb)
-write(*,*) 'vcv :',tb-ta
+if (print_times) write(*,*) 'vcv :',tb-ta
 
       vxpsimt=vxpsimt+zvclmt
       Allocate (wf1ir(ngrtot))
@@ -633,7 +637,7 @@ call timesec(ta)
 !$OMP END PARALLEL
 call timesec(tb)
 
-write(*,*) 'Matrix :',tb-ta
+if (print_times) write(*,*) 'Matrix :',tb-ta
 
 if (.false.) then
       write(*,*)"element(1,1)",dble(vnlvv(1,1)),",",imag(vnlvv(1,1))

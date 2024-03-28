@@ -1758,7 +1758,6 @@ enddo!is
     yukawa=.false.
   endif
 
-
     zvclir=zzero
   r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
 
@@ -1775,7 +1774,7 @@ if (.not.yukawa)then
     End Do
 
  Else! cutof
-    Do ig = 1, ngvec
+     Do ig = 1, ngvec
       ifg=ig!igfft(ig)
        If (gpc(ig) .Gt. input%structure%epslat) Then
         zvclir (ifg) = fourpi * zrhoir (ig) / (gpc(ig)**2)
@@ -1783,8 +1782,7 @@ if (.not.yukawa)then
         zvclir (ifg) = 0.d0
        End If
     End Do
-
- End If !if cutoff
+  End If !if cutoff
 else ! if yukawa
 
 
@@ -1799,17 +1797,14 @@ else ! if yukawa
     Else
        zvclir (ifg) = fourpi * zrhoir(ig)* (1d0 - exp(-zlambda*r_c)*(zlambda*r_c + 1))/(zlambda ** 2)
     End If 
-    !write(*,*)ig,zvclir (ifg)
+
   else ! cutoff
   
     zvclir (ifg) = fourpi * zrhoir (ig) / ((gpc(ig) ** 2) + (zlambda ** 2))
-  
-    !write(*,*)ig,zvclir (ifg)
+
   endif !if cutoff
   End Do !ig
 endif! if yukawa or not
-  
-  !stop
   end subroutine
 
 
