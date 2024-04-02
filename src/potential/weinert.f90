@@ -692,7 +692,7 @@ endif
 
 
 
-subroutine poisson_and_multipoles_mt_yukawa( lmax, nr, r, zrhomt, zvclmt, qlm, zlambda, il, kl, is)
+subroutine poisson_and_multipoles_mt_yukawa( lmax, nr, r, zrhomt, zvclmt, qlm, is, yukawa_in ,zlambda, il, kl)
 use modinteg
 use constants, only: fourpi
 !> maximum angular momentum \(l\)
@@ -707,32 +707,49 @@ complex(dp), intent(in) :: zrhomt(:,:)
 complex(dp), intent(out) :: zvclmt(:,:)
 !> multipole moments of the charge distribution \(q^{{\rm MT},\alpha}_{lm}\)
 complex(dp), intent(out) :: qlm(:)
-Complex (8),Intent (In) :: il(:,0:), kl(:,0:),zlambda
-
 integer, intent(in) :: is
+logical, optional, intent(In) :: yukawa_in
+Complex (8),optional,Intent (In) :: il(:,0:), kl(:,0:),zlambda
+
+
 integer :: l, m, lm
 
 
 complex(dp) :: zt1,zt2
+logical :: yukawa
 !external functions
 Real (8) :: factnm
 External factnm
 
+if(present(yukawa_in))then 
+  yukawa=yukawa_in
+else
+  yukawa=.false.
+endif
 
 
-call poisson_mt_yukawa( lmax, nr, r, zrhomt(:, :), zvclmt, &
-                               & zlambda, il(:,:), kl(:,:), is)
+call poisson_mt_yukawa( lmax, nr, r, zrhomt(:, :), zvclmt, is, &
+                               & yukawa_in=yukawa,zlambda=zlambda, il=il(:,:), kl=kl(:,:))
 
-lm=0
-Do l = 0, lmax
-  zt1 = factnm (2*l+1, 2) / (zlambda ** l)
-  zt2 = 1d0 / ( kl(nr,l)* fourpi * zlambda)
-  Do m = - l, l
-    lm = lm + 1
-    qlm (lm) = zt1 * zt2 * zvclmt (lm,nr)
-  End Do
-enddo
-
+if(yukawa)then
+  lm=0
+  Do l = 0, lmax
+    zt1 = factnm (2*l+1, 2) / (zlambda ** l)
+    zt2 = 1d0 / ( kl(nr,l)* fourpi * zlambda)
+    Do m = - l, l
+      lm = lm + 1
+      qlm (lm) = zt1 * zt2 * zvclmt (lm,nr)
+    End Do
+  enddo
+else
+  lm=0
+  Do l = 0, lmax
+    Do m = - l, l
+      lm = lm + 1
+      qlm (lm) = (2*l+1) * r(nr)**(l+1) *zvclmt (lm,nr) / fourpi
+    End Do
+  enddo
+endif
 
 !write(*,*)"mans"
 !do ir=1, nr
@@ -991,7 +1008,7 @@ end subroutine
 
 
 
-  subroutine poisson_mt_yukawa( lmax, nr, r, zrhomt, zvclmt, zlambda, il, kl, is)
+  subroutine poisson_mt_yukawa( lmax, nr, r, zrhomt, zvclmt,is, yukawa_in,zlambda, il, kl)
     use modinteg
     use constants, only: fourpi,zzero
     !> maximum angular momentum \(l\)
@@ -1004,32 +1021,102 @@ end subroutine
     complex(dp), intent(in) :: zrhomt(:,:)
     !> complex electrostatic potential \(v_{\rm sph}[n^\alpha_{lm}](r)\)
     complex(dp), intent(out) :: zvclmt(:,:)
-
-    Complex (8),Intent (In) :: il(:,0:), kl(:,0:),zlambda
-    
     integer, intent(in) :: is
+
+    Complex (8),optional,Intent (In) :: il(:,0:), kl(:,0:),zlambda
+    logical, optional, intent(In) :: yukawa_in
+ 
     integer :: l, m, lm, ir
     
-    complex(dp) :: f1(nr),f2(nr),g1(nr),g2(nr),zt1,zt2
-
+    complex(dp) :: f1(nr),f2(nr),g1(nr),g2(nr),zt1
+    real(dp)  :: t1 
+    complex(dp) ,allocatable :: rl(:),ril1(:),ri(:),r2(:),tr1(:),tr2(:)
+    logical :: yukawa
+    
+    if(present(yukawa_in))then 
+      yukawa=yukawa_in
+    else
+      yukawa=.false.
+    endif
 
     zvclmt=zzero
-        
-    lm = 0
-    Do l = 0, lmax
-      Do m= -l, l
-          lm = lm + 1
-          
-          f1 = il(:nr,l) * r(:nr)**2 * zrhomt(lm, :nr)
-          call integ_cf (nr, is, f1, g1, mt_integw)
-          f1 = kl(:nr,l) * g1
-          f2 = kl(:nr,l) * r(:nr)**2 * zrhomt(lm, :nr)
-          call integ_cf (nr, is, f2, g2, mt_integw)
-          f2= il(:nr,l) * (g2(nr)-g2)
-          zvclmt (lm, :nr)=fourpi * zlambda * (f1+f2)
-       Enddo
-    enddo
     
+    if(yukawa) then
+      zt1=fourpi * zlambda 
+      allocate(r2(nr))
+      r2=r(:nr)*r(:nr)
+      lm = 0
+      Do l = 0, lmax
+        Do m= -l, l
+            lm = lm + 1
+            f1 = il(:nr,l) * r2 * zrhomt(lm, :nr)
+            call integ_cf (nr, is, f1, g1, mt_integw)
+            f1 = kl(:nr,l) * g1
+            f2 = kl(:nr,l) * r2 * zrhomt(lm, :nr)
+            call integ_cf (nr, is, f2, g2, mt_integw)
+            f2= il(:nr,l) * (g2(nr)-g2)
+            zvclmt (lm, :nr)=zt1 * (f1+f2)
+        Enddo
+      enddo
+      deallocate(r2)
+    else !not Yukawa
+      allocate(rl(nr),ril1(nr),ri(nr),r2(nr),tr1(nr),tr2(nr))
+      
+      rl(:) = 1d0          !r^l
+      ri(:) = 1d0/r(:nr)
+      ril1(:) = 1d0/r(:nr) ! r^(-l-1)
+      r2=r(:nr)*r(:nr)
+
+      lm = 0
+      Do l = 0, lmax
+        t1 = fourpi/(2*l+1)
+        tr1=rl*r2
+        tr2=ril1*r2
+        Do m= -l, l
+          lm = lm + 1
+          f1=zrhomt(lm, :nr)*tr1
+          call integ_cf (nr, is, f1, g1, mt_integw)
+          f1=g1*ril1 !/ r(:nr)**(l+1)
+
+          f2=zrhomt(lm, :nr)*tr2 !/r(:nr)**(l-1)
+          call integ_cf (nr, is, f2, g2, mt_integw)
+          f2= rl * (g2(nr)-g2)
+
+          zvclmt (lm, :nr)=(f1+f2)*t1
+        Enddo
+        ! update r^l and r^(-l-1)
+        if( l < lmax) then
+          rl = rl*r(:nr)
+          ril1 = ril1*ri
+        end if
+      enddo
+      deallocate(rl,ril1,ri,r2,tr1,tr2)
+
+
+
+
+
+
+
+      ! lm = 0
+      ! Do l = 0, lmax
+      !   Do m= -l, l
+      !     lm = lm + 1
+      !     f1=zrhomt(lm, :nr)*r(:nr)**(l+2)
+      !     call integ_cf (nr, is, f1, g1, mt_integw)
+      !     f1=g1 / r(:nr)**(l+1)
+
+      !     f2=zrhomt(lm, :nr)/r(:nr)**(l-1)
+      !     call integ_cf (nr, is, f2, g2, mt_integw)
+      !     f2= r(:nr)**(l)* (g2(nr)-g2)
+          
+      !     !f3=-r(:nr)**(l)*g1(nr)/r(nr)**(2*l+1)
+
+      !     zvclmt (lm, :nr)=fourpi *(f1+f2)/(2*l+1)
+      !   Enddo
+      ! enddo
+
+    endif! if yukawa or not
  
     
        

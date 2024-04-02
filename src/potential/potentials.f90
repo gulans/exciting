@@ -130,19 +130,19 @@ allocate( vion( nrmtmax, nspecies), source=0._dp)
 ! solve Poisson's equation in each muffin-tin sphere
 ! and find muffin-tin multipoles
 
-do is = 1, nspecies
-do ia = 1, natoms(is)
-ias = idxas(ia,is)
 
-if(yukawa) then
-call poisson_and_multipoles_mt_yukawa ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias),&
-& zlambda, zbessi(1:nr(is),0:input%groundstate%lmaxvr,is), zbessk(1:nr(is),0:input%groundstate%lmaxvr,is),is)
-vmad(ias) = dble( zvclmt(1,1,ias) ) * y00       
-else ! Coulumb
-call poisson_and_multipoles_mt ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias))
-vmad(ias) = dble( zvclmt(1,1,ias) ) * y00   
-endif
-end do
+do is = 1, nspecies
+  do ia = 1, natoms(is)
+  ias = idxas(ia,is)
+    if(yukawa) then
+      call poisson_and_multipoles_mt_yukawa ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias), is,&
+          & yukawa_in=yukawa,zlambda=zlambda, il=zbessi(1:nr(is),0:input%groundstate%lmaxvr,is), kl=zbessk(1:nr(is),0:input%groundstate%lmaxvr,is))    
+    else ! Coulumb
+      call poisson_and_multipoles_mt_yukawa ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias), is)     
+    endif
+
+    vmad(ias) = dble( zvclmt(1,1,ias) ) * y00  
+  end do
 end do
 
 ! add ionic potential and monopole
@@ -431,8 +431,8 @@ endif
           ias = idxas(ia,is)
 
           if(yukawa) then
-              call poisson_and_multipoles_mt_yukawa ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias),&
-                  & zlambda, zbessi(1:nr(is),0:input%groundstate%lmaxvr,is), zbessk(1:nr(is),0:input%groundstate%lmaxvr,is),is)
+            call poisson_and_multipoles_mt_yukawa ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias), is,&
+            & yukawa_in=yukawa,zlambda=zlambda, il=zbessi(1:nr(is),0:input%groundstate%lmaxvr,is), kl=zbessk(1:nr(is),0:input%groundstate%lmaxvr,is))
             vmad(ias) = dble( zvclmt(1,1,ias) ) * y00       
           else ! Coulumb
             call poisson_and_multipoles_mt ( input%groundstate%lmaxvr, nr(is), r(:,is), zrhomt(:,:,ias), zvclmt(:,:,ias), qlm(:,ias))

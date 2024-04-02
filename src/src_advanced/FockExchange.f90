@@ -550,19 +550,21 @@ If (.true.) Then
       
 ! calculate the Coulomb potential
                      if (input%groundstate%hybrid%erfcapprox.eq."none") then
-                        Call zpotclmt (input%groundstate%ptnucl, &
-                        & input%groundstate%lmaxvr, nrc, rcmt(:, is), &
-                        & 0.d0, lmmaxvr, zrhomt(:, :, ias), zfmt) ! Returns SH     
+                        ! Call zpotclmt (input%groundstate%ptnucl, &
+                        ! & input%groundstate%lmaxvr, nrc, rcmt(:, is), &
+                        ! & 0.d0, lmmaxvr, zrhomt(:, :, ias), zfmt) ! Returns SH     
+                        call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, is)
+
                      else
                         zfmt=zzero
                         do ifit=1, nfit
-                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, &
-                              & erfc_fit(ifit,2), zbessi(:,ifit,:,is), zbessk(:,ifit,:,is), is)
+                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, is, &
+                              & yukawa_in=.true., zlambda=erfc_fit(ifit,2), il=zbessi(:,ifit,:,is), kl=zbessk(:,ifit,:,is))
                            zfmt=zfmt+zfmt0 * erfc_fit(ifit,1)
                         enddo
                         do ifit=2, nfit
-                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, &
-                              & conjg(erfc_fit(ifit,2)), conjg(zbessi(:,ifit,:,is)), conjg(zbessk(:,ifit,:,is)), is)
+                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, is, &
+                              & yukawa_in=.true., zlambda=conjg(erfc_fit(ifit,2)), il=conjg(zbessi(:,ifit,:,is)), kl=conjg(zbessk(:,ifit,:,is)))
                            zfmt=zfmt+zfmt0 * conjg(erfc_fit(ifit,1))
                         enddo
                      endif
