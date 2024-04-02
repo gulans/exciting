@@ -74,7 +74,9 @@ Subroutine init0
 !------------------------------------!
 !     angular momentum variables     !
 !------------------------------------!
-      ntpll = 770
+      !ntpll = 770
+      !ntpll = 434
+      ntpll = 194
       lmmaxhf = (2*input%groundstate%lmaxvr+1) ** 2
       lmmaxvr = (input%groundstate%lmaxvr+1) ** 2
       lmmaxapw = (input%groundstate%lmaxapw+1) ** 2
