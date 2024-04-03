@@ -26,7 +26,7 @@ subroutine calcmp2_frozen(iq,iomstart,iomend)
       integer(4) :: ik, jk, ispn
       integer(4) :: im, iop, jop
       integer(4) :: ndim, mdim, nmdim,nocc,nunocc, n_states
-      integer(4) :: nblk, iblk, mstart, mend
+      integer(4) :: nblk, iblk, mstart, mend, n_start_frozen
       integer(8) :: recl
       real(8)    :: tstart, tend
       real(8)    :: wto, wlo
@@ -143,17 +143,18 @@ subroutine calcmp2_frozen(iq,iomstart,iomend)
   !
   !  Coulomb vertex dimensions 
   !  mixed basis size  X  number of all bands  X  number of all bands 
+n_start_frozen = 8
               allocate(minmmat(mbsiz+1,nstdf,nstdf))
-              allocate(minmmat2(mbsiz,2:nstdf,2:nstdf))
+              allocate(minmmat2(mbsiz,n_start_frozen:nstdf,n_start_frozen:nstdf))
               msize = sizeof(minmmat)*b2mb
   
               ! compute M^i_{nm}+M^i_{cm}
   write(*,*) 'expand_products',nstdf, size(minmmat)
-              call expand_products(ik, iq, 2, nstdf, nstdf, 2, nstdf, -1, minmmat2)
+              call expand_products(ik, iq, n_start_frozen, nstdf, nstdf, n_start_frozen, nstdf, -1, minmmat2)
   write(*,*) 'expand_products done'
   !            call expand_products(ik, iq, 1, mend, nstdf, 1, mend, -1, minmmat)
   minmmat = 0.d0
-  minmmat(1:mbsiz,2:nstdf,2:nstdf) = minmmat2
+  minmmat(1:mbsiz,n_start_frozen:nstdf,n_start_frozen:nstdf) = minmmat2
   deallocate(minmmat2)
   minmmat(mbsiz+1,:,:) = cmplx(0.d0, 0.d0)
   corr = 4.d0*pi*vi*singc2

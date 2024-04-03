@@ -181,7 +181,7 @@ subroutine calcmp2_full(iq,iomstart,iomend)
               enddo
   
               !write(*,*) 'E_MP2',calculate_mp2_energy(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
-               call calculate_mp2_energy(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
+              ! call calculate_mp2_energy(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
       endif
         ! Flatten DFT eigenvalues array, needed for cc4s output
         n_states = nocc + nunocc

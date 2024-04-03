@@ -217,6 +217,7 @@ Subroutine hybrids
                 call hmlint(mt_hscf)
 call calc_vxnl()
 !                write(*,*)"afer calc_vxnl------"
+                if (ihyb.eq.1) call read_vxnl()
                 do ik = 1, 14
                         write(*,'(14F13.9)') dble(vxnl(ik,1:14, :))
                 end do
