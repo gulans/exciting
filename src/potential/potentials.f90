@@ -98,7 +98,6 @@ real(dp) :: t1, ta, tb,tc,td,te,tf
 complex(dp), allocatable :: zrhoig_sort(:)
 real(dp) :: maxrhog
 integer :: ngp2
-complex(dp) :: zvclir_tmp(ngrtot)
 
 if (present(hybrid_in)) then 
 hybrid=hybrid_in
@@ -174,8 +173,11 @@ ig=ngp
   do while (abs(zrhoig_sort(ig)).lt.1d-14*maxrhog)
     ig=ig-1 
   enddo
-  ngp2=ig+1
- 
+  if (ig.eq.ngp)then
+    ngp2=ig
+  else
+    ngp2=ig + 1
+  endif
 
 if (yukawa) then
   call multipoles_ir2( input%groundstate%lmaxvr, ngp2, gpc, &

@@ -45,7 +45,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) sfacgq0 (natmtot)
 ! allocatable arrays
       Real (8), Allocatable :: vgqc (:, :)
-      Real (8), Allocatable :: vtest (:)
+
       Real (8), Allocatable :: tpgqc (:, :)
       Real (8), Allocatable :: gqc (:)
       Real (8), Allocatable :: jlgqr (:, :, :)
@@ -60,11 +60,11 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: wf1ir (:)
       Complex (8), Allocatable :: wf2ir (:)
       Complex (8), Allocatable :: zrhomt (:, :, :)
-      Complex (8), Allocatable :: zrhoir (:)
+     ! Complex (8), Allocatable :: zrhoir (:)
       Complex (8), Allocatable :: zvclmt (:, :, :, :)
       Complex (8), Allocatable :: zvcltp (:, :)
       Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :)
-      Complex (8), Allocatable :: zwfir (:)
+     ! Complex (8), Allocatable :: zwfir (:)
 
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
       
@@ -78,7 +78,6 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       print_times=.False.
 
 ! allocate local arrays
-      Allocate (vtest(3))
       Allocate (vgqc(3, ngvec))
       Allocate (tpgqc(2, ngvec))
       Allocate (gqc(ngvec))
@@ -86,15 +85,15 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (jlgq0r(0:input%groundstate%lmaxvr, nrcmtmax, nspecies))
       Allocate (ylmgq(lmmaxvr, ngvec))
       Allocate (sfacgq(ngvec, natmtot))
-      Allocate (vxpsiirtmp(ngrtot))
-      Allocate (vxpsigktmp(ngkmax))
+      Allocate (vxpsiirtmp(ngrtot))   !dealoc
+      Allocate (vxpsigktmp(ngkmax))   !dealoc
       Allocate (wfcr1(ntpll, nrcmtmax))
       Allocate (zrhomt(lmmaxvr, nrcmtmax, natmtot))
-      Allocate (zrhoir(ngrtot))
+     ! Allocate (zrhoir(ngrtot))
       Allocate (zvcltp(ntpll, nrcmtmax))
       Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax))
-      Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv))
-      Allocate (zwfir(ngkmax))
+      Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv)) !dealoc
+      !Allocate (zwfir(ngkmax))
 
 
 
@@ -659,8 +658,10 @@ end if
       Deallocate (ylmgq, sfacgq)
       Deallocate (wfcr1)
       Deallocate (wf1ir)
-      Deallocate (zrhomt, zrhoir, zvcltp, zfmt, zfmt0)
-
+      Deallocate (zrhomt, zvcltp, zfmt, zfmt0)
+      Deallocate (vxpsiirtmp)   
+      Deallocate (vxpsigktmp)   
+      Deallocate (zvclmt) 
       if (allocated(jlgqsmallr)) then
          deallocate(jlgqsmallr)
       endif
