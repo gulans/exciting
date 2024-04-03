@@ -335,8 +335,11 @@ if (allocated(mt_integw%fintw)) then
 !-----------------------!
 ! initialize modbess    !
 !-----------------------!
-
- call init_bess(nrmtmax,nspecies,nrmt,spr(1:nrmtmax,:))
+ if (associated(input%groundstate%Hybrid)) then
+      if (input%groundstate%hybrid%erfcapprox.ne."none") then
+            call init_bess(nrmtmax,nspecies,nrmt,spr(1:nrmtmax,:))
+      endif
+endif
 
 
 !--------------------------------------!

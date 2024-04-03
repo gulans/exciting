@@ -20,25 +20,36 @@ subroutine init_bess(nrmtmax,nspecies,nrmt,r)
   integer, intent(in) :: nrmt(nspecies)
   real(8), intent(in) :: r(nrmtmax,nspecies)
   
-  integer :: ii,ir, is
+  integer :: ii,ir,is,lmax_bess
+
   nfit=9
-  If (associated(input%groundstate%Hybrid)) Then
-    lambda=input%groundstate%Hybrid%omega
-  else
-    lambda=0.11
-  endif
   
+  lambda=input%groundstate%Hybrid%omega
+
+  if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
+    if(input%groundstate%Hybrid%rpseudo) then
+      lmax_bess=input%groundstate%lmaxvr
+    else
+      lmax_bess=input%groundstate%lmaxvr+input%groundstate%npsden+1
+    endif
+  elseif (input%groundstate%hybrid%erfcapprox.eq."PW") then
+    lmax_bess=input%groundstate%lmaxvr
+  endif
+
+
+  write(*,*)"Initialising modbess with lmax:", lmax_bess, "and lambda:", lambda
+
   allocate (erfc_fit(nfit,2))
   call errfun(nfit,lambda,erfc_fit)
 
-  allocate (zbessi(nrmtmax,nfit,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies))
-  allocate (zbessk(nrmtmax,nfit,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies))
-  allocate (zilmt(nfit,0:input%groundstate%lmaxvr+input%groundstate%npsden+1,nspecies))
+  allocate (zbessi(nrmtmax,nfit,0:lmax_bess,nspecies))
+  allocate (zbessk(nrmtmax,nfit,0:lmax_bess,nspecies))
+  allocate (zilmt(nfit,0:lmax_bess,nspecies))
   zbessi=zzero
   zbessk=zzero
 
   do is=1, nspecies
-    call get_Bess_fun( nrmt(is), r(1:nrmt(is),is),input%groundstate%lmaxvr+input%groundstate%npsden+1,&
+    call get_Bess_fun( nrmt(is), r(1:nrmt(is),is),lmax_bess,&
       &nfit,erfc_fit,zbessi(1:nrmt(is),:,:,is),zbessk(1:nrmt(is),:,:,is))
   
   enddo
