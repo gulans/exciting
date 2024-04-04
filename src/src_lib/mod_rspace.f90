@@ -209,32 +209,6 @@ endif
   close(11)
 
 
-
-  open(11,file='rgrid_mt_vec1.dat',status='replace')
-  do is=1, 1!nspecies
-    do ia=1, 1!natoms(is)
-      ratom=atposc (:, ia, is) 
-      ias=idxas(ia,is)
-      do ig=1, rgrid_nmtpoints(ias)
-        rv=rgrid_mt_rv(:,ias,ig)
-        rv_abs=dsqrt(rv(1)**2+rv(2)**2+rv(3)**2)
-        !write(11,*)ias, rgrid_mt_map(ig,ias),cfunir(rgrid_mt_map(ig,ias)),rgrid_mt_rv(1,ias,ig)+ratom(1),rgrid_mt_rv(2,ias,ig)+ratom(2),rgrid_mt_rv(3,ias,ig)+ratom(3)
-        write(11,*)ias, rgrid_mt_map(ig,ias),cfunir(rgrid_mt_map(ig,ias)),rv_abs,rgrid_mt_rv(1,ias,ig),rgrid_mt_rv(2,ias,ig),rgrid_mt_rv(3,ias,ig)
-      enddo
-    enddo
-  enddo
-  close(11)
-  ! ias=1
-  ! write(*,*)"rgrid_nmtpoints(ias)",rgrid_nmtpoints(ias)
-  ! do ig=1, rgrid_nmtpoints(ias)
-  !   do lm=1,lmax**2
-  !     ias=1
-  !     !write(11,*)rgrid_mt_map(ias,ig),rgrid_mt_rabs(ias,ig)
-  !     write(11,*)rgrid_zylm(lm,ias,ig)
-  !   enddo
-  ! enddo
-  ! close(11)
-
 !stop
 end subroutine 
 

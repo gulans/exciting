@@ -305,13 +305,18 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          !write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
 
 
-
+         time_coul=0d0
+         time_fft=0d0
+         time_prod=0d0
+         time_rs=0d0
+         time_misc=0d0
+         time_critical=0d0
 
          
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 !write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td) REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical)
-      
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical)
+      !ist2 
 
          !write(*,*)"pēc", OMP_GET_THREAD_NUM()
          time_coul=0d0
@@ -653,7 +658,7 @@ if (.false.) then
          write(*,'(14F13.9)') dimag(vnlvv(ist1,1:min(nstfv,14)))
       end do
 end if
-      
+
       Deallocate (vgqc, tpgqc, gqc, jlgqr, jlgq0r)
       Deallocate (ylmgq, sfacgq)
       Deallocate (wfcr1)
@@ -667,6 +672,9 @@ end if
       endif
       if (allocated(jlgrtmp)) then
          deallocate(jlgrtmp)
+      endif
+      if (allocated(rpseudomat)) Then
+         Deallocate (rpseudomat)
       endif
 
 

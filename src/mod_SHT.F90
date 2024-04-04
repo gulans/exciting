@@ -64,7 +64,10 @@ Module mod_SHT
       allocate( fsht(lmmax,lmmax), bsht(lmmax,lmmax))
     
       lwork = 2*lmmax
-      allocate( tp(2,lmmax), rlm(lmmax), ipiv(lmmax), work(lwork))
+      allocate( tp(2,lmmax))
+      allocate( rlm(lmmax))
+      allocate(ipiv(lmmax))
+      allocate(work(lwork))
     
       ! generate spherical covering set for lmaxapw
       call sphcover( lmmax, tp)

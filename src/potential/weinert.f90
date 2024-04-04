@@ -1850,10 +1850,9 @@ enddo!is
 
 if (.not.yukawa)then
   If (cutoff) Then
-
     Do ig = 1, ngvec
       ifg=ig!igfft(ig)
-      If (gpc(ig) .Gt. input%structure%epslat) Then 
+      If (gpc(ig) .Gt. input%structure%epslat) Then
         zvclir (ifg) = fourpi * zrhoir (ig)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
       Else
         zvclir (ifg) = zrhoir(ig)*(fourpi*0.5d0)*r_c**2

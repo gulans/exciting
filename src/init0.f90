@@ -460,9 +460,12 @@ endif
 !------------------------!
 !initialize rspace module!
 !------------------------!
-if (.not.allocated(rgrid_mt_rv)) then
-      call generate_rgrid_mt_data(input%groundstate%lmaxvr)
- endif
+if (associated(input%groundstate%Hybrid).and.(input%groundstate%hybrid%rpseudo)) then
+      if (.not.allocated(rgrid_mt_rv)) then
+            call generate_rgrid_mt_data(input%groundstate%lmaxvr)
+      endif
+endif
+
 
 !---------------------------------------!
 !     charge density and potentials     !

@@ -966,61 +966,143 @@ call timesec(tb)
 ! !ROUTINE: WFprodrs
 ! !INTERFACE:
 !
-!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! THE ORIGINAL exciting-neon WFprodrs subroutine BEGINS HERE !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!      subroutine WFprodrs(ist1,wf1,ist2,wf2,prod)
+!      use modinput
+!      use mod_APW_LO
+!      use mod_atoms
+!      use mod_muffin_tin
+!      use mod_eigenvalue_occupancy
+!      use constants, only : zzero, zone
+!      use mod_SHT
+!      use mod_Gvector, only : ngrtot
+! ! !USES:
+! ! !DESCRIPTION:
+! ! Evaluates a product of two WFs in the real space
+! !
+! ! !REVISION HISTORY:
+! !   Created 2021 (Andris)
+! !EOP
+! !BOC
+!      implicit none
+!      integer, intent(in) :: ist1,ist2
+!      type (WFType) :: wf1,wf2,prod
+!      integer :: is,ia,ias
+!      integer :: l1,l3,m1,m3,lm1,lm3,lm2,io1,io2,if1,if3,if1old,if3old,ilo1,ilo2,lmmaxprod
+!      complex(8), allocatable :: factors(:), rho(:,:), fr(:)
+!      complex(8) :: zt
+!      real(8) :: ta,tb
+
+!      if (.not.allocated(prod%ir)) allocate(prod%ir(ngrtot,1))
+!      if (.not.allocated(prod%mtrlm)) allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
+! call timesec(ta)
+!      if (.not.allocated(prod%mtmesh)) allocate(prod%mtmesh(ntpll,nrmtmax,natmtot,1))
+!      prod%mtmesh(:,:,:,1)=conjg(wf1%mtmesh(:,:,:,ist1))*wf2%mtmesh(:,:,:,ist2)
+
+!      do is=1,nspecies
+!        do ia=1,natoms(is)
+!          ias=idxas(ia,is)
+!         !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxvr, zone, zfshtvr, lmmaxvr, prod%mtmesh(1,1,ias,1), lmmaxvr, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat
+!         !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxhf, zone, zfshthf, lmmaxhf, prod%mtmesh(1,1,ias,1), lmmaxhf, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat2
+!          Call zgemm ('N', 'N', lmmaxvr, nrmt(is), ntpll, zone, zfshthf, lmmaxvr, prod%mtmesh(1,1,ias,1), ntpll, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat3
+!        enddo
+!      enddo
+
+!      deallocate(prod%mtmesh)
+! call timesec(tb)
+! !write(*,*) tb-ta
+
+!      !prod%ir(:,1)=conjg(wf1%ir(:,ist1))*wf2%ir(:,ist2)
+!      end subroutine WFprodrs
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! THE ORIGINAL exciting-neon WFprodrs subroutine ENDS HERE !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! VERSION OF WFprodrs subroutine that works faster STARTS HERE !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      subroutine WFprodrs(ist1,wf1,ist2,wf2,prod)
-     use modinput
-     use mod_APW_LO
-     use mod_atoms
-     use mod_muffin_tin
-     use mod_eigenvalue_occupancy
-     use constants, only : zzero, zone
-     use mod_SHT
-     use mod_Gvector, only : ngrtot
-! !USES:
-! !DESCRIPTION:
-! Evaluates a product of two WFs in the real space
-!
-! !REVISION HISTORY:
-!   Created 2021 (Andris)
-!EOP
-!BOC
-     implicit none
-     integer, intent(in) :: ist1,ist2
-     type (WFType) :: wf1,wf2,prod
-     integer :: is,ia,ias
-     integer :: l1,l3,m1,m3,lm1,lm3,lm2,io1,io2,if1,if3,if1old,if3old,ilo1,ilo2,lmmaxprod
-     complex(8), allocatable :: factors(:), rho(:,:), fr(:)
-     complex(8) :: zt
-     real(8) :: ta,tb
+      use modinput
+      use mod_APW_LO
+      use mod_atoms
+      use mod_muffin_tin
+      use mod_eigenvalue_occupancy
+      use constants, only : zzero, zone
+      use mod_SHT
+      use mod_Gvector, only : ngrtot
+ ! !USES:
+ ! !DESCRIPTION:
+ ! Evaluates a product of two WFs in the real space
+ !
+ ! !REVISION HISTORY:
+ !   Created 2021 (Andris)
+ !EOP
+ !BOC
+      implicit none
+      integer, intent(in) :: ist1,ist2
+      type (WFType) :: wf1,wf2,prod
+      integer :: is,ia,ias
+      integer :: l1,l3,m1,m3,lm1,lm3,lm2,io1,io2,if1,if3,if1old,if3old,ilo1,ilo2,lmmaxprod,lm,ir
+      complex(8), allocatable :: factors(:), rho(:,:), fr(:), mtmesh(:,:), angmesh(:)
+      complex(8) :: zt
+      real(8) :: ta,tb
+ 
+      if (.not.allocated(prod%ir)) allocate(prod%ir(ngrtot,1))
+      if (.not.allocated(prod%mtrlm)) allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
+ 
+ call timesec(ta)
+ 
+ !     if (.not.allocated(prod%mtmesh)) allocate(prod%mtmesh(ntpll,nrmtmax,natmtot,1))
+ !     prod%mtmesh(:,:,:,1)=conjg(wf1%mtmesh(:,:,:,ist1))*wf2%mtmesh(:,:,:,ist2)
+      allocate(mtmesh(ntpll,nrmtmax))
+      allocate(angmesh(ntpll))
+      do is=1,nspecies
+        do ia=1,natoms(is)
+          ias=idxas(ia,is)
+#ifdef MTMESH_zgemv
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ir,lm,angmesh)
+!$OMP DO
+          do ir=1,nrmt(is)
+            do lm=1,ntpll
+              angmesh(lm)=conjg(wf1%mtmesh(lm,ir,ias,ist1))*wf2%mtmesh(lm,ir,ias,ist2)
+            enddo
+            call zgemv('N', lmmaxvr, ntpll, zone, zfshthf, lmmaxvr, angmesh, 1, zzero, prod%mtrlm(1,ir,ias,1), 1)
+          enddo
+!$OMP END DO
+!$OMP END PARALLEL
+#else
 
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ir,lm)
+!$OMP DO
+          do ir=1,nrmt(is)
+            do lm=1,ntpll
+              mtmesh(lm,ir)=conjg(wf1%mtmesh(lm,ir,ias,ist1))*wf2%mtmesh(lm,ir,ias,ist2)
+            enddo
+          enddo
+!$OMP END DO
+!$OMP END PARALLEL
+ !         mtmesh(:,1:nrmt(is))=conjg(wf1%mtmesh(:,1:nrmt(is),ias,ist1))*wf2%mtmesh(:,1:nrmt(is),ias,ist2)
+ 
+         !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxvr, zone, zfshtvr, lmmaxvr, prod%mtmesh(1,1,ias,1), lmmaxvr, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat
+         !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxhf, zone, zfshthf, lmmaxhf, prod%mtmesh(1,1,ias,1), lmmaxhf, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat2
+          Call zgemm ('N', 'N', lmmaxvr, nrmt(is), ntpll, zone, zfshthf, lmmaxvr, mtmesh(1,1), ntpll, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat3
+#endif
+ 
+ 
+        enddo
+      enddo
+      deallocate(mtmesh,angmesh)
+ !     deallocate(prod%mtmesh)
 
-
-     if (.not.allocated(prod%ir)) allocate(prod%ir(ngrtot,1))
-     if (.not.allocated(prod%mtrlm)) allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
-
-
-call timesec(ta)
-
-     if (.not.allocated(prod%mtmesh)) allocate(prod%mtmesh(ntpll,nrmtmax,natmtot,1))
-     prod%mtmesh(:,:,:,1)=conjg(wf1%mtmesh(:,:,:,ist1))*wf2%mtmesh(:,:,:,ist2)
-
-     do is=1,nspecies
-       do ia=1,natoms(is)
-         ias=idxas(ia,is)
-        !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxvr, zone, zfshtvr, lmmaxvr, prod%mtmesh(1,1,ias,1), lmmaxvr, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat
-        !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxhf, zone, zfshthf, lmmaxhf, prod%mtmesh(1,1,ias,1), lmmaxhf, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat2
-         Call zgemm ('N', 'N', lmmaxvr, nrmt(is), ntpll, zone, zfshthf, lmmaxvr, prod%mtmesh(1,1,ias,1), ntpll, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat3
-       enddo
-     enddo
-
-     deallocate(prod%mtmesh)
-
-
-call timesec(tb)
-!write(*,*) tb-ta
-
-     !prod%ir(:,1)=conjg(wf1%ir(:,ist1))*wf2%ir(:,ist2)
-     end subroutine WFprodrs
-
+ call timesec(tb)
+ !write(*,*) tb-ta
+ 
+      !prod%ir(:,1)=conjg(wf1%ir(:,ist1))*wf2%ir(:,ist2)
+      end subroutine WFprodrs
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! VERSION OF WFprodrs subroutine that works faster ENDS HERE !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 End Module
