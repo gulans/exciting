@@ -230,7 +230,7 @@ else
   call poisson_ir2(ngp, gpc, igfft, zrhoig_sort, zvclir, cutoff)
 endif
 call timesec(tb)
-
+!write(*,*)"poisson_ir:", tb-ta
   ! zrhoig_sort(1:ngp)=zvclir(1:ngp)
   ! zvclir(:)=zzero
   ! do ig=1, ngp   

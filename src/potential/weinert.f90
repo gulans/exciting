@@ -1832,7 +1832,7 @@ enddo!is
     logical, intent(in) :: cutoff
     
     
-    integer :: ig, ifg
+    integer :: ig, ifg, firstnonzeroG
     real(dp) :: r_c
   !external functions
     Real (8) :: factnm
@@ -1847,49 +1847,56 @@ enddo!is
 
     zvclir=zzero
   r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
+  if (gpc(1) .lt. input%structure%epslat) Then
+    firstnonzeroG=2
+  else
+    firstnonzeroG=1
+  endif
 
 if (.not.yukawa)then
   If (cutoff) Then
-    Do ig = 1, ngvec
-      ifg=ig!igfft(ig)
-      If (gpc(ig) .Gt. input%structure%epslat) Then
-        zvclir (ifg) = fourpi * zrhoir (ig)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
-      Else
-        zvclir (ifg) = zrhoir(ig)*(fourpi*0.5d0)*r_c**2
-      End If
+    Do ig = firstnonzeroG, ngvec
+        zvclir (ig) = fourpi * zrhoir (ig)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
     End Do
-
+    if (firstnonzeroG.eq.2) then
+      zvclir (1) = zrhoir(1)*(fourpi*0.5d0)*r_c**2
+    endif
  Else! cutof
-     Do ig = 1, ngvec
-      ifg=ig!igfft(ig)
-       If (gpc(ig) .Gt. input%structure%epslat) Then
-        zvclir (ifg) = fourpi * zrhoir (ig) / (gpc(ig)**2)
-       Else
-        zvclir (ifg) = 0.d0
-       End If
+    Do ig = firstnonzeroG, ngvec
+      zvclir (ig) = fourpi * zrhoir (ig) / (gpc(ig)**2)
     End Do
+    if (firstnonzeroG.eq.2) then
+      zvclir (1) = 0.d0
+    endif
   End If !if cutoff
 else ! if yukawa
 
 
-  Do ig = 1, ngvec
-    ifg=ig!igfft(ig)
+
   if (cutoff) then
-  
-    If (gpc(ig) .Gt. input%structure%epslat) Then
-       zvclir (ifg) = fourpi * zrhoir (ig) *&
+    Do ig = firstnonzeroG, ngvec
+      zvclir (ig) = fourpi * zrhoir (ig) *&
           (1d0 - exp(-zlambda*r_c)* ( zlambda * sin(gpc(ig)*r_c) / gpc(ig) + cos(gpc(ig)*r_c) ) )/&
           ((gpc(ig) ** 2) + (zlambda ** 2))
-    Else
-       zvclir (ifg) = fourpi * zrhoir(ig)* (1d0 - exp(-zlambda*r_c)*(zlambda*r_c + 1))/(zlambda ** 2)
-    End If 
+    End Do
+    if (firstnonzeroG.eq.2) then
+      zvclir (1) = fourpi * zrhoir(1)* (1d0 - exp(-zlambda*r_c)*(zlambda*r_c + 1))/(zlambda ** 2)
+    endif
+
+    ! If (gpc(ig) .Gt. input%structure%epslat) Then
+    !    zvclir (ifg) = fourpi * zrhoir (ig) *&
+    !       (1d0 - exp(-zlambda*r_c)* ( zlambda * sin(gpc(ig)*r_c) / gpc(ig) + cos(gpc(ig)*r_c) ) )/&
+    !       ((gpc(ig) ** 2) + (zlambda ** 2))
+    ! Else
+    !    zvclir (ifg) = fourpi * zrhoir(ig)* (1d0 - exp(-zlambda*r_c)*(zlambda*r_c + 1))/(zlambda ** 2)
+    ! End If 
 
   else ! cutoff
-  
-    zvclir (ifg) = fourpi * zrhoir (ig) / ((gpc(ig) ** 2) + (zlambda ** 2))
-
+    Do ig = 1, ngvec
+      zvclir (ig) = fourpi * zrhoir (ig) / ((gpc(ig) ** 2) + (zlambda ** 2))
+    enddo
   endif !if cutoff
-  End Do !ig
+
 endif! if yukawa or not
   end subroutine
 

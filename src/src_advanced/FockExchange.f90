@@ -75,7 +75,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
       logical :: print_times
-      print_times=.False.
+      print_times=.True.
 
 ! allocate local arrays
       Allocate (vgqc(3, ngvec))
