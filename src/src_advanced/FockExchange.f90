@@ -39,7 +39,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
 
       Complex (8) ::  potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot),rhoG0,potG0
-      Real (8) :: time_coul, tc, td , time_fft, time_prod, time_rs, time_misc, time_critical
+      Real (8) :: time_coul, tc, td , time_fft, time_prod, time_rs, time_misc, time_critical,time_pw
 ! automatic arrays
       Real (8) :: zn (nspecies)
       Complex (8) sfacgq0 (natmtot)
@@ -75,7 +75,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
       logical :: print_times
-      print_times=.True.
+      print_times=.False.
 
 ! allocate local arrays
       Allocate (vgqc(3, ngvec))
@@ -311,11 +311,11 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          time_rs=0d0
          time_misc=0d0
          time_critical=0d0
-
+         time_pw=0d0
          
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 !write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical) REDUCTION(max: time_pw)
       !ist2 
 
          !write(*,*)"pēc", OMP_GET_THREAD_NUM()
@@ -325,6 +325,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          time_rs=0d0
          time_misc=0d0
          time_critical=0d0
+         time_pw=0d0
          call WFInit(prod)
          call WFInit(pot)
 
@@ -432,9 +433,12 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                time_coul=time_coul+td-tc
 
 if (input%groundstate%hybrid%erfcapprox.eq."PW")then  
+   call timesec(tc)
    call poterfpw(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir, pot%mtrlm(:,:,:,1))
    potir=potir0 - potir !Coulomb - erf
    pot%mtrlm(:,:,:,1)=potmt0 - pot%mtrlm(:,:,:,1)
+   call timesec(td)
+   time_pw=time_pw+td-tc
 endif
 
 
@@ -517,6 +521,7 @@ if (print_times) then
    write(*,*) 'time_misc :', time_misc
    write(*,*) 'time_rs :', time_rs
    write(*,*) 'time_critical :', time_critical
+   write(*,*) 'time_pw :',time_pw
    write(*,*) 'omp_loop :',ta-tb
 endif
          vxpsimt=vxpsimt+zvclmt

@@ -446,7 +446,28 @@ do ir=1, Ngrid
 enddo
 end subroutine
 
-
+subroutine integ_cv(Ngrid,isp,fin,rez,integw)
+  implicit none
+  integer, intent(in) :: Ngrid
+  integer, intent(in) :: isp
+  complex(8), intent(in)  :: fin(Ngrid)
+  complex(8), intent(out) :: rez
+  Type(IntegWeightsType) , intent(in):: integw 
+  integer :: ir
+  
+  real(8) :: finRe(Ngrid),finIm(Ngrid),rezRe,rezIm
+  
+  do ir=1, Ngrid
+    finRe(ir)=dble(fin(ir))
+    finIm(ir)=imag(fin(ir))
+  enddo
+  
+  call integ_v(Ngrid,isp,finRe,rezRe,integw)
+  call integ_v(Ngrid,isp,finIm,rezIm,integw)
+  
+  rez=cmplx(rezRe,rezIm,8)
+  
+  end subroutine
 
 subroutine integ_f_rev(Ngrid,r,isp,fin,fout,integw)
 integer, intent(in) :: Ngrid  !! Number of grid points
