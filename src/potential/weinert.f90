@@ -1180,8 +1180,8 @@ end subroutine
             rr=spr(ir,is)/rmt(is)
             zf1(ir)=(spr(ir,is)/rmt(is))**l*(1d0-(spr(ir,is)/rmt(is))**2)**npsd*zbessi(ir,l,is)*spr(ir,is)**2
           enddo
-          call integ_cf (nrmt(is), is, zf1(1:nrmt(is)), zf2(1:nrmt(is)), mt_integw)
-          rinteg(l,is)=zf2(nrmt(is))
+          call integ_cv (nrmt(is), is, zf1(1:nrmt(is)),rinteg(l,is), mt_integw)
+          !rinteg(l,is)=zf2(nrmt(is))
         enddo
       enddo
     endif

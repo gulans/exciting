@@ -50,9 +50,7 @@ do is=1,nspecies
             do m=-l,l 
                lm=idxlm(l,m)
                zfmt1(:nr)=jlgqsmallr(:nr,l,ig,is)*rcmt(:nr,is)**2* rhomt(lm,:nr,ias)
-               !call integ_cf (nr, is, zfmt1(:nr), zfmt2(:nr), mt_integw)
                call integ_cv (nr, is, zfmt1(:nr), zt3, mt_integw)
-               !zt3=zfmt2(nr)
                zt4=zt3*4d0*pi*ylmgq(lm,ig)*conjg(sfacgq(ig, ias))/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
                potir(ifg)=potir(ifg)+zt4
             enddo ! m
