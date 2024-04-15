@@ -17,6 +17,7 @@
 !>   Created January 2004 (JKD)
 !>   Started clean-up. 2022 (ABuccheri)
 Subroutine init0
+      use modsurf
       use modrspace
       use modinteg
       use modbess
@@ -466,6 +467,8 @@ if (associated(input%groundstate%Hybrid).and.(input%groundstate%hybrid%rpseudo))
       endif
 endif
 
+
+call generate_surf_grid(input%groundstate%lmaxvr)
 
 !---------------------------------------!
 !     charge density and potentials     !

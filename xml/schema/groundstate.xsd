@@ -419,6 +419,14 @@
               </xs:annotation>
             </xs:attribute>
 
+<xs:attribute ex:importance="experimental" ex:unit="" name="rsurf" type="xs:boolean" default="false">
+              <xs:annotation>
+                <xs:documentation>
+                  Potential on the MT surface is calculated on a real space grid.
+                </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+
 
  <xs:attribute ex:importance="essential" ex:unit="" name="erfcapprox" default="none">
               <xs:annotation>

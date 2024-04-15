@@ -34,7 +34,7 @@ module potentials
 
   subroutine coulomb_potential2( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
     & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,rpseudo_in,rpseudomat)
-
+use modsurf, only: surf_pot
 use constants, only: y00,zzero
 use modinput
 use mod_atoms, only: natmtot, nspecies, natoms, idxas
@@ -241,12 +241,28 @@ call timesec(tb)
 
 call timesec(ta)
 
-
-  ! call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
-  !      ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-  !      zvclir, qlmir)
-
+if (input%groundstate%hybrid%rsurf) then
+  zrhoig_sort(1:ngp)=zvclir(1:ngp)
+  zvclir(:)=zzero
+  do ig=1, ngp   
+    ifg = igfft (ig)
+    zvclir(ifg)=zrhoig_sort(ig)
+  enddo
+  call zfftifc( 3, ngrid, 1, zvclir)
+  
+  call surf_pot(input%groundstate%lmaxvr,zvclir,igfft,qlmir)
+else
   call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
+! Fourier transform interstitial potential to real space
+  zrhoig_sort(1:ngp)=zvclir(1:ngp)
+  zvclir(:)=zzero
+  do ig=1, ngp   
+    ifg = igfft (ig)
+    zvclir(ifg)=zrhoig_sort(ig)
+  enddo
+  call zfftifc( 3, ngrid, 1, zvclir)
+endif
+
 
   call timesec(tb)
 !  write(*,*)"surface_ir",tb-ta
@@ -266,19 +282,6 @@ call timesec(tb)
 !write(*,*)"match_bound_mt",tb-ta
 
 
-
-
-
-
-
-! Fourier transform interstitial potential to real space
-  zrhoig_sort(1:ngp)=zvclir(1:ngp)
-  zvclir(:)=zzero
-  do ig=1, ngp   
-   ifg = igfft (ig)
-   zvclir(ifg)=zrhoig_sort(ig)
-  enddo
-call zfftifc( 3, ngrid, 1, zvclir)
 
 deallocate( vion, zrhoig, qlm, qlmir,zrhoig_sort)
 
