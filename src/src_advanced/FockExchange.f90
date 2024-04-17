@@ -562,7 +562,7 @@ If (.true.) Then
                         ! Call zpotclmt (input%groundstate%ptnucl, &
                         ! & input%groundstate%lmaxvr, nrc, rcmt(:, is), &
                         ! & 0.d0, lmmaxvr, zrhomt(:, :, ias), zfmt) ! Returns SH     
-                        call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, is)
+                        call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt, is)
 
                      else
                         zfmt=zzero
