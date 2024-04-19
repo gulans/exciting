@@ -9,6 +9,7 @@ integer,allocatable  :: axisy(:,:),axisz(:,:) !iax,ias
 real(8),allocatable  :: axisx_sph(:,:) !iax,ias
 complex(8),allocatable :: ylm_mat(:,:,:) !lm,iax,ias
 complex(8),allocatable :: ylm_tmat(:,:,:) !lm,iax,ias
+real(8),allocatable   :: raxis(:,:,:)! 3 ,iax,ias
 contains
 
 subroutine generate_surf_grid(lmax)
@@ -30,6 +31,7 @@ subroutine generate_surf_grid(lmax)
   integer :: is,ia,ias,yi,zi,p1,p2,p3
   integer :: nax,iax
   real(8),allocatable  :: axisx_sph_tmp(:,:), tp_tmp(:,:,:) ! 2,iax,ias
+  real(8),allocatable ::  raxis_tmp(:,:,:) !3,iax,ias
   integer,allocatable  :: axisy_tmp(:,:),axisz_tmp(:,:)
   complex(8),allocatable  :: A(:,:),Ainv(:,:),AA(:,:)
   
@@ -47,6 +49,7 @@ subroutine generate_surf_grid(lmax)
   Allocate(axisy_tmp(ngrid(2)*ngrid(3),natmtot),axisz_tmp(ngrid(2)*ngrid(3),natmtot),axisx_sph_tmp(ngrid(2)*ngrid(3),natmtot))
   allocate(naxis(natmtot))
   allocate(tp_tmp(2,ngrid(2)*ngrid(3),natmtot))
+  allocate(raxis_tmp(3,ngrid(2)*ngrid(3),natmtot))
   ia=1
   is=1
   do is=1, nspecies
@@ -67,13 +70,13 @@ subroutine generate_surf_grid(lmax)
               
                 if (disc.gt.1d-9) then
                   xmu= ( -sum(a1*rv) - sqrt(disc) )/ sum(a1**2)
-                  if ((xmu.ge.0d0).and.(xmu.lt.(ngrid(1)-1))) then
+                  if ((xmu.ge.0d0).and.(xmu.lt.(ngrid(1)))) then
                     nax = nax+1
                     axisx_sph_tmp(nax,ias)=xmu
                     axisy_tmp(nax,ias)=yi
                     axisz_tmp(nax,ias)=zi
                     rv1=r0 + a1*xmu - ratom
-
+                    raxis_tmp(:,nax,ias)=rv1
                     !write(*,*)"rmt1",sqrt(sum((rv1)**2)) 
                     tp_tmp(1,nax,ias) = atan2(sqrt(rv1(1)**2+rv1(2)**2),rv1(3))
                     tp_tmp(2,nax,ias) = atan2(rv1(2),rv1(1))
@@ -81,13 +84,13 @@ subroutine generate_surf_grid(lmax)
                   endif
 
                   xmu= ( -sum(a1*rv) + sqrt(disc) )/ sum(a1**2)
-                  if ((xmu.ge.0d0).and.(xmu.lt.(ngrid(1)-1))) then
+                  if ((xmu.ge.0d0).and.(xmu.lt.(ngrid(1)))) then
                     nax = nax+1
                     axisx_sph_tmp(nax,ias)=xmu
                     axisy_tmp(nax,ias)=yi
                     axisz_tmp(nax,ias)=zi
                     rv1=r0 + a1*xmu - ratom
-
+                    raxis_tmp(:,nax,ias)=rv1
                     !write(*,*)"rmt2",sqrt(sum((rv1)**2)) 
                     tp_tmp(1,nax,ias) = atan2(sqrt(rv1(1)**2+rv1(2)**2),rv1(3))
                     tp_tmp(2,nax,ias) = atan2(rv1(2),rv1(1))
@@ -107,6 +110,7 @@ write(*,*)"maxasis",naxismax
 write(*,*)naxis
 
 Allocate(axisy(naxismax,natmtot),axisz(naxismax,natmtot),axisx_sph(naxismax,natmtot),ylm_mat(lmmax,naxismax,natmtot),ylm_tmat(lmmax,naxismax,natmtot))
+Allocate(raxis(3,naxismax,natmtot))
 ylm_mat=zzero
 axisy=0
 axisz=0
@@ -114,10 +118,13 @@ axisx_sph=0d0
 do is=1, nspecies
   do ia=1, natoms(is)
     ias=idxas(ia,is)
+    ratom=atposc (:, ia, is) 
     axisy(1:naxis(ias),ias)=axisy_tmp(1:naxis(ias),ias)
     axisz(1:naxis(ias),ias)=axisz_tmp(1:naxis(ias),ias)
     axisx_sph(1:naxis(ias),ias)=axisx_sph_tmp(1:naxis(ias),ias)
+    
     do iax=1, naxis(ias)
+      raxis(:,iax,ias)=raxis_tmp(:,iax,ias)+ratom
       Call genylm (lmax, tp_tmp(:, iax,ias), ylm_mat(:,iax,ias))
     enddo
   enddo
@@ -187,24 +194,26 @@ enddo
 
 
 
-deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp)
+deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp,raxis_tmp)
 open(11,file='surf.dat',status='replace')
+open(12,file='surf2.dat',status='replace')
   do is=1, nspecies
     do ia=1, natoms(is)
       ias=idxas(ia,is)
       do iax=1, naxis(ias)
         rv(:)=axisx_sph(iax,ias)*a1 + axisy(iax,ias)*a2 + axisz(iax,ias)*a3
         write(11,*)rv(1),rv(2),rv(3)
+        write(12,*)raxis(1,iax,ias),raxis(2,iax,ias),raxis(3,iax,ias)
       enddo
     enddo
   enddo
-  close(11)
-
+close(11)
+close(12)
 
 
 end subroutine 
 
-subroutine surf_pot(lmax,zvclir,igfft,vlm)
+subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
   use modinput
   use m_linalg, only:zlsp
   use mod_Gvector, only: ngrtot, ngrid, ngvec, cfunir,vgc
@@ -215,17 +224,18 @@ subroutine surf_pot(lmax,zvclir,igfft,vlm)
   integer  , intent(in) :: lmax
   complex(8) ,intent(inout) :: zvclir(:)
   integer, intent(in) :: igfft(:)
+  real(8),intent(in) :: qvec(3)
   complex(8) ,intent(inout) :: vlm(:,:)!lm,ias
   complex(8) :: zvax(ngrid(1)), zvaxft(ngrid(1))
   !complex(8) :: zvmu((lmax+1)**2)
   integer :: ig1,ig2,iax,ir,is,ia,ias,iy,iz,imu, nn
   integer :: lmmax,lm
   complex(8),allocatable :: vmu(:,:),vmu2(:,:)
-  real(8) :: xx, irf,ir2,v1(3),a1(3),a2(3),a3(3),t1
+  real(8) :: xx, irf,ir2,v1(3),a1(3),a2(3),a3(3),t1,rv(3)
   complex(8) ::zt1, ii
   integer :: ifg,ig
  
-  complex(8) :: vlm2((lmax+1)**2,1)
+  complex(8) :: vlm2((lmax+1)**2,1),phase
   ii=cmplx(0d0,1d0,8)
   lmmax=(lmax+1)**2
   ias=1
@@ -265,13 +275,24 @@ if(.false.)then
         iy=axisy(iax,ias)
         xx=axisx_sph(iax,ias)
         v1=xx*a1 + iy*a2 + iz*a3
+
+        rv(:)=raxis(:,iax,ias)
+        
+        !!!!!!!!!!!!!!!!!!!!!!
+        !!! This fixes the result for ZnO
+        !v1=rv
+        !!! This fixes the result for ZnO
+        !!!!!!!!!!!!!!!!!!!!!!
+        
+        phase=exp(cmplx(0,1,8)*sum(qvec*rv))
+
         zt1=zzero
         Do ig = 1, ngvec
           ifg = igfft (ig)
           t1 = vgc(1,ig)*v1(1) + vgc(2,ig)*v1(2) + vgc(3,ig)*v1(3)
           zt1 = zt1 + zvclir(ifg)*cmplx(Cos(t1), Sin(t1), 8)
         End Do
-        vmu(iax,ias)=zt1
+        vmu(iax,ias)=zt1*phase
       enddo !iax
       open(11,file='vmu3d.dat',status='replace')
       do iax=1,naxis(ias)
@@ -305,6 +326,8 @@ endif
 
     !Fourier interpolation of potential on x=axisx_sph(iax,ias)
         xx=axisx_sph(iax,ias)
+        rv(:)=raxis(:,iax,ias)
+        phase=exp(cmplx(0,1,8)*sum(qvec*rv))
         zt1=zzero
         do ir=1, ceiling(dble(ngrid(1))/2d0)
           ir2=ir-1
@@ -325,7 +348,7 @@ endif
           irf=2d0*pi*dble(ir2)/dble(ngrid(1))
           zt1=zt1 + zvaxft(ir) * cos (irf*xx)
         endif
-        vmu(iax,ias)=zt1
+        vmu(iax,ias)=zt1*phase
       enddo !iax
       ! open(11,file='vmu1.dat',status='replace')
       ! do iax=1,naxis(ias)

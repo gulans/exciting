@@ -32,7 +32,7 @@ module potentials
     !> [[match_bound_mt(subroutine)]] and [[surface_ir(subroutine)]].
 
 
-  subroutine coulomb_potential2( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
+  subroutine coulomb_potential2( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0,qvec, cutoff,&
     & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,rpseudo_in,rpseudomat)
 use modsurf, only: surf_pot
 use constants, only: y00,zzero
@@ -71,6 +71,7 @@ complex(dp), intent(out) :: zvclmt(:,:,:) ! lm, nrmax, natoms
 complex(dp), intent(out) :: zvclir(:)
 !> Fourier component of pseudocharge density for shortest \({\bf G+p}\) vector
 complex(dp), intent(out) :: zrho0
+real(8), intent(in) :: qvec(3)
 !> option for using coulomb cutoff for solving Poisson's equation
 logical, optional, intent(in) :: cutoff
 logical, optional, intent(in) :: hybrid_in
@@ -250,7 +251,7 @@ if (input%groundstate%hybrid%rsurf) then
   enddo
   call zfftifc( 3, ngrid, 1, zvclir)
   
-  call surf_pot(input%groundstate%lmaxvr,zvclir,igfft,qlmir)
+  call surf_pot(input%groundstate%lmaxvr,zvclir,igfft,qvec,qlmir)
 else
   call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
 ! Fourier transform interstitial potential to real space

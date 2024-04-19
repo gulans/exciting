@@ -396,7 +396,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                      ifit2=ifit2+1
                      Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                     & prodir(:), potmt0, potir0, zrho02, &
+                     & prodir(:), potmt0, potir0, zrho02,v, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),&
                      & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
@@ -407,7 +407,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                      ifit2=ifit2+1
                      Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                     & prodir(:), potmt0, potir0, zrho02, &
+                     & prodir(:), potmt0, potir0, zrho02,v, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),&
                      & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
@@ -420,7 +420,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                if ((input%groundstate%hybrid%erfcapprox.eq."PW").or.(input%groundstate%hybrid%erfcapprox.eq."none")) then
                   Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), potmt0, potir0, zrho02, &
+                  & prodir(:), potmt0, potir0, zrho02,v, &
                   & cutoff=cutoff, hybrid_in=.true.,&
                   & rpseudo_in=rpseudo,rpseudomat=rpseudomat(1,:,:,:))
 
