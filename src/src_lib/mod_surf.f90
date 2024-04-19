@@ -130,67 +130,12 @@ do is=1, nspecies
   enddo
 enddo
 
-! do is=1, nspecies
-!   do ia=1, natoms(is)
-!     ias=idxas(ia,is)
-!     write(*,*)"shapes"
-!     write(*,*)shape(ylm_mat(:,:,ias))
-!     write(*,*)"ylm"
-!     write(*,*)ylm_mat(1,1:3,ias)
-!     write(*,*)ylm_mat(2,1:3,ias)
-!     write(*,*)ylm_mat(3,1:3,ias)
-
-!     allocate( A(naxis(ias),naxis(ias)), Ainv(naxis(ias),naxis(ias)), AA(naxis(ias),naxis(ias)))
-
-!     write(*,*)"shape1",shape( matmul(conjg(transpose(ylm_mat(:,1:naxis(ias),ias))),ylm_mat(:,1:naxis(ias),ias)) )
-!     write(*,*)"shape2", shape(A)
-!     A=matmul(conjg(transpose(ylm_mat(:,1:naxis(ias),ias))),ylm_mat(:,1:naxis(ias),ias))
-!     call zinvert_lapack(A,Ainv)
-!     AA=matmul(Ainv,A)
-!     write(*,*)"pirmais A"
-!     write(*,*)A(1,1:3)
-!     write(*,*)A(2,1:3)
-!     write(*,*)A(3,1:3)
-!     write(*,*)"pirmais Ainv"
-!     write(*,*)Ainv(1,1:3)
-!     write(*,*)Ainv(2,1:3)
-!     write(*,*)Ainv(3,1:3)
-!     write(*,*)"pirmais Ainv*A"
-!     write(*,*)AA(1,1:3)
-!     write(*,*)AA(2,1:3)
-!     write(*,*)AA(3,1:3)
-
-!     A=matmul(conjg(transpose(ylm_mat(:,1:naxis(ias),ias))),ylm_mat(:,1:naxis(ias),ias))
-!     call zinver(A,Ainv,naxis(ias))
-!     AA=matmul(Ainv,A)
-!     write(*,*)"otrs"
-!     write(*,*)A(1,1:3)
-!     write(*,*)A(2,1:3)
-!     write(*,*)A(3,1:3)
-!     write(*,*)"otrais Ainv"
-!     write(*,*)Ainv(1,1:3)
-!     write(*,*)Ainv(2,1:3)
-!     write(*,*)Ainv(3,1:3)
-!     write(*,*)"otrais Ainv*A"
-!     write(*,*)AA(1,1:3)
-!     write(*,*)AA(2,1:3)
-!     write(*,*)AA(3,1:3)
-
-! stop
-
-!     call zinver(A,Ainv,naxis(ias))
-!     write(*,*)shape(matmul(Ainv,transpose(ylm_mat(:,1:naxis(ias),ias))))
-
-
-
-!     call zinver(Ainv,AA,naxis(ias))
-
-!     write(*,*)A(1:3,1:3)
-!     write(*,*)AA(1:3,1:3)
-!     write(*,*)"stop" 
-!     stop
-!   enddo
-! enddo
+do is=1, nspecies
+  do ia=1, natoms(is)
+    ias=idxas(ia,is)
+    call inv_svd(naxis(ias),lmmax,transpose(ylm_mat(:,1:naxis(ias),ias)),ylm_tmat(:,1:naxis(ias),ias))
+  enddo!ia
+enddo!is
 
 
 
@@ -357,10 +302,15 @@ endif
       ! close(11)
 
     !Create a set of v_lm from v_mu
-      allocate(vmu2(naxis(ias),1))
-      vmu2(:,1)=vmu(1:naxis(ias),ias)
-      call zlsp(transpose(ylm_mat(:,1:naxis(ias),ias)), vmu2, vlm2) 
-      
+      ! allocate(vmu2(naxis(ias),1))
+      ! vmu2(:,1)=vmu(1:naxis(ias),ias)
+      ! call zlsp(transpose(ylm_mat(:,1:naxis(ias),ias)), vmu2, vlm2)
+      ! vlm(:,ias)=vlm2(:,1)
+      ! deallocate(vmu2)
+
+    !Second way to do it:
+      vlm(:,ias)=matmul(ylm_tmat(:,1:naxis(ias),ias),vmu(1:naxis(ias),ias))
+
       ! open(11,file='lm-set.dat',status='replace')
       !  do lm=1,lmmax
       !    write(11,*)dble(vlm2(lm,1)),imag(vlm2(lm,1))
@@ -368,15 +318,80 @@ endif
       !  close(11)
       ! stop
         
-      vlm(:,ias)=vlm2(:,1)
-      deallocate(vmu2)
+
     
     enddo !ia
   enddo !is
 deallocate(vmu)
 end subroutine
 
+subroutine inv_svd(m,n,A_in,Ainv)
+  implicit none
+  integer  , intent(in) :: m, n
+  complex(8) ,intent(in) :: A_in(m,n)
+  complex(8) ,intent(out) :: Ainv(n,m)
+  complex(8) :: A(m,n),U(m,m),VT(n,n)
+  real(8)    :: S(n),Sinv(n,m)
+  real(8)    :: rwork(5*m) !can be decreased
 
+  integer :: info ,work_size, lm
+  complex(8),allocatable  :: work(:) 
+  real(8),allocatable     :: Smat(:,:)
+  complex(8),allocatable  :: E(:,:)
+  
+  A=A_in
+  work_size=5*m
+  allocate(work(work_size))
+  !call zgesvd('A', 'A', nax, lmmax, A, nax, S, U, nax, VT, lmmax, work, work_size, rwork, info)
+  call zgesvd('A', 'A', m, n, A, m, S, U, m, VT, n, work, work_size, rwork, info)
+
+  deallocate(work)
+  write(*,*)"info",info
+  if (.false.) then !check if decomposition was correct
+    write(*,*)"matrix before SVD:"
+    write(*,*)A_in(1,1:3)
+    write(*,*)A_in(2,1:3)
+    write(*,*)A_in(3,1:3)
+    allocate(Smat(m,n))
+    Smat=0d0
+    do lm=1,n
+      Smat(lm,lm)=S(lm)
+    enddo
+    A = matmul( matmul(U ,Smat) , VT )
+    write(*,*)"matrix constructed back:"
+    write(*,*)A(1,1:3)
+    write(*,*)A(2,1:3)
+    write(*,*)A(3,1:3)
+    deallocate (Smat)
+  endif
+  Sinv=0d0
+  do lm=1,n
+    if (abs(S(lm)).gt.1e-10) then
+      Sinv(lm,lm)=1d0/S(lm)
+    else
+      write(*,*)"Matricas dalīšana SVD bija aizdomīga"
+      Sinv(lm,lm)=0d0
+    endif
+  enddo
+
+
+  Ainv = matmul( matmul(conjg(transpose(VT)),Sinv)  , conjg(transpose(U)))
+
+  if (.false.) then !check if A^(-1)*A=E
+    Allocate(E(n,n))
+    E=matmul(Ainv,A)
+    write(*,*)"mazā Vienības matica:"
+    write(*,*)E(1,1:3)
+    write(*,*)E(2,1:3)
+    write(*,*)E(3,1:3)
+    Write(*,*)"Dioganal:"
+    do lm=1,20!n
+      write(*,*)E(lm,lm)
+    enddo
+    deallocate(E)
+  endif
+
+end subroutine
 
 
 end module
