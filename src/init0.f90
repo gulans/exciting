@@ -467,9 +467,11 @@ if (associated(input%groundstate%Hybrid).and.(input%groundstate%hybrid%rpseudo))
       endif
 endif
 
-
-call generate_surf_grid(input%groundstate%lmaxvr)
-
+if (associated(input%groundstate%Hybrid).and.(input%groundstate%hybrid%rsurf)) then
+      if (.not.allocated(naxis)) then
+            call generate_surf_grid(input%groundstate%lmaxvr)
+      endif
+endif
 !---------------------------------------!
 !     charge density and potentials     !
 !---------------------------------------!
