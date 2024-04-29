@@ -33,9 +33,9 @@ subroutine generate_rgrid_mt_data(lmax)
 integer :: p1,p2,p3, count_by_cfunir
 real(8) :: pvec(3), r_dist(3),rabs
 count_by_cfunir=0
-  a1=input%structure%crystal%basevect(1, :)/ngrid(1)
-  a2=input%structure%crystal%basevect(2, :)/ngrid(2)
-  a3=input%structure%crystal%basevect(3, :)/ngrid(3)
+  a1=input%structure%crystal%basevect(:, 1)/ngrid(1)
+  a2=input%structure%crystal%basevect(:, 2)/ngrid(2)
+  a3=input%structure%crystal%basevect(:, 3)/ngrid(3)
   a1_abs=sqrt(a1(1)**2+a1(2)**2+a1(3)**2)
   a2_abs=sqrt(a2(1)**2+a2(2)**2+a2(3)**2)
   a3_abs=sqrt(a3(1)**2+a3(2)**2+a3(3)**2)
@@ -63,7 +63,7 @@ do ir1=0,ngrid(1)-1
             do p1=-1,1
               do p2=-1,1
                 do p3=-1,1
-                  pvec=input%structure%crystal%basevect(1, :)*p1 + input%structure%crystal%basevect(2, :)*p2 + input%structure%crystal%basevect(3, :)*p3
+                  pvec=input%structure%crystal%basevect(:, 1)*p1 + input%structure%crystal%basevect(:, 2)*p2 + input%structure%crystal%basevect(:, 3)*p3
                   r_dist = rv + pvec - ratom
                   rabs=sqrt(r_dist(1)**2+r_dist(2)**2+r_dist(3)**2)
                   if (rabs.le.rmt(is)) then !found which MT the point belongs to

@@ -1,6 +1,6 @@
 module modsurf
 
-  use mod_atoms, only: natmtot
+!  use mod_atoms, only: natmtot
 implicit none
 
 integer              :: naxismax
@@ -30,6 +30,7 @@ subroutine generate_surf_grid(lmax)
   integer :: lmmax
   integer :: is,ia,ias,yi,zi,p1,p2,p3
   integer :: nax,iax
+  integer :: tmpsize
   real(8),allocatable  :: axisx_sph_tmp(:,:), tp_tmp(:,:,:) ! 2,iax,ias
   real(8),allocatable ::  raxis_tmp(:,:,:) !3,iax,ias
   integer,allocatable  :: axisy_tmp(:,:),axisz_tmp(:,:)
@@ -39,17 +40,17 @@ subroutine generate_surf_grid(lmax)
 
   lmmax=(lmax+1)**2
   write(*,*)"Režģa izmērs",ngrid
-  write(*,*)"x ass garums",sqrt(sum(input%structure%crystal%basevect(1, :)**2))
+  write(*,*)"x ass garums",sqrt(sum(input%structure%crystal%basevect(:, 1)**2))
 
 
-  a1=input%structure%crystal%basevect(1, :)/ngrid(1)
-  a2=input%structure%crystal%basevect(2, :)/ngrid(2)
-  a3=input%structure%crystal%basevect(3, :)/ngrid(3)
-
-  Allocate(axisy_tmp(ngrid(2)*ngrid(3),natmtot),axisz_tmp(ngrid(2)*ngrid(3),natmtot),axisx_sph_tmp(ngrid(2)*ngrid(3),natmtot))
+  a1=input%structure%crystal%basevect(:, 1)/ngrid(1)
+  a2=input%structure%crystal%basevect(:, 2)/ngrid(2)
+  a3=input%structure%crystal%basevect(:, 3)/ngrid(3)
+tmpsize=ngrid(2)*ngrid(3)*2
+  Allocate(axisy_tmp(tmpsize,natmtot),axisz_tmp(tmpsize,natmtot),axisx_sph_tmp(tmpsize,natmtot))
   allocate(naxis(natmtot))
-  allocate(tp_tmp(2,ngrid(2)*ngrid(3),natmtot))
-  allocate(raxis_tmp(3,ngrid(2)*ngrid(3),natmtot))
+  allocate(tp_tmp(2,tmpsize,natmtot))
+  allocate(raxis_tmp(3,tmpsize,natmtot))
   ia=1
   is=1
   do is=1, nspecies
@@ -59,7 +60,7 @@ subroutine generate_surf_grid(lmax)
       do p1=-1,1
         do p2=-1,1
           do p3=-1,1
-            ratom=atposc (:, ia, is) + p1*input%structure%crystal%basevect(1, :) + p2*input%structure%crystal%basevect(2, :) + p3*input%structure%crystal%basevect(3, :)
+            ratom=atposc (:, ia, is) + p1*input%structure%crystal%basevect(:, 1) + p2*input%structure%crystal%basevect(:, 2) + p3*input%structure%crystal%basevect(:, 3)
             do yi=0,ngrid(2)-1
               do zi=0,ngrid(3)-1
 
@@ -107,9 +108,14 @@ subroutine generate_surf_grid(lmax)
   enddo !is
   naxismax=maxval(naxis(:))
 write(*,*)"maxasis",naxismax
-write(*,*)naxis
+write(*,*)"naxis",naxis
+write(*,*)"natmtot", natmtot
 
-Allocate(axisy(naxismax,natmtot),axisz(naxismax,natmtot),axisx_sph(naxismax,natmtot),ylm_mat(lmmax,naxismax,natmtot),ylm_tmat(lmmax,naxismax,natmtot))
+Allocate(axisy(naxismax,natmtot))
+allocate(axisz(naxismax,natmtot))
+allocate(axisx_sph(naxismax,natmtot))
+allocate(ylm_mat(lmmax,naxismax,natmtot))
+allocate(ylm_tmat(lmmax,naxismax,natmtot))
 Allocate(raxis(3,naxismax,natmtot))
 ylm_mat=zzero
 axisy=0
@@ -185,9 +191,9 @@ subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
   lmmax=(lmax+1)**2
   ias=1
 
-  a1=input%structure%crystal%basevect(1, :)/ngrid(1)
-  a2=input%structure%crystal%basevect(2, :)/ngrid(2)
-  a3=input%structure%crystal%basevect(3, :)/ngrid(3)
+  a1=input%structure%crystal%basevect(:, 1)/ngrid(1)
+  a2=input%structure%crystal%basevect(:, 2)/ngrid(2)
+  a3=input%structure%crystal%basevect(:, 3)/ngrid(3)
 
 
   allocate(vmu(naxismax,natmtot))
