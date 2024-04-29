@@ -10,6 +10,7 @@ real(8),allocatable  :: axisx_sph(:,:) !iax,ias
 complex(8),allocatable :: ylm_mat(:,:,:) !lm,iax,ias
 complex(8),allocatable :: ylm_tmat(:,:,:) !lm,iax,ias
 real(8),allocatable   :: raxis(:,:,:)! 3 ,iax,ias
+complex(8),allocatable :: interp_exp(:,:,:) !ngrid(1),iax,ais
 contains
 
 subroutine generate_surf_grid(lmax)
@@ -20,7 +21,7 @@ subroutine generate_surf_grid(lmax)
   use mod_Gvector, only: ngrtot, ngrid, ngvec, cfunir
   use mod_atoms, only: nspecies, natoms, atposc, idxas,natmtot
   use mod_muffin_tin, only: rmt
-  use constants, only: zzero
+  use constants, only: zzero, pi
   implicit none
   
   real(8) :: a1(3),a2(3),a3(3),r0(3),rv(3),rv1(3)
@@ -29,13 +30,16 @@ subroutine generate_surf_grid(lmax)
   integer, intent(In) :: lmax
   integer :: lmmax
   integer :: is,ia,ias,yi,zi,p1,p2,p3
+  integer :: ir,ir2
+  real(8) :: irf, xx
   integer :: nax,iax
   integer :: tmpsize
   real(8),allocatable  :: axisx_sph_tmp(:,:), tp_tmp(:,:,:) ! 2,iax,ias
   real(8),allocatable ::  raxis_tmp(:,:,:) !3,iax,ias
   integer,allocatable  :: axisy_tmp(:,:),axisz_tmp(:,:)
   complex(8),allocatable  :: A(:,:),Ainv(:,:),AA(:,:)
-  
+  complex(8) :: ii
+  ii=cmplx(0d0,1d0,8)
   
 
   lmmax=(lmax+1)**2
@@ -143,7 +147,39 @@ do is=1, nspecies
   enddo!ia
 enddo!is
 
+allocate(interp_exp(ngrid(1),naxismax,natmtot))
+interp_exp=zzero
 
+do is=1, nspecies
+  do ia=1, natoms(is)
+    ias=idxas(ia,is)
+    
+    do iax=1,naxis(ias)
+      xx=axisx_sph(iax,ias)
+      do ir=1, ceiling(dble(ngrid(1))/2d0)
+        ir2=ir-1
+        !write(*,*)ir,",",ir2
+        irf=2d0*pi*dble(ir2)/dble(ngrid(1))
+        interp_exp(ir,iax,ias)=exp(ii*irf*xx)
+      enddo
+
+      if (mod(ngrid(1),2).eq.0)then
+        ir=ngrid(1)/2+1
+        ir2=ngrid(1)/2
+        !write(*,*)"vidus",ir,ir2
+        irf=2d0*pi*dble(ir2)/dble(ngrid(1))
+        interp_exp(ir,iax,ias)=cos (irf*xx)
+      endif
+
+      do ir=ceiling((dble(ngrid(1))-1)/2)+2,ngrid(1)
+        ir2=ngrid(1)-ir+1
+        !write(*,*)ir,",",ir2
+        irf=2d0*pi*dble(-ir2)/dble(ngrid(1))
+        interp_exp(ir,iax,ias)=exp(ii*irf*xx)
+      enddo
+    enddo !iax
+  enddo !ia
+enddo !is
 
 deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp,raxis_tmp)
 open(11,file='surf.dat',status='replace')
@@ -275,57 +311,21 @@ endif
         zvaxft=zvax
         call cfftnd(1,ngrid(1),-1,zvaxft)
 
-    !Fourier interpolation of potential on x=axisx_sph(iax,ias)
-        xx=axisx_sph(iax,ias)
-        rv(:)=raxis(:,iax,ias)
-        phase=exp(cmplx(0,1,8)*sum(qvec*rv))
         zt1=zzero
-        do ir=1, ceiling(dble(ngrid(1))/2d0)
-          ir2=ir-1
-          !write(*,*)ir,",",ir2
-          irf=2d0*pi*dble(ir2)/dble(ngrid(1))
-          zt1=zt1 + zvaxft(ir) * exp (ii*irf*xx)
+        do ir=1, ngrid(1)
+          zt1 = zt1 + zvaxft(ir) * interp_exp(ir,iax,ias)
         enddo
-        do ir=ngrid(1),ceiling((dble(ngrid(1))-1)/2)+2,-1
-          ir2=ngrid(1)-ir+1
-          !write(*,*)ir,",",ir2
-          irf=2d0*pi*dble(-ir2)/dble(ngrid(1))
-          zt1=zt1 + zvaxft(ir) * exp (ii*irf*xx)
-        enddo
-        if (mod(ngrid(1),2).eq.0)then
-          ir=ngrid(1)/2+1
-          ir2=ngrid(1)/2
-        ! write(*,*)"vidus",ir,ir2
-          irf=2d0*pi*dble(ir2)/dble(ngrid(1))
-          zt1=zt1 + zvaxft(ir) * cos (irf*xx)
-        endif
+        rv(:)=raxis(:,iax,ias)
+        phase=exp(ii*sum(qvec*rv))
         vmu(iax,ias)=zt1*phase
       enddo !iax
-      ! open(11,file='vmu1.dat',status='replace')
-      ! do iax=1,naxis(ias)
-      !   write(11,*)dble(vmu(iax,ias)),imag(vmu(iax,ias))
-      ! enddo
-      ! close(11)
+    enddo !ia
+  enddo !is
 
-    !Create a set of v_lm from v_mu
-      ! allocate(vmu2(naxis(ias),1))
-      ! vmu2(:,1)=vmu(1:naxis(ias),ias)
-      ! call zlsp(transpose(ylm_mat(:,1:naxis(ias),ias)), vmu2, vlm2)
-      ! vlm(:,ias)=vlm2(:,1)
-      ! deallocate(vmu2)
-
-    !Second way to do it:
+  do is=1, nspecies
+    do ia=1, natoms(is)
+      ias=idxas(ia,is)
       vlm(:,ias)=matmul(ylm_tmat(:,1:naxis(ias),ias),vmu(1:naxis(ias),ias))
-
-      ! open(11,file='lm-set.dat',status='replace')
-      !  do lm=1,lmmax
-      !    write(11,*)dble(vlm2(lm,1)),imag(vlm2(lm,1))
-      !  enddo
-      !  close(11)
-      ! stop
-        
-
-    
     enddo !ia
   enddo !is
 deallocate(vmu)
