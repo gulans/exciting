@@ -43,8 +43,8 @@ subroutine generate_surf_grid(lmax)
   
 
   lmmax=(lmax+1)**2
-  write(*,*)"Režģa izmērs",ngrid
-  write(*,*)"x ass garums",sqrt(sum(input%structure%crystal%basevect(:, 1)**2))
+  !write(*,*)"Režģa izmērs",ngrid
+  !write(*,*)"x ass garums",sqrt(sum(input%structure%crystal%basevect(:, 1)**2))
 
 
   a1=input%structure%crystal%basevect(:, 1)/ngrid(1)
@@ -111,9 +111,9 @@ tmpsize=ngrid(2)*ngrid(3)*2
     enddo !ia
   enddo !is
   naxismax=maxval(naxis(:))
-write(*,*)"maxasis",naxismax
-write(*,*)"naxis",naxis
-write(*,*)"natmtot", natmtot
+! write(*,*)"maxasis",naxismax
+! write(*,*)"naxis",naxis
+! write(*,*)"natmtot", natmtot
 
 Allocate(axisy(naxismax,natmtot))
 allocate(axisz(naxismax,natmtot))
@@ -182,22 +182,31 @@ do is=1, nspecies
 enddo !is
 
 deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp,raxis_tmp)
-open(11,file='surf.dat',status='replace')
-open(12,file='surf2.dat',status='replace')
-  do is=1, nspecies
-    do ia=1, natoms(is)
-      ias=idxas(ia,is)
-      do iax=1, naxis(ias)
-        rv(:)=axisx_sph(iax,ias)*a1 + axisy(iax,ias)*a2 + axisz(iax,ias)*a3
-        write(11,*)rv(1),rv(2),rv(3)
-        write(12,*)raxis(1,iax,ias),raxis(2,iax,ias),raxis(3,iax,ias)
-      enddo
-    enddo
+! open(11,file='surf.dat',status='replace')
+! open(12,file='surf2.dat',status='replace')
+!   do is=1, nspecies
+!     do ia=1, natoms(is)
+!       ias=idxas(ia,is)
+!       do iax=1, naxis(ias)
+!         rv(:)=axisx_sph(iax,ias)*a1 + axisy(iax,ias)*a2 + axisz(iax,ias)*a3
+!         write(11,*)rv(1),rv(2),rv(3)
+!         write(12,*)raxis(1,iax,ias),raxis(2,iax,ias),raxis(3,iax,ias)
+!       enddo
+!     enddo
+!   enddo
+! close(11)
+! close(12)
+
+open(11,file='surf_info.dat',status='replace')
+write(11,*)"lmmax:",lmmax
+write(11,*)"is, ia, number_of_ponts_on_MTsurface"
+do is=1, nspecies
+  do ia=1, natoms(is)
+    ias=idxas(ia,is)
+    write(11,*)is,ia,naxis(ias)
   enddo
+enddo
 close(11)
-close(12)
-
-
 end subroutine 
 
 subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
@@ -348,11 +357,17 @@ subroutine inv_svd(m,n,A_in,Ainv)
   A=A_in
   work_size=5*m
   allocate(work(work_size))
-  !call zgesvd('A', 'A', nax, lmmax, A, nax, S, U, nax, VT, lmmax, work, work_size, rwork, info)
   call zgesvd('A', 'A', m, n, A, m, S, U, m, VT, n, work, work_size, rwork, info)
 
   deallocate(work)
-  write(*,*)"info",info
+  if (info.ne.0)then
+    write(*,*)"info:",info
+    write(*,*)"singular value decomposition went wrong in mod_surf.f90"
+    write(*,*)"lmmax=",m
+    write(*,*)"number of points on the sphere =",n
+    stop
+  endif
+  !write(*,*)"info",info
   if (.false.) then !check if decomposition was correct
     write(*,*)"matrix before SVD:"
     write(*,*)A_in(1,1:3)
@@ -371,12 +386,18 @@ subroutine inv_svd(m,n,A_in,Ainv)
     deallocate (Smat)
   endif
   Sinv=0d0
+
+  !write(*,*)"Diagonal matrix:"
   do lm=1,n
-    if (abs(S(lm)).gt.1e-10) then
-      Sinv(lm,lm)=1d0/S(lm)
-    else
-      write(*,*)"Matricas dalīšana SVD bija aizdomīga"
-      Sinv(lm,lm)=0d0
+    !write(*,*)S(lm)
+    Sinv(lm,lm)=1d0/S(lm)
+    if (abs(S(lm)).lt.1e-10) then
+      write(*,*)"singular value decomposition went wrong in mod_surf.f90"
+      write(*,*)"diagonal matrix element nr.",lm," is small:",S(lm)
+      write(*,*)"lmmax=",m
+      write(*,*)"number of points on the sphere =",n
+      stop
+      !Sinv(lm,lm)=0d0
     endif
   enddo
 
@@ -386,12 +407,12 @@ subroutine inv_svd(m,n,A_in,Ainv)
   if (.false.) then !check if A^(-1)*A=E
     Allocate(E(n,n))
     E=matmul(Ainv,A)
-    write(*,*)"mazā Vienības matica:"
-    write(*,*)E(1,1:3)
-    write(*,*)E(2,1:3)
-    write(*,*)E(3,1:3)
-    Write(*,*)"Dioganal:"
-    do lm=1,20!n
+    !write(*,*)"mazā Vienības matica:"
+    !write(*,*)E(1,1:3)
+    !write(*,*)E(2,1:3)
+    !write(*,*)E(3,1:3)
+    Write(*,*)"Diagonal of the unit matrix:"
+    do lm=1,n
       write(*,*)E(lm,lm)
     enddo
     deallocate(E)
