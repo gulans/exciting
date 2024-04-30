@@ -221,90 +221,25 @@ subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
   complex(8) ,intent(inout) :: zvclir(:)
   integer, intent(in) :: igfft(:)
   real(8),intent(in) :: qvec(3)
-  complex(8) ,intent(inout) :: vlm(:,:)!lm,ias
-  complex(8) :: zvax(ngrid(1)), zvaxft(ngrid(1))
-  !complex(8) :: zvmu((lmax+1)**2)
-  integer :: ig1,ig2,iax,ir,is,ia,ias,iy,iz,imu, nn
-  integer :: lmmax,lm
-  complex(8),allocatable :: vmu(:,:),vmu2(:,:)
-  real(8) :: xx, irf,ir2,v1(3),a1(3),a2(3),a3(3),t1,rv(3)
+  complex(8) ,intent(out) :: vlm(:,:)!lm,ias
+  complex(8) :: zvaxft(ngrid(1))
+  integer :: ig1,ig2,iax,is,ia,ias,iy,iz 
+  complex(8),allocatable :: vmu(:,:)
+  real(8) :: xx, irf,ir2,ta,tb,rv(3)
   complex(8) ::zt1, ii
-  integer :: ifg,ig
+  integer :: ir
  
-  complex(8) :: vlm2((lmax+1)**2,1),phase
+  complex(8) :: phase
   ii=cmplx(0d0,1d0,8)
-  lmmax=(lmax+1)**2
-  ias=1
-
-  a1=input%structure%crystal%basevect(:, 1)/ngrid(1)
-  a2=input%structure%crystal%basevect(:, 2)/ngrid(2)
-  a3=input%structure%crystal%basevect(:, 3)/ngrid(3)
-
+  
 
   allocate(vmu(naxismax,natmtot))
-  if(.false.)then
-    !Tests ar sadalīšanu pa v_lm komponentēm
-    ias=1
-    vmu(1:naxis(ias),ias) = matmul(transpose(ylm_mat(:,1:naxis(ias),ias)),vlm(:,ias))
-    open(11,file='vmu0.dat',status='replace')
-    do iax=1,naxis(ias)
-      write(11,*)dble(vmu(iax,ias)),imag(vmu(iax,ias))
-    enddo
-    close(11)
-    allocate(vmu2(naxis(ias),1))
-    vmu2(:,1)=vmu(1:naxis(ias),ias) 
-    call zlsp(transpose(ylm_mat(:,1:naxis(ias),ias)), vmu2, vlm2) 
-    open(11,file='lm-set.dat',status='replace')
-    do lm=1,lmmax
-      write(11,*)dble(vlm(lm,ias)),imag(vlm(lm,ias)),dble(vlm2(lm,1)),imag(vlm2(lm,1))
-    enddo
-    close(11)
-  endif
-
-
-if(.false.)then
-  do is=1, nspecies
-    do ia=1, natoms(is)
-      ias=idxas(ia,is)
-      do iax=1,naxis(ias)
-        iz=axisz(iax,ias)
-        iy=axisy(iax,ias)
-        xx=axisx_sph(iax,ias)
-        v1=xx*a1 + iy*a2 + iz*a3
-
-        rv(:)=raxis(:,iax,ias)
-        
-        !!!!!!!!!!!!!!!!!!!!!!
-        !!! This fixes the result for ZnO
-        !v1=rv
-        !!! This fixes the result for ZnO
-        !!!!!!!!!!!!!!!!!!!!!!
-        
-        phase=exp(cmplx(0,1,8)*sum(qvec*rv))
-
-        zt1=zzero
-        Do ig = 1, ngvec
-          ifg = igfft (ig)
-          t1 = vgc(1,ig)*v1(1) + vgc(2,ig)*v1(2) + vgc(3,ig)*v1(3)
-          zt1 = zt1 + zvclir(ifg)*cmplx(Cos(t1), Sin(t1), 8)
-        End Do
-        vmu(iax,ias)=zt1*phase
-      enddo !iax
-      open(11,file='vmu3d.dat',status='replace')
-      do iax=1,naxis(ias)
-        write(11,*)dble(vmu(iax,ias)),imag(vmu(iax,ias))
-      enddo
-      close(11)
-    enddo!ia
-  enddo!is
-endif
+ 
 
 
 
 
-
-  
-  
+call timesec(ta)
   do is=1, nspecies
     do ia=1, natoms(is)
       ias=idxas(ia,is)
@@ -315,9 +250,9 @@ endif
 
         ig1 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
         ig2 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + ngrid(1)
-        zvax(:)=zvclir(ig1:ig2)
+        zvaxft(:)=zvclir(ig1:ig2)
         !write(*,*)"krustpunkts ar sferu",axisx_sph(iax,ias)
-        zvaxft=zvax
+        !zvaxft=zvax
         call cfftnd(1,ngrid(1),-1,zvaxft)
 
         zt1=zzero
@@ -331,13 +266,20 @@ endif
     enddo !ia
   enddo !is
 
+call timesec(tb)
+!write(*,*)"ft_un_interpolacija:",tb-ta
+call timesec(ta)
   do is=1, nspecies
     do ia=1, natoms(is)
       ias=idxas(ia,is)
       vlm(:,ias)=matmul(ylm_tmat(:,1:naxis(ias),ias),vmu(1:naxis(ias),ias))
     enddo !ia
   enddo !is
+call timesec(tb)
 deallocate(vmu)
+
+!write(*,*)"lm_komplekts:",tb-ta
+
 end subroutine
 
 subroutine inv_svd(m,n,A_in,Ainv)

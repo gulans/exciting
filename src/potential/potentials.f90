@@ -266,7 +266,7 @@ endif
 
 
   call timesec(tb)
- ! write(*,*)"surface_ir",tb-ta
+  !write(*,*)"surface_ir:",tb-ta
 !stop
 
 call timesec(ta)
