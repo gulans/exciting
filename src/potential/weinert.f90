@@ -14,7 +14,7 @@ module weinert
   public :: poisson_and_multipoles_mt, match_bound_mt
   public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa
   public :: poisson_mt_yukawa, pseudocharge_rspace_matrix, pseudocharge_rspace_new
-  public :: multipoles_ir2, pseudocharge_gspace2, poisson_ir2, surface_ir2
+  public :: multipoles_ir2, pseudocharge_gspace2, poisson_ir2, surface_ir2, surface_ir3
   contains
 
     !> This subroutine evaluates an interstitial function given by the Fourier series
@@ -1958,5 +1958,66 @@ subroutine surface_ir2( lmax, ngvec,  jlgpr, ylmgp, sfacgp, vclig, vilm2)
   enddo!ia
       
   end subroutine
+
+subroutine surface_ir3( lmax, ngvec,  jlgpr, ylmgp, sfacgp, vclig, vilm2)
+     ! use mod_atoms, only: nspecies, natoms, idxas
+     ! use mod_muffin_tin, only: rmt
+      use mod_atoms, only: natmtot, nspecies,natoms, idxas
+      use constants, only: fourpi,zil
+
+      integer, intent(in) :: lmax
+      integer, intent(in) :: ngvec
+      real(dp), intent(in) :: jlgpr(0:,:,:)
+      complex(dp), intent(in) :: ylmgp(:,:)
+      complex(dp), intent(in) :: sfacgp(:,:)
+      complex(dp), intent(in) :: vclig(:)
+
+      complex(dp), intent(out) :: vilm2(:,:)
+
+      integer :: ig, l,m, lm, is, ia, ias, lmmax, atst
+      integer, parameter :: blocksize=128
+      Complex (8) :: zlm ((lmax+1)**2,blocksize),zlm2((lmax+1)**2,blocksize)
+      Complex (8) :: sf(natmtot)
+      integer :: iggg, blk
+
+!          vilm2  = 0.d0
+      lmmax=(lmax+1)**2
+      vilm2  = 0.d0
+      Do ig = 0, ngvec-1, blocksize
+        blk=min(blocksize,ngvec-ig)
+        do iggg=1,blk
+         zlm(:,iggg) = vclig (ig+iggg) *conjg (ylmgp(:, ig+iggg))
+        enddo
+
+        Do is = 1, nspecies
+          do iggg=1,blk
+            lm = 0
+            Do l = 0, lmax
+               zlm2(lm+1:lm+1+2*l,iggg) = jlgpr (l, ig+iggg, is) * zlm(lm+1:lm+1+2*l,iggg)
+               lm=lm+1+2*l
+            End Do
+          enddo
+
+          atst = idxas(1, is)
+          Call zgemm('N','N', lmmax, natoms(is), blk, (1.0D0,0.0), zlm2, lmmax, sfacgp(ig+1,atst), blk, (1.0D0,0.0), vilm2(1,atst), lmmax)
+
+        End Do
+      End Do
+
+  Do is = 1, nspecies
+    Do ia = 1, natoms (is)
+      ias = idxas (ia, is)
+      lm = 0
+      Do l = 0, lmax
+        Do m = - l, l
+            lm = lm + 1
+            vilm2 (lm,ias) = vilm2 (lm,ias) * fourpi * zil (l) 
+        End Do !m
+      End Do!l
+    enddo!ia
+  enddo!ia
+      
+  end subroutine
+
 
 end module weinert

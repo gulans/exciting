@@ -253,7 +253,7 @@ if (input%groundstate%hybrid%rsurf) then
   
   call surf_pot(input%groundstate%lmaxvr,zvclir,igfft,qvec,qlmir)
 else
-  call surface_ir2( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
+  call surface_ir3( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
 ! Fourier transform interstitial potential to real space
   zrhoig_sort(1:ngp)=zvclir(1:ngp)
   zvclir(:)=zzero
