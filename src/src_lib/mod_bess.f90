@@ -108,7 +108,7 @@ subroutine get_Bess_fun(Ngrid,r,lmax,Nrsfun,rsfunC,bessi,bessk)
     do ir = 1,Ngrid
       ii=ii+1
       z=rsfunC(fun,2)*r(ir)
-      zabs=dsqrt(realpart(z)**2+imagpart(z)**2)
+      zabs=abs(z) !dsqrt(realpart(z)**2+imagpart(z)**2)
       if (zabs.gt.zmaxabs)then
               zmaxabs=zabs
               zmax=z
@@ -117,8 +117,8 @@ subroutine get_Bess_fun(Ngrid,r,lmax,Nrsfun,rsfunC,bessi,bessk)
               zminabs=zabs
               zmin=z
       endif
-      write(11,*)ii,l,r(ir),realpart(z),imagpart(z),realpart(bessi(ir,fun,l)),imagpart(bessi(ir,fun,l))
-      write(12,*)ii,l,r(ir),realpart(z),imagpart(z),realpart(bessk(ir,fun,l)),imagpart(bessk(ir,fun,l))
+      write(11,*)ii,l,r(ir),dble(z),dimag(z),dble(bessi(ir,fun,l)),dimag(bessi(ir,fun,l))
+      write(12,*)ii,l,r(ir),dble(z),dimag(z),dble(bessk(ir,fun,l)),dimag(bessk(ir,fun,l))
   
   
     end do
@@ -271,7 +271,7 @@ subroutine msbesselic (n, z, rez)
   Complex (16) :: g16(-n-1:n),y,rez16
   Complex (8) :: rezi,rezk
 real(8) :: absz
-absz=sqrt( realpart(z)**2+imag(z)**2)
+absz=abs(z) !sqrt( realpart(z)**2+imag(z)**2)
 
 
   if (n.gt.18)then
@@ -283,58 +283,58 @@ absz=sqrt( realpart(z)**2+imag(z)**2)
   endif
 
   
-if ((n.eq.0).and. (abs(realpart(z)).lt.1d-3)) then
+if ((n.eq.0).and. (abs(dble(z)).lt.1d-3)) then
       rez=1d0+(1d0/6d0)*z**2 + (1d0/120d0)*z**4 + (1d0/5040d0)*z**6  
 
-elseif ((n.eq.1) .and. (abs(realpart(z)).lt.1d-1).and.(abs(imagpart(z)).lt.1d-1) ) then
+elseif ((n.eq.1) .and. (abs(dble(z)).lt.1d-1).and.(abs(dimag(z)).lt.1d-1) ) then
       rez=(1d0/3d0)*z +(1d0/30d0)*z**3 + (1d0/840d0)*z**5 + (1d0/45360d0)*z**7+&
               (1d0/3991680d0)*z**9
 
-elseif ((n.eq.2) .and. (abs(realpart(z)).lt.0.5d0).and.(abs(imagpart(z)).lt.0.5d0))  then
+elseif ((n.eq.2) .and. (abs(dble(z)).lt.0.5d0).and.(abs(dimag(z)).lt.0.5d0))  then
 
       rez=(1d0/15d0)*z**2 +(1d0/210d0)*z**4 + (1d0/7560d0)*z**6 + (1d0/498960d0)*z**8 +&
               (1d0/51891840d0)*z**10+ (1d0/7783776000d0)*z**12+ (1d0/1587890304000d0)*z**14
 
-elseif ((n.eq.3).and. (abs(realpart(z)).lt.1d-1)) then
+elseif ((n.eq.3).and. (abs(dble(z)).lt.1d-1)) then
       rez=(1d0/105d0)*z**3 + (1d0/1890d0)*z**5 + (1d0/83160d0)*z**7&
              + (1d0/6486480d0)*z**9 
-elseif ((n.eq.4).and. (abs(realpart(z)).lt.1d-1)) then
+elseif ((n.eq.4).and. (abs(dble(z)).lt.1d-1)) then
       rez=(1d0/945d0)*z**4 + (1d0/20790d0)*z**6 + (1d0/1081080d0)*z**8&
             +(1d0/97297200d0)*z**10  
-elseif ((n.eq.5).and. (abs(realpart(z)).lt.1d-1)) then
+elseif ((n.eq.5).and. (abs(dble(z)).lt.1d-1)) then
       rez=(1d0/10395d0)*z**5 + (1d0/270270d0)*z**7 + (1d0/16216200d0)*z**9&
              +(1d0/1654052400d0)*z**11 
-elseif ((n.eq.6).and. (abs(realpart(z)).lt.1d-1)) then
+elseif ((n.eq.6).and. (abs(dble(z)).lt.1d-1)) then
       rez=(1d0/135135d0)*z**6 + (1d0/4054050d0)*z**8 + (1d0/275675400d0)*z**10&
               +(1d0/31426995600d0)*z**12
-elseif ((n.eq.7).and. (abs(realpart(z)).lt.1d-1)) then
+elseif ((n.eq.7).and. (abs(dble(z)).lt.1d-1)) then
       rez=(1d0/2027025d0)*z**7 + (1d0/68918850d0)*z**9 + (1d0/5237832600d0)*z**11&
               +(1d0/659966907600d0)*z**13
-elseif ((n.eq.8).and. (abs(realpart(z)).lt.1d-1)) then
+elseif ((n.eq.8).and. (abs(dble(z)).lt.1d-1)) then
       rez=(1d0/34459425d0)*z**8 + (1d0/1309458150d0)*z**10 + (1d0/109994484600d0 )*z**12&
               +(1d0/15179238874800d0)*z**14
-elseif ((n.eq.9).and. (abs(realpart(z)).lt.2d-1)) then
+elseif ((n.eq.9).and. (abs(dble(z)).lt.2d-1)) then
       rez=(1d0/654729075d0)*z**9 + (1d0/27498621150d0)*z**11 + (1d0/2529873145800d0)*z**13&
               +(1d0/379480971870000d0)*z**15
-elseif ((n.eq.10).and. (abs(realpart(z)).lt.3d-1)) then
+elseif ((n.eq.10).and. (abs(dble(z)).lt.3d-1)) then
       rez=(1d0/13749310575d0 )*z**10 + (1d0/632468286450d0 )*z**12 + (1d0/63246828645000d0 )*z**14&
               +(1d0/10245986240490000d0 )*z**16
-elseif ((n.eq.11).and. (abs(realpart(z)).lt.4d-1)) then
+elseif ((n.eq.11).and. (abs(dble(z)).lt.4d-1)) then
       rez=(1d0/316234143225d0)*z**11 + (1d0/15811707161250d0 )*z**13 + (1d0/1707664373415000d0 )*z**15&
               +(1d0/297133600974210000d0 )*z**17
-elseif ((n.eq.12).and. (abs(realpart(z)).lt.6d-1)) then
+elseif ((n.eq.12).and. (abs(dble(z)).lt.6d-1)) then
       rez=(1d0/ 7905853580625d0)*z**12 + (1d0/ 426916093353750d0)*z**14 + (1d0/ 49522266829035000d0)*z**16&
               +(1d0/ 9211141630200510000d0)*z**18
-elseif ((n.eq.13).and. (abs(realpart(z)).lt.7d-1)) then
+elseif ((n.eq.13).and. (abs(dble(z)).lt.7d-1)) then
       rez=(1d0/213458046676875d0 )*z**13 + (1d0/12380566707258750d0 )*z**15 + (1d0/1535190271700085000d0 )*z**17&
               +(1d0/303967673796616830000d0 )*z**19
-elseif ((n.eq.14).and. (abs(realpart(z)).lt.9d-1)) then
+elseif ((n.eq.14).and. (abs(dble(z)).lt.9d-1)) then
       rez=(1d0/6190283353629375d0 )*z**14 + (1d0/ 383797567925021250d0)*z**16 + (1d0/ 50661278966102805000d0)*z**18&
               +(1d0/ 10638868582881589050000d0)*z**20
-elseif ((n.eq.15).and. (abs(realpart(z)).lt.1.1d0)) then
+elseif ((n.eq.15).and. (abs(dble(z)).lt.1.1d0)) then
       rez=(1d0/191898783962510625d0)*z**15 + (1d0/12665319741525701250d0)*z**17 + (1d0/1773144763813598175000d0)*z**19&
               +(1d0/393638137566618794850000d0 )*z**21
-elseif ((n.eq.16).and. (abs(realpart(z)).lt.1.3d0)) then
+elseif ((n.eq.16).and. (abs(dble(z)).lt.1.3d0)) then
       rez=(1d0/6332659870762850625d0 )*z**16 + (1d0/443286190953399543750d0 )*z**18 + (1d0/65606356261103132475000d0 )*z**20&
               +(1d0/15351887365098132999150000d0 )*z**22
 elseif ((n.eq.17).and. (absz.lt.1.7d0)) then
@@ -370,7 +370,7 @@ if (.false.)then !double
   endif
 
 else !quad
-  y=cmplx(realpart(z),imagpart(z),16)
+  y=z !cmplx(realpart(z),imagpart(z),16)
 
   if (n.eq.0) then
   rez16=sinh(y)*y**(-1)
@@ -388,7 +388,7 @@ else !quad
 
   rez16=g16(n)*sinh(y)+g16(-n-1)*cosh(y)
   endif
-rez=cmplx(realpart(rez16),imagpart(rez16),8)
+rez=rez16  !cmplx(realpart(rez16),imagpart(rez16),8)
 
 
 endif !end quad
@@ -412,7 +412,7 @@ complex(16)  :: y
 
 
 
-if ((n.eq.1) .and. (abs(realpart(z)).lt.1d-3).and.(abs(imagpart(z)).lt.1d-3))  then
+if ((n.eq.1) .and. (abs(dble(z)).lt.1d-3).and.(abs(dimag(z)).lt.1d-3))  then
 rez=1d0/z**2 - (1d0/2d0)+ (1d0/3d0)*z - (1d0/8d0)*z**2 +  (1d0/30d0)*z**3&
         -(1d0/144d0)*z**4 +(1d0/840d0)*z**5 - (1d0/5760d0)*z**6
    !(1d0/45360d0)*z**7 -(1d0/403200d0)*z**8      
@@ -437,7 +437,7 @@ if (.false.)then !double
 
 else !!quad
 
-y=cmplx(realpart(z),imagpart(z),16)
+y=z !cmplx(realpart(z),imagpart(z),16)
 
 
  if (n.eq.0) then
@@ -453,7 +453,7 @@ y=cmplx(realpart(z),imagpart(z),16)
 
  rez16=exp(-y)*f16(n)
  endif
-rez=cmplx(realpart(rez16),imagpart(rez16),8)
+rez= rez16 !cmplx(realpart(rez16),imagpart(rez16),8)
 
 endif !!end quad
 endif
