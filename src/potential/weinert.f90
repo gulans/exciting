@@ -1974,13 +1974,13 @@ subroutine surface_ir3( lmax, ngvec,  jlgpr, ylmgp, sfacgp, vclig, vilm2)
 
       complex(dp), intent(out) :: vilm2(:,:)
 
-      integer :: ig, l,m, lm, is, ia, ias, lmmax, atst
+      integer :: ig, l,m, lm, is, ia, ias, lmmax, atst, sfld
       integer, parameter :: blocksize=128
       Complex (8) :: zlm ((lmax+1)**2,blocksize),zlm2((lmax+1)**2,blocksize)
-      Complex (8) :: sf(natmtot)
       integer :: iggg, blk
 
 !          vilm2  = 0.d0
+      sfld=size(sfacgp,dim=1)
       lmmax=(lmax+1)**2
       vilm2  = 0.d0
       Do ig = 0, ngvec-1, blocksize
@@ -1999,7 +1999,7 @@ subroutine surface_ir3( lmax, ngvec,  jlgpr, ylmgp, sfacgp, vclig, vilm2)
           enddo
 
           atst = idxas(1, is)
-          Call zgemm('N','N', lmmax, natoms(is), blk, (1.0D0,0.0), zlm2, lmmax, sfacgp(ig+1,atst), blk, (1.0D0,0.0), vilm2(1,atst), lmmax)
+          Call zgemm('N','N', lmmax, natoms(is), blk, (1.0D0,0.0), zlm2, lmmax, sfacgp(ig+1,atst), sfld, (1.0D0,0.0), vilm2(1,atst), lmmax)
 
         End Do
       End Do
