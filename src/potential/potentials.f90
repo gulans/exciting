@@ -274,7 +274,11 @@ call timesec(ta)
 do is = 1, nspecies
 do ia = 1, natoms(is)
 ias = idxas(ia,is)
-call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa, zbessi=zbessi(:,:,is) )
+if (present(zbessi)) then
+ call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa, zbessi=zbessi(:,:,is) )
+else
+ call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa)
+endif
 vmad(ias) = vmad(ias) + dble( qlmir(1,ias) ) * y00 - vion(nr(is),is)
 end do
 end do
@@ -544,7 +548,11 @@ endif
       do is = 1, nspecies
         do ia = 1, natoms(is)
           ias = idxas(ia,is)
-          call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa, zbessi=zbessi(:,:,is) )
+          if (present(zbessi)) then
+            call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa, zbessi=zbessi(:,:,is) )
+          else
+            call match_bound_mt( input%groundstate%lmaxvr, nr(is), r(:,is), rmt(is), qlmir(:,ias), zvclmt(:,:,ias),yukawa=yukawa )
+          endif
           vmad(ias) = vmad(ias) + dble( qlmir(1,ias) ) * y00 - vion(nr(is),is)
         end do
       end do

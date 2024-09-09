@@ -637,7 +637,6 @@ endif
       complex(dp) :: df,zt1
 
       real(dp), allocatable :: rr(:,:)
-
       
 
       if ((present(yukawa)).and.yukawa) then
@@ -723,13 +722,15 @@ External factnm
 
 if(present(yukawa_in))then 
   yukawa=yukawa_in
+  call poisson_mt_yukawa( lmax, nr, r, zrhomt(:, :), zvclmt, is, &
+                               & yukawa_in=yukawa,zlambda=zlambda, il=il(:,:), kl=kl(:,:))
 else
   yukawa=.false.
+call poisson_mt_yukawa( lmax, nr, r, zrhomt(:, :), zvclmt, is)
+
 endif
 
 
-call poisson_mt_yukawa( lmax, nr, r, zrhomt(:, :), zvclmt, is, &
-                               & yukawa_in=yukawa,zlambda=zlambda, il=il(:,:), kl=kl(:,:))
 
 if(yukawa)then
   lm=0
