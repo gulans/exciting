@@ -36,7 +36,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
-      Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr
+      Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr, ipt
 
       Complex (8) ::  potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot),rhoG0,potG0
       Real (8) :: time_coul, tc, td , time_fft, time_prod, time_rs, time_misc, time_critical,time_pw
@@ -59,14 +59,11 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: wfcr1 (:, :)
       Complex (8), Allocatable :: wf1ir (:)
       Complex (8), Allocatable :: wf2ir (:)
-      Complex (8), Allocatable :: zrhomt (:, :, :)
-     ! Complex (8), Allocatable :: zrhoir (:)
       Complex (8), Allocatable :: zvclmt (:, :, :, :)
       Complex (8), Allocatable :: zvcltp (:, :)
-      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :)
-     ! Complex (8), Allocatable :: zwfir (:)
+      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :), zrhomt(:,:)
 
-      real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:)
+      real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:), rfmt(:)
       
       complex(8), Allocatable :: rpseudomat(:,:,:,:) ! (ifit,lm,igr,ias)
 
@@ -75,7 +72,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
       logical :: print_times
-      print_times=.False.
+      print_times=.false.
 
 ! allocate local arrays
       Allocate (vgqc(3, ngvec))
@@ -88,7 +85,6 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (vxpsiirtmp(ngrtot))   !dealoc
       Allocate (vxpsigktmp(ngkmax))   !dealoc
       Allocate (wfcr1(ntpll, nrcmtmax))
-      Allocate (zrhomt(lmmaxvr, nrcmtmax, natmtot))
      ! Allocate (zrhoir(ngrtot))
       Allocate (zvcltp(ntpll, nrcmtmax))
       Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax))
@@ -533,71 +529,85 @@ endif
 call timesec(ta)
       zvclmt (:, :, :, :) = 0.d0
             
-If (.true.) Then
+      Allocate (zrhomt(lmmaxvr, nrcmtmax))
+      allocate (rfmt(nrcmtmax))
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(nrc,is,ia,ias,ist2,ist3,l,norm,lm,m,ir,uir,wfcr1,zrhomt,zfmt,ifit,zfmt0,zvcltp,rfmt,ipt)
       Do is = 1, nspecies
-         nrc = nrcmt(is)
-         Do ia = 1, natoms (is)
+        if (spnst (is).ne.0) then
+          nrc = nrcmt(is)
+          Do ir = 1, nrmt(is)
+            rfmt(ir)=1d0 / spr (ir, is)
+          End Do
+
+          Do ia = 1, natoms (is)
             ias = idxas (ia, is)
-            Do ist2 = 1, spnst (is) !This is essentially ncore(is)
-               If (spcore(ist2, is)) Then
+!$OMP DO SCHEDULE(DYNAMIC)
+           ! Begin loop over occupied and empty states
+            Do ist3 = 1, nstsv
+              Do ist2 = 1, spnst (is) !This is essentially ncore(is)
+                If (spcore(ist2, is)) Then
                   l = spl(ist2, is)
                   norm = sqrt(0.5d0*spocc(ist2,is)/dble(2*l+1))
                   Do m = -l, l
                      lm = idxlm (l, m)
-                     Do ir = 1, nrmt(is)
-                        uir = norm * rwfcr (ir, 1, ist2, ias) / spr (ir, is)
-                        wfcr1 (1:ntpll, ir) = uir * zbshthf (1:ntpll, lm)
-                     End Do ! ir
-
-                     ! Begin loop over occupied and empty states
-                     Do ist3 = 1, nstsv
 
 ! calculate the complex overlap density
-                        Call vnlrhomt2 (.true., is, wfcr1(:, :), &
-                        & wf1%mtmesh(:, :, ias, ist3), zrhomt(:, :, &
-                        & ias)) ! Psi*_{a}.Psi_{nk} = rho_{a;nk}; Returns in SH)
+
+                     Do ir = 1, nrmt (is)
+                       uir=norm * rwfcr (ir, 1, ist2, ias) * rfmt(ir)
+                       do ipt=1,ntpll
+                         zvcltp (ipt, ir)= uir*conjg (zbshthf (ipt, lm)) * wf1%mtmesh(ipt, ir, ias, ist3) 
+                       enddo
+                     End Do
+
+                     Call zgemm ('N', 'N', lmmaxvr, nrcmt(is), ntpll, zone, &
+                      & zfshthf, lmmaxvr, zvcltp, ntpll, zzero, zrhomt, lmmaxvr)
+
       
 ! calculate the Coulomb potential
                      if (input%groundstate%hybrid%erfcapprox.eq."none") then
-                        ! Call zpotclmt (input%groundstate%ptnucl, &
-                        ! & input%groundstate%lmaxvr, nrc, rcmt(:, is), &
-                        ! & 0.d0, lmmaxvr, zrhomt(:, :, ias), zfmt) ! Returns SH     
-                        call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt, is)
-
+                       call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt, zfmt, is)
                      else
-                        zfmt=zzero
-                        do ifit=1, nfit
-                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, is, &
-                              & yukawa_in=.true., zlambda=erfc_fit(ifit,2), il=zbessi(:,ifit,:,is), kl=zbessk(:,ifit,:,is))
-                           zfmt=zfmt+zfmt0 * erfc_fit(ifit,1)
-                        enddo
-                        do ifit=2, nfit
-                           call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt(:, :, ias), zfmt0, is, &
-                              & yukawa_in=.true., zlambda=conjg(erfc_fit(ifit,2)), il=conjg(zbessi(:,ifit,:,is)), kl=conjg(zbessk(:,ifit,:,is)))
-                           zfmt=zfmt+zfmt0 * conjg(erfc_fit(ifit,1))
-                        enddo
+                       zfmt=zzero
+                       do ifit=1, nfit
+                          call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt, zfmt0, is, &
+                             & yukawa_in=.true., zlambda=erfc_fit(ifit,2), il=zbessi(:,ifit,:,is), kl=zbessk(:,ifit,:,is))
+                          zfmt=zfmt+zfmt0 * erfc_fit(ifit,1)
+                       enddo
+                       do ifit=2, nfit
+                          call poisson_mt_yukawa( lmaxvr, nrc, rcmt(:, is), zrhomt, zfmt0, is, &
+                             & yukawa_in=.true., zlambda=conjg(erfc_fit(ifit,2)), il=conjg(zbessi(:,ifit,:,is)), kl=conjg(zbessk(:,ifit,:,is)))
+                          zfmt=zfmt+zfmt0 * conjg(erfc_fit(ifit,1))
+                       enddo
                      endif
 
 
-                        Call zgemm ('N', 'N', ntpll, nrc, lmmaxvr, &
-                        & zone, zbshthf, ntpll, zfmt, lmmaxvr, &
-                        & zzero, zvcltp, ntpll) ! Returns zvcltp in SC
+                     Call zgemm ('N', 'N', ntpll, nrc, lmmaxvr, &
+                     & zone, zbshthf, ntpll, zfmt, lmmaxvr, &
+                     & zzero, zvcltp, ntpll) ! Returns zvcltp in SC
       
-                        zvcltp=conjg(zvcltp)
       
 ! calculate the complex overlap density
-                        Call vnlrhomt2 (.true., is, zvcltp, wfcr1(:, :), zrhomt(:, :, ias)) ! Returns in SH
-      
-                        zvclmt(:,:,ias,ist3)=zvclmt(:,:,ias,ist3)+zrhomt(:, :, ias)
-                        
+                     Do ir = 1, nrmt (is)
+                       uir=norm * rwfcr (ir, 1, ist2, ias) * rfmt(ir)
+                       do ipt=1,ntpll
+                         zvcltp (ipt, ir) = uir*zbshthf (ipt, lm) * zvcltp(ipt,ir)
+                       enddo
+                     End Do
 
-                     End Do ! ist3
-                  End Do ! m
-               End If ! spcore(ist2, is)
-            End do ! ist2
-         End Do ! ia
+                     Call zgemm ('N', 'N', lmmaxvr, nrcmt(is), ntpll, zone, &
+                      & zfshthf, lmmaxvr, zvcltp, ntpll, zone, zvclmt(1,1,ias,ist3), lmmaxvr)
+
+                   End Do ! m
+                 End If ! spcore(ist2, is)
+              End Do ! ist2
+            End Do ! ist3
+!$OMP END DO
+          End Do ! ia
+        End If !spnst
       End Do ! is
-End If
+!$OMP END PARALLEL
+      Deallocate(zrhomt,rfmt)
 call timesec(tb)
 if (print_times) write(*,*) 'vcv :',tb-ta
 
@@ -668,7 +678,7 @@ end if
       Deallocate (ylmgq, sfacgq)
       Deallocate (wfcr1)
       Deallocate (wf1ir)
-      Deallocate (zrhomt, zvcltp, zfmt, zfmt0)
+      Deallocate (zvcltp, zfmt, zfmt0)
       Deallocate (vxpsiirtmp)   
       Deallocate (vxpsigktmp)   
       Deallocate (zvclmt) 
