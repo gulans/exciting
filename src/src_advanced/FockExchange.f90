@@ -38,7 +38,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr, ipt
 
-      Complex (8) ::  potmt0(lmmaxvr, nrcmtmax, natmtot), potir0(ngrtot),rhoG0,potG0
+      Complex (8) :: rhoG0,potG0
       Real (8) :: time_coul, tc, td , time_fft, time_prod, time_rs, time_misc, time_critical,time_pw
 ! automatic arrays
       Real (8) :: zn (nspecies)
@@ -59,9 +59,10 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: wfcr1 (:, :)
       Complex (8), Allocatable :: wf1ir (:)
       Complex (8), Allocatable :: wf2ir (:)
+      Complex (8), Allocatable :: potir0 (:)
       Complex (8), Allocatable :: zvclmt (:, :, :, :)
       Complex (8), Allocatable :: zvcltp (:, :)
-      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :), zrhomt(:,:)
+      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :), zrhomt(:,:), potmt0(:,:,:)
 
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:), rfmt(:)
       
@@ -72,7 +73,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
       logical :: print_times
-      print_times=.false.
+      print_times=.true.
 
 ! allocate local arrays
       Allocate (vgqc(3, ngvec))
@@ -82,8 +83,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (jlgq0r(0:input%groundstate%lmaxvr, nrcmtmax, nspecies))
       Allocate (ylmgq(lmmaxvr, ngvec))
       Allocate (sfacgq(ngvec, natmtot))
-      Allocate (vxpsiirtmp(ngrtot))   !dealoc
-      Allocate (vxpsigktmp(ngkmax))   !dealoc
+!      Allocate (vxpsiirtmp(ngrtot))   !dealoc
+!      Allocate (vxpsigktmp(ngkmax))   !dealoc
       Allocate (wfcr1(ntpll, nrcmtmax))
      ! Allocate (zrhoir(ngrtot))
       Allocate (zvcltp(ntpll, nrcmtmax))
@@ -311,7 +312,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 !write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3,wf1ir,wf2ir,igk,ifg,prod,prodir,zrho01,pot,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical) REDUCTION(max: time_pw)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist3, wf1ir,wf2ir,prodir,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0, igk,ifg,prod,zrho01,pot,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical) REDUCTION(max: time_pw)
       !ist2 
 
          !write(*,*)"pēc", OMP_GET_THREAD_NUM()
@@ -326,12 +327,16 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          call WFInit(pot)
 
          Allocate(pot%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
+         Allocate(potmt0(lmmaxvr,nrmtmax,natmtot))
+
          Allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
          Allocate (wf1ir(ngrtot))
          Allocate (wf2ir(ngrtot))
          Allocate (prodir(ngrtot))
          Allocate (potir(ngrtot))
-
+         Allocate (potir0(ngrtot))
+         Allocate (vxpsiirtmp(ngrtot))
+         Allocate (vxpsigktmp(ngkmax))
 
          Do ist2 = 1, nomax
 
@@ -496,7 +501,7 @@ endif
 !$OMP END CRITICAL
                call timesec(td)
                time_critical=time_critical+td-tc
-               
+!write(*,*) ist2,ist3               
             End Do ! ist3
 !$OMP END DO NOWAIT
          End Do ! ist2
@@ -506,19 +511,23 @@ endif
          Deallocate (wf2ir)
          Deallocate (prodir)
          Deallocate (potir)
+         Deallocate (potir0)
          Deallocate (wf1ir)
+         Deallocate (potmt0)
+         Deallocate (vxpsiirtmp)
+         Deallocate (vxpsigktmp)
 !$OMP END PARALLEL
 
 call timesec(ta)
 if (print_times) then
-   write(*,*) 'time_coul :', time_coul
-   write(*,*) 'time_fft :', time_fft
-   write(*,*) 'time_prod :', time_prod
-   write(*,*) 'time_misc :', time_misc
-   write(*,*) 'time_rs :', time_rs
-   write(*,*) 'time_critical :', time_critical
-   write(*,*) 'time_pw :',time_pw
    write(*,*) 'omp_loop :',ta-tb
+   write(*,*) '  time_coul :', time_coul
+   write(*,*) '  time_fft :', time_fft
+   write(*,*) '  time_prod :', time_prod
+   write(*,*) '  time_misc :', time_misc
+   write(*,*) '  time_rs :', time_rs
+   write(*,*) '  time_critical :', time_critical
+   write(*,*) '  time_pw :',time_pw
 endif
          vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
@@ -679,8 +688,8 @@ end if
       Deallocate (wfcr1)
       Deallocate (wf1ir)
       Deallocate (zvcltp, zfmt, zfmt0)
-      Deallocate (vxpsiirtmp)   
-      Deallocate (vxpsigktmp)   
+!      Deallocate (vxpsiirtmp)   
+!      Deallocate (vxpsigktmp)   
       Deallocate (zvclmt) 
       if (allocated(jlgqsmallr)) then
          deallocate(jlgqsmallr)
