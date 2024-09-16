@@ -150,7 +150,11 @@ Subroutine hybrids
         end if
         !________________________________
         ! Inizialize mixed product basis
-        call init_product_basis()
+        if (input%groundstate%hybrid%method.eq."MB") then
+          call init_product_basis()
+        else 
+          call init_core_states
+        endif
       
       case(1)
         !----------------------------------------------
@@ -186,7 +190,12 @@ Subroutine hybrids
         call energykncr()       ! core kinetic energy
         !
         ! Inizialize mixed-product basis
-        call init_product_basis()
+        if (input%groundstate%hybrid%method.eq."MB") then
+          call init_product_basis()
+        else 
+          call init_core_states
+        endif
+
         ! Initialize mt_hcsf parameter
         call MTInitAll(mt_hscf)
         !_____________________________________________________________________________________
@@ -441,7 +450,9 @@ Subroutine hybrids
 !----------------------------------------
     close(600) ! HYBRIDS.OUT
     call delete_core_states
-    call delete_product_basis
+    if (input%groundstate%hybrid%method.eq."MB") then  
+      call delete_product_basis
+    endif
     call exit_hybrids
     nullify(input%gw)
     call rereadinput
