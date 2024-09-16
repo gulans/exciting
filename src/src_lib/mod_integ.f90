@@ -457,16 +457,23 @@ subroutine integ_cv(Ngrid,isp,fin,rez,integw)
   
   real(8) :: finRe(Ngrid),finIm(Ngrid),rezRe,rezIm
   
-  do ir=1, Ngrid
-    finRe(ir)=dble(fin(ir))
-    finIm(ir)=imag(fin(ir))
-  enddo
+!  do ir=1, Ngrid
+!    finRe(ir)=dble(fin(ir))
+!    finIm(ir)=imag(fin(ir))
+!  enddo
   
-  call integ_v(Ngrid,isp,finRe,rezRe,integw)
-  call integ_v(Ngrid,isp,finIm,rezIm,integw)
+!  call integ_v(Ngrid,isp,finRe,rezRe,integw)
+!  call integ_v(Ngrid,isp,finIm,rezIm,integw)
   
-  rez=cmplx(rezRe,rezIm,8)
-  
+!  rez=cmplx(rezRe,rezIm,8)
+
+ rez=0d0
+
+!can be done with dot product
+ do ir=1, Ngrid
+   rez=rez+integw%intw(ir,isp)*fin(ir)
+ enddo
+ 
   end subroutine
 
 subroutine integ_f_rev(Ngrid,r,isp,fin,fout,integw)

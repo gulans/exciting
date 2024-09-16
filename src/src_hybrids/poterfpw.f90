@@ -100,10 +100,10 @@ do ig=1, ngvec1
       nr=nrmt(is)
       do ia=1,natoms(is)
          ias=idxas(ia,is)
-         do ir=1,nr
             do ig=1, ngvec1
                ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
                zt1=potir(ifg)*sfacgq(ig, ias)
+            do ir=1,nr
                do l=0,lmaxvr
                   zt2=zt1*jlgqsmallr(ir,l,ig,is) 
                   do m=-l,l                      
@@ -112,6 +112,8 @@ do ig=1, ngvec1
                   enddo 
                enddo
             enddo
+            enddo
+          do ir=1,nr
             do l=0,lmaxvr
               do m=-l,l
                 lm=idxlm(l,m)

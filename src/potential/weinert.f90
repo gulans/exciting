@@ -1419,7 +1419,9 @@ end subroutine
             sf(:)=sfacgp(ig,:)
             t1 = 1.d0 / gpc(ig)
             zt1 = zvclir (ig) * t1 
-            zlm(:)=zt1*conjg (ylmgp(:, ig))
+            Do lm=1,lmmaxvr
+              zlm(lm)=zt1*conjg (ylmgp(lm, ig))
+            End Do !lm
 
             Do is = 1, nspecies
               lm = 0
@@ -1430,7 +1432,9 @@ end subroutine
                        
               Do ia = 1, natoms(is)
                 ias = idxas (ia, is)
-                qi (1:lmmaxvr,ias) = qi (1:lmmaxvr,ias) + sf (ias) * zlm2(1:lmmaxvr)
+                Do lm=1,lmmaxvr
+                  qi (lm,ias) = qi (lm,ias) + sf (ias) * zlm2(lm)
+                End Do !lm
               End Do !ia
             End Do !is
           End Do !ig
