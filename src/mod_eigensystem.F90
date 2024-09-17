@@ -1192,6 +1192,7 @@ endif
       real(8) :: Asc(ntpll,blksize),Bsc(ntpll,blksize),Csc(ntpll,blksize)
       real(8) :: Afsht(lmmaxvr,ntpll),Bfsht(lmmaxvr,ntpll),Cfsht(lmmaxvr,ntpll)
       real(8) :: Absht(ntpll,lmmaxvr),Bbsht(ntpll,lmmaxvr),Cbsht(ntpll,lmmaxvr)
+      real(8) :: ref2, imf2
 
 !,prodmesh
 !      real(8), allocatable :: REzfshthf(:,:), IMzfshthf(:,:), REmtmesh(:,:), IMmtmesh(:,:),TMPzfshthf(:,:),TMPmtmesh(:,:)
@@ -1239,10 +1240,18 @@ else
 ! back up copy of the real part
             Csc=Asc
 
-            
-            Asc(1:ntpll,1:chunksize)=dble(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Asc(1:ntpll,1:chunksize)-dimag(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Bsc(1:ntpll,1:chunksize)
-            Bsc(1:ntpll,1:chunksize)=dble(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Bsc(1:ntpll,1:chunksize)+dimag(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Csc(1:ntpll,1:chunksize)
-            Csc=Asc+Bsc
+            do ir=1,chunksize
+              do lm=1,ntpll
+                ref2=dble(zfun2(lm,iroffset+ir-1,ias))
+                imf2=dimag(zfun2(lm,iroffset+ir-1,ias))
+                Asc(lm,ir)=ref2*Asc(lm,ir)-imf2*Bsc(lm,ir)
+                Bsc(lm,ir)=ref2*Bsc(lm,ir)+imf2*Csc(lm,ir)
+                Csc(lm,ir)=Asc(lm,ir)+Bsc(lm,ir)
+              enddo
+            enddo
+!                Asc(1:ntpll,1:chunksize)=dble(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Asc(1:ntpll,1:chunksize)-dimag(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Bsc(1:ntpll,1:chunksize)
+!                Bsc(1:ntpll,1:chunksize)=dble(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Bsc(1:ntpll,1:chunksize)+dimag(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Csc(1:ntpll,1:chunksize)
+!                Csc=Asc+Bsc
 
             Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, Afsht, lmmaxvr, Asc, ntpll, zzero, Ash, lmmaxvr)
             Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, Bfsht, lmmaxvr, Bsc, ntpll, zzero, Csh, lmmaxvr)
