@@ -466,16 +466,19 @@ endif
                endif
 
    !-----------------------------------------------------------------------------------1
+               
    call timesec(tc)
-               call genWFonMeshOne(pot)
-               pot%mtmesh=conjg(pot%mtmesh)
+               call prodshrs(pot%mtrlm(:,:,:,1),wf2%mtmesh(:,:,:,ist2),prod%mtrlm(:,:,:,1))
+!               call genWFonMeshOne(pot)
+!               pot%mtmesh=conjg(pot%mtmesh)
+!   call timesec(td)
+!   time_misc=time_misc+td-tc
+
+!   call timesec(tc)
+!               call WFprodrs(1,pot,ist2,wf2,prod)
    call timesec(td)
    time_misc=time_misc+td-tc
-
-   call timesec(tc)
-               call WFprodrs(1,pot,ist2,wf2,prod)
-   call timesec(td)
-   time_rs=time_rs+td-tc
+!   time_rs=time_rs+td-tc
 
    call timesec(tc)
                vxpsiirtmp(:) = potir(:)*wf2ir(:)*cfunir(:)
@@ -488,7 +491,6 @@ endif
                Call zfftifc (3, ngrid,-1,vxpsiirtmp)
 
                Do igk=1, Gkqset%ngk (1, ik)
-      
                   vxpsigktmp(igk)= vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega)*wkptnr(jk)
                End Do
 

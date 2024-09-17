@@ -1154,4 +1154,114 @@ endif
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !! VERSION OF WFprodrs subroutine that works faster ENDS HERE !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+     subroutine prodshrs(zfun1,zfun2,zres)
+      use modinput
+      use mod_APW_LO
+      use mod_atoms
+      use mod_muffin_tin
+      use mod_eigenvalue_occupancy
+      use constants, only : zzero, zone
+      use mod_SHT
+      use mod_Gvector, only : ngrtot
+ ! !USES:
+ ! !DESCRIPTION:
+ ! Calculates a product of two complex functions given in a muffin tin.
+ ! The first and the second function are given in spherical harmonics and on a spherical grid, respectively.
+ ! The output is produced in spherical harmonics.
+ ! !REVISION HISTORY:
+ !   Created 2024 (Andris)
+ !EOP
+ !BOC
+      implicit none
+      complex(8), intent(in) :: zfun1(lmmaxvr,nrmtmax,natmtot)
+      complex(8), intent(in) :: zfun2(ntpll,nrmtmax,natmtot)
+      complex(8), intent(out) :: zres(lmmaxvr,nrmtmax,natmtot)
+
+
+
+!     integer, intent(in) :: ist1,ist2
+!     type (WFType) :: wf1,wf2,prod
+      integer :: is,ia,ias
+      integer :: ir,lm
+      integer :: blkstart,chunksize,iroffset
+      integer, parameter :: blksize=64
+      complex(8) :: mtmesh(ntpll,blksize) 
+      
+      real(8) :: Ash(lmmaxvr,blksize),Bsh(lmmaxvr,blksize),Csh(lmmaxvr,blksize)
+      real(8) :: Asc(ntpll,blksize),Bsc(ntpll,blksize),Csc(ntpll,blksize)
+      real(8) :: Afsht(lmmaxvr,ntpll),Bfsht(lmmaxvr,ntpll),Cfsht(lmmaxvr,ntpll)
+      real(8) :: Absht(ntpll,lmmaxvr),Bbsht(ntpll,lmmaxvr),Cbsht(ntpll,lmmaxvr)
+
+!,prodmesh
+!      real(8), allocatable :: REzfshthf(:,:), IMzfshthf(:,:), REmtmesh(:,:), IMmtmesh(:,:),TMPzfshthf(:,:),TMPmtmesh(:,:)
+!      real(8) :: REresult(lmmaxvr,blksize),IMresult(lmmaxvr,blksize),TMPresult(lmmaxvr,blksize)
+!      complex(8) :: zt
+!      real(8) :: ta,tb
+ 
+
+!      allocate(mtmesh(ntpll,blksize))
+
+      Afsht=dble(zfshthf)
+      Bfsht=dimag(zfshthf)
+      Cfsht=Afsht+Bfsht
+
+      Absht=dble(zbshthf)
+      Bbsht=dimag(zbshthf)
+      Cbsht=Absht+Bbsht
+
+
+      do is=1,nspecies
+        do ia=1,natoms(is)
+          ias=idxas(ia,is)
+! transform function zfun1 into the real space
+          chunksize=blksize
+          do iroffset=1,nrmt(is),blksize
+            if (iroffset+blksize-1.gt.nrmt(is)) chunksize=nrmt(is)+1-iroffset
+
+if (.false.) then
+            Call zgemm ('N', 'N', ntpll, chunksize, lmmaxvr, zone, zbshthf, ntpll, zfun1(1,iroffset,ias), lmmaxvr, zzero, mtmesh, ntpll)
+            mtmesh(:,1:chunksize)=mtmesh(:,1:chunksize)*zfun2(:,iroffset:iroffset+chunksize-1,ias)
+            Call zgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, zfshthf, lmmaxvr, mtmesh, ntpll, zzero, zres(1,iroffset,ias) , lmmaxvr)
+else
+            Ash(1:lmmaxvr,1:chunksize)=dble(zfun1(1:lmmaxvr,iroffset:iroffset+chunksize-1,ias))
+            Bsh(1:lmmaxvr,1:chunksize)=dimag(zfun1(1:lmmaxvr,iroffset:iroffset+chunksize-1,ias))
+            Csh(1:lmmaxvr,1:chunksize)=Ash(1:lmmaxvr,1:chunksize)+Bsh(1:lmmaxvr,1:chunksize)
+
+            Call dgemm ('N', 'N', ntpll, chunksize, lmmaxvr, zone, Absht, ntpll, Ash, lmmaxvr, zzero, Asc, ntpll)
+            Call dgemm ('N', 'N', ntpll, chunksize, lmmaxvr, zone, Bbsht, ntpll, Bsh, lmmaxvr, zzero, Csc, ntpll)
+            Call dgemm ('N', 'N', ntpll, chunksize, lmmaxvr, zone, Cbsht, ntpll, Csh, lmmaxvr, zzero, Bsc, ntpll)
+
+! the imaginary part of zfun1 in SH
+            Bsc=Bsc-Asc-Csc
+! the real part of zfun2 in SH
+            Asc=Asc-Csc
+! back up copy of the real part
+            Csc=Asc
+
+            
+            Asc(1:ntpll,1:chunksize)=dble(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Asc(1:ntpll,1:chunksize)-dimag(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Bsc(1:ntpll,1:chunksize)
+            Bsc(1:ntpll,1:chunksize)=dble(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Bsc(1:ntpll,1:chunksize)+dimag(zfun2(1:ntpll,iroffset:iroffset+chunksize-1,ias))*Csc(1:ntpll,1:chunksize)
+            Csc=Asc+Bsc
+
+            Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, Afsht, lmmaxvr, Asc, ntpll, zzero, Ash, lmmaxvr)
+            Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, Bfsht, lmmaxvr, Bsc, ntpll, zzero, Csh, lmmaxvr)
+            Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, Cfsht, lmmaxvr, Csc, ntpll, zzero, Bsh, lmmaxvr)
+
+            Bsh=Bsh-Ash-Csh
+            Ash=Ash-Csh
+
+            zres(1:lmmaxvr,iroffset:iroffset+chunksize-1,ias)=dcmplx(Ash(1:lmmaxvr,1:chunksize),Bsh(1:lmmaxvr,1:chunksize))
+
+endif
+
+          enddo
+
+! calculate the product zfun1*zfun2
+! transform back to spherical harmonics          
+        enddo
+      enddo
+ 
+      end subroutine prodshrs
+
 End Module
