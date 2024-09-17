@@ -389,9 +389,9 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                call timesec(tc)
                pot%mtrlm(:,:,:,1)=zzero
                potir=zzero
-               potmt0=zzero
-               potir0=zzero
                if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then !Yukawa case
+                  potmt0=zzero
+                  potir0=zzero
                   ifit2=0
                   do j=1, nfit
                      ifit2=ifit2+1
@@ -419,25 +419,28 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
    
 
                if ((input%groundstate%hybrid%erfcapprox.eq."PW").or.(input%groundstate%hybrid%erfcapprox.eq."none")) then
+                  potmt0=zzero
+                  potir0=zzero
+
                   Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), potmt0, potir0, zrho02,v, &
+                  & prodir(:), pot%mtrlm(:,:,:,1), potir, zrho02,v, &
                   & cutoff=cutoff, hybrid_in=.true.,&
                   & rpseudo_in=rpseudo,rpseudomat=rpseudomat(1,:,:,:))
 
-                  if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
-                     pot%mtrlm(:,:,:,1)=potmt0
-                     potir=potir0
-                  endif
+!                  if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
+!                     pot%mtrlm(:,:,:,1)=potmt0
+!                     potir=potir0
+!                  endif
                endif
                call timesec(td)
                time_coul=time_coul+td-tc
 
 if (input%groundstate%hybrid%erfcapprox.eq."PW")then  
    call timesec(tc)
-   call poterfpw(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir, pot%mtrlm(:,:,:,1))
-   potir=potir0 - potir !Coulomb - erf
-   pot%mtrlm(:,:,:,1)=potmt0 - pot%mtrlm(:,:,:,1)
+   call poterfpw(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir0, potmt0)
+   potir=potir - potir0 !Coulomb - erf
+   pot%mtrlm(:,:,:,1)=-potmt0 + pot%mtrlm(:,:,:,1)
    call timesec(td)
    time_pw=time_pw+td-tc
 endif
@@ -475,8 +478,8 @@ endif
    time_rs=time_rs+td-tc
 
    call timesec(tc)
-               vxpsiirtmp(:) = potir(:)*wf2ir(:)
-               vxpsiirtmp(:) = vxpsiirtmp(:)*cfunir(:)
+               vxpsiirtmp(:) = potir(:)*wf2ir(:)*cfunir(:)
+!               vxpsiirtmp(:) = vxpsiirtmp(:)*cfunir(:)
    call timesec(td)
    time_prod=time_prod+td-tc
    ! ----------------------------------------------------------------------------------
