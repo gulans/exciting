@@ -1045,7 +1045,11 @@ call timesec(tb)
       type (WFType) :: wf1,wf2,prod
       integer :: is,ia,ias
       integer :: l1,l3,m1,m3,lm1,lm3,lm2,io1,io2,if1,if3,if1old,if3old,ilo1,ilo2,lmmaxprod,lm,ir
+      integer :: blkstart,chunksize,iroffset
+      integer, parameter :: blksize=64
       complex(8), allocatable :: factors(:), rho(:,:), fr(:), mtmesh(:,:), angmesh(:)
+      real(8), allocatable :: REzfshthf(:,:), IMzfshthf(:,:), REmtmesh(:,:), IMmtmesh(:,:),TMPzfshthf(:,:),TMPmtmesh(:,:)
+      real(8) :: REresult(lmmaxvr,blksize),IMresult(lmmaxvr,blksize),TMPresult(lmmaxvr,blksize)
       complex(8) :: zt
       real(8) :: ta,tb
  
@@ -1054,15 +1058,33 @@ call timesec(tb)
  
  call timesec(ta)
  
- !     if (.not.allocated(prod%mtmesh)) allocate(prod%mtmesh(ntpll,nrmtmax,natmtot,1))
- !     prod%mtmesh(:,:,:,1)=conjg(wf1%mtmesh(:,:,:,ist1))*wf2%mtmesh(:,:,:,ist2)
-      allocate(mtmesh(ntpll,nrmtmax))
+      allocate(mtmesh(ntpll,blksize))
       allocate(angmesh(ntpll))
+
+! needed for option 3 (below)
+if (.true.) then 
+      allocate(REmtmesh(ntpll,blksize))
+      allocate(IMmtmesh(ntpll,blksize))
+      allocate(TMPmtmesh(ntpll,blksize))
+
+      allocate(REzfshthf(lmmaxvr,ntpll))
+      allocate(IMzfshthf(lmmaxvr,ntpll))
+      allocate(TMPzfshthf(lmmaxvr,ntpll))
+
+      REzfshthf=dble(zfshthf)
+      IMzfshthf=dimag(zfshthf)
+      TMPzfshthf=REzfshthf+IMzfshthf
+endif
+
       do is=1,nspecies
         do ia=1,natoms(is)
           ias=idxas(ia,is)
-#ifdef MTMESH_zgemv
 
+! Pick your poison 
+
+! Option 1: zgemv to transform to spherical harmonics shell by shell.
+! Bad because of zgemv.
+if (.false.) then
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ir,lm,angmesh)
 !$OMP DO
           do ir=1,nrmt(is)
@@ -1073,29 +1095,56 @@ call timesec(tb)
           enddo
 !$OMP END DO
 !$OMP END PARALLEL
-#else
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ir,lm)
-!$OMP DO
-          do ir=1,nrmt(is)
-            do lm=1,ntpll
-              mtmesh(lm,ir)=conjg(wf1%mtmesh(lm,ir,ias,ist1))*wf2%mtmesh(lm,ir,ias,ist2)
+endif
+! Option 2: blocking allows to maintain the memory access locality and to replace zgemv with zgemm
+! Slightly longer code because of blocking, but it's faster than option 1
+if (.false.) then
+          chunksize=blksize
+          do iroffset=1,nrmt(is),blksize
+            if (iroffset+blksize-1.gt.nrmt(is)) chunksize=nrmt(is)+1-iroffset
+            do ir=iroffset,iroffset+chunksize-1
+              do lm=1,ntpll
+                 mtmesh(lm,ir-iroffset+1)=conjg(wf1%mtmesh(lm,ir,ias,ist1))*wf2%mtmesh(lm,ir,ias,ist2)
+              enddo
             enddo
+            Call zgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, zfshthf, lmmaxvr, mtmesh, ntpll, zzero, prod%mtrlm(1,iroffset,ias,1) , lmmaxvr) ! Genshtmat3
           enddo
-!$OMP END DO
-!$OMP END PARALLEL
- !         mtmesh(:,1:nrmt(is))=conjg(wf1%mtmesh(:,1:nrmt(is),ias,ist1))*wf2%mtmesh(:,1:nrmt(is),ias,ist2)
  
-         !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxvr, zone, zfshtvr, lmmaxvr, prod%mtmesh(1,1,ias,1), lmmaxvr, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat
-         !  Call zgemm ('N', 'N', lmmaxvr, nrmt(is), lmmaxhf, zone, zfshthf, lmmaxhf, prod%mtmesh(1,1,ias,1), lmmaxhf, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat2
-          Call zgemm ('N', 'N', lmmaxvr, nrmt(is), ntpll, zone, zfshthf, lmmaxvr, mtmesh(1,1), ntpll, zzero, prod%mtrlm(1,1,ias,1) , lmmaxvr) ! Genshtmat3
-#endif
- 
+endif
+! Option 3: keep the blocking introduced above, but replace zgemm with 3 dgemms.
+! 3 dgemms are faster than 1 zgemm, but additional memory transfers have extra cost.
+! Option 3 beats option 2 on a single core, but does it on all cores?
+! Again, even longer code.
+if (.true.) then
+          chunksize=blksize
+          do iroffset=1,nrmt(is),blksize
+            if (iroffset+blksize-1.gt.nrmt(is)) chunksize=nrmt(is)+1-iroffset
+            do ir=iroffset,iroffset+chunksize-1
+              do lm=1,ntpll
+                 zt=conjg(wf1%mtmesh(lm,ir,ias,ist1))*wf2%mtmesh(lm,ir,ias,ist2)
+                 REmtmesh(lm,ir-iroffset+1)=dble(zt)
+                 IMmtmesh(lm,ir-iroffset+1)=dimag(zt)
+                 TMPmtmesh(lm,ir-iroffset+1)=REmtmesh(lm,ir-iroffset+1)+IMmtmesh(lm,ir-iroffset+1)
+              enddo
+            enddo
+            
+            Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, 1d0, REzfshthf, lmmaxvr, REmtmesh, ntpll, 0d0, REresult , lmmaxvr)
+            Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, 1d0, IMzfshthf, lmmaxvr, IMmtmesh, ntpll, 0d0, TMPresult , lmmaxvr)  
+            Call dgemm ('N', 'N', lmmaxvr, chunksize, ntpll, 1d0, TMPzfshthf, lmmaxvr, TMPmtmesh, ntpll, 0d0, IMresult , lmmaxvr)
+
+            IMresult=IMresult-REresult
+            IMresult=IMresult-TMPresult
+            REresult=REresult-TMPresult
+
+            prod%mtrlm(1:lmmaxvr,iroffset:iroffset+chunksize-1,ias,1)=dcmplx(REresult(1:lmmaxvr,1:chunksize),IMresult(1:lmmaxvr,1:chunksize))
+
+          enddo
+endif
  
         enddo
       enddo
       deallocate(mtmesh,angmesh)
- !     deallocate(prod%mtmesh)
+      deallocate(REzfshthf,IMzfshthf,REmtmesh,IMmtmesh,TMPmtmesh,TMPzfshthf)
 
  call timesec(tb)
  !write(*,*) tb-ta
