@@ -14,7 +14,7 @@ module weinert
   public :: poisson_and_multipoles_mt, match_bound_mt
   public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa
   public :: poisson_mt_yukawa, pseudocharge_rspace_matrix, pseudocharge_rspace_new
-  public :: multipoles_ir2, pseudocharge_gspace2, poisson_ir2, surface_ir2, surface_ir3
+  public :: multipoles_ir2, multipoles_ir3, pseudocharge_gspace2, poisson_ir2, surface_ir2, surface_ir3
   contains
 
     !> This subroutine evaluates an interstitial function given by the Fourier series
@@ -1339,6 +1339,229 @@ end subroutine
 
     end subroutine
       
+    subroutine multipoles_ir3( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qi, zlambda,zilmt)
+    use modinput
+    use mod_atoms, only: nspecies, natoms, idxas,natmtot
+    use mod_muffin_tin, only: rmt,nrmtmax,nrmt
+    use constants, only: fourpi,y00,zil,zzero
+    !> maximum angular momentum \(l\)
+    integer, intent(in) :: lmax
+    !> total number of \({\bf G+p}\) vectors
+    integer, intent(in) :: ngvec
+    !> lengths of \({\bf G+p}\) vectors
+    real(dp), intent(in) :: gpc(:)
+    !> integer components \({\bf G}\) of \({\bf G+p}\) vectors
+    !integer, intent(in) :: ivgp(:,:)
+    !> spherical Bessel functions \(j_l(|{\bf G+p}| R_\alpha)\)
+    real(dp), intent(in) :: jlgpr(0:,:,:)
+    !> spherical harmonics \(Y_{lm}(\widehat{\bf G+p})\)
+    complex(dp), intent(in) :: ylmgp(:,:)
+    !> structure factors \({\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf \tau}_\alpha}\)
+    complex(dp), intent(in) :: sfacgp(:,:)
+    !> bounds for integer components of \({\bf G}\)
+    !integer, intent(in) :: intgv(3,2)
+    !> map from integer components of \({\bf G}\) vectors to \({\bf G}\) vector index
+    !integer, intent(in) :: ivgig(intgv(1,1):,intgv(2,1):,intgv(3,1):)
+    !> map from \({\bf G}\) vector index to point in FFT grid
+    integer, intent(in) :: igfft(:)
+    !> Fourier components \(\hat{f}({\bf G+p})\) of the function on the FFT grid
+    complex(dp), intent(in) :: zvclir(:)
+    !> multipole moments of the function's extension inside the muffin-tin spheres
+    complex(dp), intent(out) :: qi(:,:)
+    complex(dp),optional, intent(in) :: zlambda
+    complex(dp),optional, intent(in) :: zilmt(0:,:) 
+  
+    integer :: is, ia, ias, ig, ifg, l, lm, m
+    complex(dp) :: zt1,zt2,tbessi,zt3
+    real(dp) :: t1,tbessj
+    logical :: yukawa
+
+    integer :: firstnonzeroG,lmmaxvr
+    Complex (8) :: sf(natmtot)
+    Complex (8) :: zlm ((lmax+1)**2), zlm2((lmax+1)**2)
+    real(8):: rmtl (0:lmax+3, nspecies)
+
+    integer, parameter :: blksize=64
+    Complex (8) :: zmat1((lmax+1)**2,blksize) ,zmat2((lmax+1)**2,blksize)
+    integer :: igoffset, chunksize, sfld
+
+  !external functions
+    Real (8) :: factnm
+    External factnm
+  
+    lmmaxvr=(lmax+1)**2
+    sfld=size(sfacgp,dim=1)
+
+    if (present(zlambda)) then
+      yukawa=.true.
+    else
+      yukawa=.false.
+    endif
+
+
+
+
+    qi (:, :) = zzero
+  
+    if (gpc(1) .lt. input%structure%epslat) Then
+      firstnonzeroG=2
+    else
+      firstnonzeroG=1
+    endif
+
+  if (.not.yukawa) then
+    ! compute (R_mt)^l
+    Do is = 1, nspecies
+      rmtl (0, is) = 1.d0
+      Do l = 1, input%groundstate%lmaxvr + 3
+         rmtl (l, is) = rmtl (l-1, is) * rmt (is)
+      End Do
+    End Do
+
+    chunksize=blksize
+!x$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
+!x$OMP DO 
+
+! Is the alignment worth the hassle?
+! The unaligned version goes as follows:
+!          Do igoffset = 1, ngvec,blksize    
+!            if (igoffset+blksize-1.gt.ngvec) chunksize=ngvec-igoffset+1
+!            Do ig=igoffset,igoffset+chunksize-1
+!             t1 = 1.d0 / gpc(ig)
+!             zt1 = zvclir (ig) * t1
+!             Do lm=1,lmmaxvr
+!               zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+!             End Do !lm
+!            End Do
+!            ...............
+! If it makes any difference (for better or worse), it should be visible in large systems.
+! For now, sticking with the aligned code. 
+          Do igoffset = 1, ngvec,blksize
+            if (igoffset+blksize-1.gt.ngvec) chunksize=ngvec-igoffset+1
+
+            if (gpc(igoffset).lt. input%structure%epslat) Then
+             Do ig=igoffset,igoffset+chunksize-1
+              If (.not.(gpc(ig) .lt. input%structure%epslat)) Then 
+                t1 = 1.d0 / gpc(ig)
+              Else
+                t1 = 0d0
+              End If
+              zt1 = zvclir (ig) * t1 
+              Do lm=1,lmmaxvr
+                zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+              End Do !lm
+             End Do
+            else
+             Do ig=igoffset,igoffset+chunksize-1
+              t1 = 1.d0 / gpc(ig)
+              zt1 = zvclir (ig) * t1
+              Do lm=1,lmmaxvr
+                zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+              End Do !lm
+             End Do
+            endif
+! End of the differing part
+
+             Do is = 1, nspecies
+               Do ig=igoffset,igoffset+chunksize-1
+                 lm = 0
+                 Do l = 0, lmax
+                   zmat2(lm+1:lm+1+2*l,ig-igoffset+1)=jlgpr (l+1, ig, is) * zmat1(lm+1:lm+1+2*l,ig-igoffset+1)
+                   lm=lm+1+2*l
+                 End Do !l
+               End Do ! ig        
+               Call zgemm('N','N', lmmaxvr, natoms(is), chunksize, (1.0D0,0.0), zmat2, lmmaxvr, sfacgp(igoffset,idxas (1, is)), sfld, (1.0D0,0.0), qi(1,idxas (1, is)), lmmaxvr)
+             End Do !is
+
+          End Do
+!x$OMP END DO
+!x$OMP END PARALLEL
+
+    Do is = 1, nspecies
+       Do ia = 1, natoms (is)
+         ias = idxas (ia, is)
+         lm = 0
+         do l = 0, lmax
+           qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * fourpi * zil (l) * rmtl (l+3, is) / rmt(is) ! šo va riznest ārā
+           lm=lm+1+2*l
+         enddo
+       End Do
+    End Do
+
+    if (gpc(1) .lt. input%structure%epslat) Then
+      
+      Do is = 1, nspecies
+        Do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+          t1 = fourpi * y00 * rmtl (3, is) / 3.d0
+          qi (1,ias) = qi (1,ias) + t1 * zvclir (1)
+        End Do
+      End Do
+    endif
+
+
+
+
+  else ! yukawa
+
+!$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,zlambda,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,zilmt,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
+!$OMP DO 
+          Do ig = firstnonzeroG, ngvec
+            sf(:)=sfacgp(ig,:)
+            zt1 = 1.d0 / (gpc(ig)**2 + zlambda**2)
+            zt1 = zvclir (ig) * zt1 
+            zlm(:)=zt1*conjg (ylmgp(:, ig))
+
+            Do is = 1, nspecies
+              zlm2(1)=(zlambda * jlgpr (0, ig, is) * (zilmt(1,is) + (zilmt(0,is)/(zlambda*rmt(is)))))&
+                       &- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is))
+              zlm2(1) = zlm2(1) * zlm(1)
+
+              lm = 1
+              Do l = 1, lmax
+                  zlm2(lm+1:lm+1+2*l) = (zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))-(gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is))
+                  zlm2(lm+1:lm+1+2*l)=zlm2(lm+1:lm+1+2*l)*zlm(lm+1:lm+1+2*l)
+                  lm=lm+1+2*l
+              End Do !l
+                       
+              Do ia = 1, natoms(is)
+                ias = idxas (ia, is)
+                qi (1:lmmaxvr,ias) = qi (1:lmmaxvr,ias) + sf (ias) * zlm2(1:lmmaxvr)
+              End Do !ia
+            End Do !is
+          End Do !ig
+!$OMP END DO
+!$OMP END PARALLEL
+
+    Do is = 1, nspecies
+      t1=fourpi*rmt(is)**2
+      Do ia = 1, natoms (is)
+        ias = idxas (ia, is)
+        lm = 0
+        do l = 0, lmax
+          qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * t1 * zil (l) * zlambda**(-l) * factnm (2*l+1, 2) 
+          lm=lm+1+2*l
+        enddo
+      End Do
+    End Do
+
+    if (gpc(1) .lt. input%structure%epslat) Then
+      
+      
+      Do is = 1, nspecies
+        Do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+
+          zt1 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
+          qi (1,ias) = qi (1,ias) + zt1 * zvclir (1)
+
+        End Do
+      End Do
+    endif
+
+  endif! yukawa or not
+  
+  end subroutine
     
     subroutine multipoles_ir2( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qi, zlambda,zilmt)
     use modinput
@@ -1523,42 +1746,6 @@ end subroutine
       End Do
     endif
 
-!!!Vecā metode
-
-    ! do is = 1, nspecies
-    !    do ia = 1, natoms(is)
-    !     ias = idxas( ia, is)
-  
-    !       Do ig = 1, ngvec
-    !         ifg = ig !igfft (ig) !because zvclir is sorted
-            
-    !         If (gpc(ig) .Gt. input%structure%epslat) Then
-    !            zt1 = zvclir (ifg) * sfacgp (ig, ias)/((gpc(ig) ** 2)+(zlambda ** 2))
-               
-    !            lm = 0
-    !            Do l = 0, input%groundstate%lmaxvr
-    !               if (l .eq. 0) then
-    !                 zt2 = zt1 *  fourpi * (rmt(is) ** 2) &
-    !                   &* ((zlambda * jlgpr (0, ig, is) * (zilmt(1,is)+ (zilmt(0,is)/(zlambda*rmt(is)))))&
-    !                   &- (gpc(ig) * ((jlgpr(0, ig, is)/(gpc(ig)*rmt(is)))-jlgpr(1, ig, is)) * zilmt(0,is)))
-    !               else
-    !                 zt2 = zt1 *  fourpi * zil(l) * (rmt(is) ** 2) * factnm (2*l+1, 2) /(zlambda ** (l))&
-    !                   &* ((zlambda * jlgpr (l, ig, is) * zilmt(l-1,is))&
-    !                   &- (gpc(ig) * jlgpr (l-1, ig, is) * zilmt(l,is)))
-    !               endif
-  
-    !               Do m = - l, l
-    !                  lm = lm + 1
-    !                  qi (lm, ias) = qi (lm, ias) + zt2 * conjg (ylmgp(lm, ig))
-    !               End Do
-    !            End Do
-    !         Else
-    !            zt3 = fourpi * y00 * (rmt (is) ** 2) * zilmt(1,is) / zlambda
-    !            qi (1,ias) = qi (1,ias) + zt3 * zvclir (ifg)
-    !         End If
-    !       enddo                        
-    !   end do
-    ! end do
   endif! yukawa or not
   
   end subroutine
@@ -1980,7 +2167,7 @@ subroutine surface_ir3( lmax, ngvec,  jlgpr, ylmgp, sfacgp, vclig, vilm2)
       complex(dp), intent(out) :: vilm2(:,:)
 
       integer :: ig, l,m, lm, is, ia, ias, lmmax, atst, sfld
-      integer, parameter :: blocksize=128
+      integer, parameter :: blocksize=32
       Complex (8) :: zlm ((lmax+1)**2,blocksize),zlm2((lmax+1)**2,blocksize)
       integer :: iggg, blk
 
