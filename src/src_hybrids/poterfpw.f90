@@ -14,6 +14,7 @@ subroutine poterfpw (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,poti
       use modinput
       use mod_muffin_tin, only: rcmt,nrmtmax,nrmt,idxlm,lmmaxvr
       use modinteg
+      use mod_hybrids, only : gmax_pw_method
       use constants, only: fourpi,zil,pi,zzero
       use mod_Gvector, only: cfunir,ngrid,ngrtot,ngvec
       Implicit None
@@ -32,6 +33,7 @@ subroutine poterfpw (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,poti
 
       complex (8) :: zfmt1(nrmtmax),zfmt2(nrmtmax),zt1,zt2,zt3,zt4
       complex (8) :: zfun(nrmtmax,lmmaxvr)
+      complex (8) :: vig(ngvec1)
       integer :: lmaxvr,is,ia,ias,ig,ifg,l,m,lm,ir,nr,sfld
       complex (8), allocatable :: rhorcmt2(:,:),zfun2(:,:,:)
       real (8) :: fr(nrmtmax)
@@ -47,7 +49,6 @@ potir(:) = cfunir(:)*rhoir(:)
 Call zfftifc (3, ngrid, -1, potir(:))  !to G space
 
 !!! Obtain Fourier coeficients of the density in the MT and add it in porir
-Allocate(rhorcmt2(nrmtmax,lmmaxvr))
 do is=1,nspecies
    nr=nrmt(is)
    do ir=1,nr
@@ -63,8 +64,12 @@ do is=1,nspecies
       enddo
 
       do ig=1,ngvec1
-         ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq)) 
-         do l=0,lmaxvr
+! ngvec1 is the limit beyong which there are no longer G+q vectors longer than gmax_pw_method.
+! But there is no guarantee that the first ngvec1 vectors do not contain too long G+q for non-zero q.
+        if (gqc(ig) .lt. gmax_pw_method) then
+!        if(.true.) then
+          ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq)) 
+          do l=0,lmaxvr
             do m=-l,l
                lm=idxlm(l,m)
                reint=ddot(nr,refr(1,lm),1,jlgqsmallr(1,l,ig,is),1)
@@ -73,28 +78,38 @@ do is=1,nspecies
                zt4=zt3*4d0*pi*ylmgq(lm,ig)*conjg(sfacgq(ig, ias))/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
                potir(ifg)=potir(ifg)+zt4
             enddo ! m
-         enddo ! l
+          enddo ! l
+        endif
       enddo ! ig
    enddo ! ia 
 enddo ! is
 
-Deallocate(rhorcmt2)
 
-do ig=1, ngvec1
-      ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq))   
-      If (gqc(ig) .Gt. input%structure%epslat) Then  
+   do ig=1, ngvec1
+     ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq))   
+     if (gqc(ig) .lt. gmax_pw_method) then
+!    if(.true.) then
+       If (gqc(ig) .Gt. input%structure%epslat) Then  
          potir(ifg)=potir(ifg)*4d0*pi*exp(-gqc(ig)**2/(4d0*lambda**2))/gqc(ig)**2
-      else !!!! erfc kernels G=0 *(-1)  
+       else !!!! erfc kernels G=0 *(-1)  
          potir(ifg)=-potir(ifg)*pi/lambda**2
-      endif
+       endif
+     else
+       potir(ifg)=zzero
+     endif
+     vig(ig)=potir(ifg)
    enddo
 
   
-
-   do ig=ngvec1,ngrtot!ngvec
-      ifg=igfft(ig)
-      potir(ifg)=zzero
-   enddo
+  potir=zzero
+  do ig=1, ngvec1
+    ifg=igfft(ig)
+    potir(ifg)=vig(ig)
+  enddo
+!   do ig=ngvec1+1,ngrtot!ngvec
+!      ifg=igfft(ig)
+!      potir(ifg)=zzero
+!   enddo
    
 
 !!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:) (lm,ir,ias)
@@ -104,16 +119,20 @@ do ig=1, ngvec1
         ias=idxas(ia,is)
         zfun=zzero
         do ig=1, ngvec1
-          ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
-          zt1=potir(ifg)*sfacgq(ig, ias)
-          do l=0,lmaxvr
-            do lm=idxlm(l,-l),idxlm(l,l)
-              zt2=zt1*conjg(ylmgq(lm,ig))
-              do ir=1,nr
-                zfun(ir,lm)=zfun(ir,lm)+zt2*jlgqsmallr(ir,l,ig,is)
+          if (gqc(ig) .lt. gmax_pw_method) then
+!          if(.true.) then
+!            ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
+!            zt1=potir(ifg)*sfacgq(ig, ias)
+            zt1=vig(ig)*sfacgq(ig, ias)
+            do l=0,lmaxvr
+              do lm=idxlm(l,-l),idxlm(l,l)
+                zt2=zt1*conjg(ylmgq(lm,ig))
+                do ir=1,nr
+                  zfun(ir,lm)=zfun(ir,lm)+zt2*jlgqsmallr(ir,l,ig,is)
+                enddo
               enddo
             enddo
-          enddo
+          endif
         enddo
         do l=0,lmaxvr
           zt1=4d0*pi*zil(l)

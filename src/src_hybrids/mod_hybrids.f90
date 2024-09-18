@@ -24,6 +24,10 @@ module mod_hybrids
     ! APW matrix elements of the non-local potential
     complex(8), allocatable :: vnlmat(:,:,:)
 
+    ! Maximum gmax used for the soft erf kernel in screened-exchange calculations
+    ! use in ACE only
+    real(8) :: gmax_pw_method
+
     ! File names
     character(80) :: fname_vxnl
     data fname_vxnl / 'VXNL.OUT' /

@@ -13,6 +13,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
       Use potentials, only: coulomb_potential2
       use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
+      use mod_hybrids, only : gmax_pw_method
       USE OMP_LIB
 
       use poterf
@@ -34,7 +35,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Integer :: ifg, ngvec1, ifit,ifit2
       Logical :: solver, cutoff, handleG0, rpseudo
 
-      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x, gmax_pw_method
+      Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x
       Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr, ipt
 
@@ -230,11 +231,11 @@ call timesec(ta)
       if (input%groundstate%hybrid%erfcapprox.eq."PW")then 
          !write(*,*)"shortest g+q vec",igq0
          gmax_pw_method=6d0*dsqrt(2d0)*lambda ! 6*sigmas of a Gaussian
-         !write(*,*)"min(g+q): G(",igq0,")=", gqc(igq0),"Largest G vector for PW method:",gmax_pw_method
+!         write(*,*)"min(g+q): G(",igq0,")=", gqc(igq0),"Largest G vector for PW method:",gmax_pw_method
          do ig=1, ngvec
                if (gqc(ig).lt.gmax_pw_method) then ! 6*sigmas of a Gaussian
                   ngvec1=ig+1
-                  !write(*,*)"G(",ig,")=",gqc(ig)
+!                  write(*,*)"G(",ig,")=",gqc(ig)
                   !exit
                endif
          enddo
