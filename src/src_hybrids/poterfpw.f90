@@ -31,11 +31,9 @@ subroutine poterfpw (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,poti
       complex (8), Intent (Out) :: potmt(:,:,:)  !lmmaxvr,nrmtmax,natmtot
       
 
-      complex (8) :: zfmt1(nrmtmax),zfmt2(nrmtmax),zt1,zt2,zt3,zt4
-      complex (8) :: zfun(nrmtmax,lmmaxvr)
+      complex (8) :: zt1,zt2,zt3,zt4
       complex (8) :: vig(ngvec1)
       integer :: lmaxvr,is,ia,ias,ig,ifg,l,m,lm,ir,nr,sfld
-      complex (8), allocatable :: rhorcmt2(:,:),zfun2(:,:,:)
       real (8) :: fr(nrmtmax)
       real (8) :: refr(nrmtmax,lmmaxvr),imfr(nrmtmax,lmmaxvr)
       real (8) :: reint,imint
@@ -70,14 +68,14 @@ do is=1,nspecies
 !        if(.true.) then
           ifg=igfft(ig)!(Gkqset%igkig(ig, 1, iq)) 
           do l=0,lmaxvr
+            zt3=0d0
             do m=-l,l
                lm=idxlm(l,m)
                reint=ddot(nr,refr(1,lm),1,jlgqsmallr(1,l,ig,is),1)
                imint=ddot(nr,imfr(1,lm),1,jlgqsmallr(1,l,ig,is),1)
-               zt3=dcmplx(reint,imint)
-               zt4=zt3*4d0*pi*ylmgq(lm,ig)*conjg(sfacgq(ig, ias))/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
-               potir(ifg)=potir(ifg)+zt4
+               zt3=zt3+dcmplx(reint,imint)*ylmgq(lm,ig)
             enddo ! m
+            potir(ifg)=potir(ifg)+zt3*4d0*pi*conjg(sfacgq(ig, ias))/(omega*zil(l)) !!!Fāzes reizinātājs sfacgq(ig, ias) ??
           enddo ! l
         endif
       enddo ! ig
@@ -106,10 +104,6 @@ enddo ! is
     ifg=igfft(ig)
     potir(ifg)=vig(ig)
   enddo
-!   do ig=ngvec1+1,ngrtot!ngvec
-!      ifg=igfft(ig)
-!      potir(ifg)=zzero
-!   enddo
    
 
 !!!obtain radial MT functions from potir and store in pot%mtrlm(:,:,:) (lm,ir,ias)
@@ -117,19 +111,20 @@ enddo ! is
       nr=nrmt(is)
       do ia=1,natoms(is)
         ias=idxas(ia,is)
-        zfun=zzero
+        refr=0d0
+        imfr=0d0
+
         do ig=1, ngvec1
           if (gqc(ig) .lt. gmax_pw_method) then
 !          if(.true.) then
-!            ifg =igfft(ig)! igfft(Gkqset%igkig(ig, 1, iq))
-!            zt1=potir(ifg)*sfacgq(ig, ias)
             zt1=vig(ig)*sfacgq(ig, ias)
             do l=0,lmaxvr
               do lm=idxlm(l,-l),idxlm(l,l)
                 zt2=zt1*conjg(ylmgq(lm,ig))
-                do ir=1,nr
-                  zfun(ir,lm)=zfun(ir,lm)+zt2*jlgqsmallr(ir,l,ig,is)
-                enddo
+                reint=dble(zt2)
+                imint=dimag(zt2)
+                call daxpy(nr,reint,jlgqsmallr(1,l,ig,is),1,refr,1)
+                call daxpy(nr,imint,jlgqsmallr(1,l,ig,is),1,imfr,1)
               enddo
             enddo
           endif
@@ -139,7 +134,7 @@ enddo ! is
           do m=-l,l
             lm=idxlm(l,m)
             do ir=1,nr
-              potmt(lm,ir,ias)=zt1*zfun(ir,lm)  !potmt(lm,ir,ias)
+              potmt(lm,ir,ias)=zt1*dcmplx(refr(ir,lm),imfr(ir,lm))
             enddo
           enddo
         enddo
