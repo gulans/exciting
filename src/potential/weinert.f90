@@ -14,7 +14,7 @@ module weinert
   public :: poisson_and_multipoles_mt, match_bound_mt
   public :: poisson_and_multipoles_mt_yukawa, multipoles_ir_yukawa, pseudocharge_gspace_yukawa, poisson_ir_yukawa
   public :: poisson_mt_yukawa, pseudocharge_rspace_matrix, pseudocharge_rspace_new
-  public :: multipoles_ir2, multipoles_ir3, pseudocharge_gspace2, poisson_ir2, surface_ir2, surface_ir3
+  public :: multipoles_ir2, multipoles_ir3, multipoles_ir4, multipoles_ir5, pseudocharge_gspace2, poisson_ir2, surface_ir2, surface_ir3
   contains
 
     !> This subroutine evaluates an interstitial function given by the Fourier series
@@ -1338,6 +1338,364 @@ end subroutine
       !write(*,*)"rekinasana :",tc-tb
 
     end subroutine
+
+! This version will need reordering of array indices in jlgpr, ylmgp, sfacgp
+    subroutine multipoles_ir5( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qi, zlambda,zilmt)
+    use modinput
+    use mod_atoms, only: nspecies, natoms, idxas,natmtot
+    use mod_muffin_tin, only: rmt,nrmtmax,nrmt, idxlm
+    use constants, only: fourpi,y00,zil,zzero
+    !> maximum angular momentum \(l\)
+    integer, intent(in) :: lmax
+    !> total number of \({\bf G+p}\) vectors
+    integer, intent(in) :: ngvec
+    !> lengths of \({\bf G+p}\) vectors
+    real(dp), intent(in) :: gpc(:)
+    !> integer components \({\bf G}\) of \({\bf G+p}\) vectors
+    !integer, intent(in) :: ivgp(:,:)
+    !> spherical Bessel functions \(j_l(|{\bf G+p}| R_\alpha)\)
+    real(dp), intent(in) :: jlgpr(0:,:,:)
+    !> spherical harmonics \(Y_{lm}(\widehat{\bf G+p})\)
+    complex(dp), intent(in) :: ylmgp(:,:)
+    !> structure factors \({\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf \tau}_\alpha}\)
+    complex(dp), intent(in) :: sfacgp(:,:)
+    !> bounds for integer components of \({\bf G}\)
+    !integer, intent(in) :: intgv(3,2)
+    !> map from integer components of \({\bf G}\) vectors to \({\bf G}\) vector index
+    !integer, intent(in) :: ivgig(intgv(1,1):,intgv(2,1):,intgv(3,1):)
+    !> map from \({\bf G}\) vector index to point in FFT grid
+    integer, intent(in) :: igfft(:)
+    !> Fourier components \(\hat{f}({\bf G+p})\) of the function on the FFT grid
+    complex(dp), intent(in) :: zvclir(:)
+    !> multipole moments of the function's extension inside the muffin-tin spheres
+    complex(dp), intent(out) :: qi(:,:)
+    complex(dp),optional, intent(in) :: zlambda
+    complex(dp),optional, intent(in) :: zilmt(0:,:) 
+  
+    integer :: is, ia, ias, ig, ifg, l, lm, m
+    complex(dp) :: zt1,zt2,tbessi,zt3
+    complex(4) :: ct1
+    real(dp) :: t1,tbessj
+    logical :: yukawa
+
+    integer :: firstnonzeroG,lmmaxvr
+    Complex (8) :: sf(natmtot)
+    Complex (8) :: zlm ((lmax+1)**2), zlm2((lmax+1)**2)
+    real(8):: rmtl (0:lmax+3, nspecies)
+
+    integer, parameter :: blksize=64
+    Complex (8) :: zmat1((lmax+1)**2,blksize) ,zmat2((lmax+1)**2,blksize)
+    Complex (4) :: cmat1((lmax+1)**2,blksize) ,cmat2((lmax+1)**2,blksize)
+    Complex (4) :: cmat3(blksize,(lmax+1)**2) ,cmat4(blksize,(lmax+1)**2)
+    complex (4) :: cqi((lmax+1)**2,natmtot), csf(blksize,natmtot)
+!    real(4) :: sjl(0:lmax+1,blksize)
+    real(4) :: sjl(blksize,0:lmax+1)
+    integer :: igoffset, chunksize, sfld
+
+  !external functions
+    Real (8) :: factnm
+    External factnm
+  
+    lmmaxvr=(lmax+1)**2
+    sfld=size(sfacgp,dim=1)
+
+    if (present(zlambda)) then
+      yukawa=.true.
+    else
+      yukawa=.false.
+    endif
+
+
+
+
+    cqi (:, :) = 0e0
+  
+    if (gpc(1) .lt. input%structure%epslat) Then
+      firstnonzeroG=2
+    else
+      firstnonzeroG=1
+    endif
+
+    ! compute (R_mt)^l
+    Do is = 1, nspecies
+      rmtl (0, is) = 1.d0
+      Do l = 1, input%groundstate%lmaxvr + 3
+         rmtl (l, is) = rmtl (l-1, is) * rmt (is)
+      End Do
+    End Do
+
+    chunksize=blksize
+!x$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
+!x$OMP DO 
+
+! Is the alignment worth the hassle?
+! The unaligned version goes as follows:
+!          Do igoffset = 1, ngvec,blksize    
+!            if (igoffset+blksize-1.gt.ngvec) chunksize=ngvec-igoffset+1
+!            Do ig=igoffset,igoffset+chunksize-1
+!             t1 = 1.d0 / gpc(ig)
+!             zt1 = zvclir (ig) * t1
+!             Do lm=1,lmmaxvr
+!               zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+!             End Do !lm
+!            End Do
+!            ...............
+! If it makes any difference (for better or worse), it should be visible in large systems.
+! For now, sticking with the aligned code. 
+          Do igoffset = 1, ngvec,blksize
+            if (igoffset+blksize-1.gt.ngvec) chunksize=ngvec-igoffset+1
+
+            if (gpc(igoffset).lt. input%structure%epslat) Then
+             Do ig=igoffset,igoffset+chunksize-1
+              If (.not.(gpc(ig) .lt. input%structure%epslat)) Then 
+                t1 = 1.d0 / gpc(ig)
+              Else
+                t1 = 0d0
+              End If
+              zt1 = zvclir (ig) * t1 
+              Do lm=1,lmmaxvr
+!                zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+                cmat3(ig-igoffset+1,lm)=cmplx(zt1*conjg (ylmgp(lm, ig)),kind=4)
+              End Do !lm
+             End Do
+            else
+             Do ig=igoffset,igoffset+chunksize-1
+              t1 = 1.d0 / gpc(ig)
+!              zt1 = zvclir (ig) * t1
+              ct1=cmplx(zvclir (ig) * t1, kind=4)
+              Do lm=1,lmmaxvr
+!                zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+!               cmat1(lm,ig-igoffset+1)=cmplx(zt1*conjg (ylmgp(lm, ig)),kind=4)
+                cmat3(ig-igoffset+1,lm)=ct1*conjg (cmplx(ylmgp(lm, ig),kind=4))
+              End Do !lm
+             End Do
+            endif
+            csf(1:chunksize,1:natmtot)=cmplx(sfacgp(igoffset:igoffset+chunksize-1,1:natmtot),kind=4)
+! End of the differing part
+
+             Do is = 1, nspecies
+               
+               Do ig=igoffset,igoffset+chunksize-1
+                 Do l = 0, lmax
+                  sjl(ig-igoffset+1,l)=real(jlgpr (l+1, ig, is),kind=4)
+                 End Do
+               End Do
+!                 lm = 0
+                 Do l = 0, lmax
+                   Do lm=idxlm(l,-l),idxlm(l,l)
+                     Do ig=1,chunksize 
+                       cmat4(ig,lm)= sjl(ig,l) * cmat3(ig,lm)
+                     End Do ! ig       
+                   End Do
+!                   lm=lm+1+2*l
+                 End Do !l
+               Call cgemm('T','N', lmmaxvr, natoms(is), chunksize, (1.0e0,0.0), cmat4, blksize, csf(1,idxas (1, is)), blksize, (1.0e0,0.0), cqi(1,idxas (1, is)), lmmaxvr)
+
+             End Do !is
+
+          End Do
+!x$OMP END DO
+!x$OMP END PARALLEL
+    qi=cmplx(cqi,kind=8)
+
+    Do is = 1, nspecies
+       Do ia = 1, natoms (is)
+         ias = idxas (ia, is)
+         lm = 0
+         do l = 0, lmax
+           qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * fourpi * zil (l) * rmtl (l+3, is) / rmt(is) ! šo va riznest ārā
+           lm=lm+1+2*l
+         enddo
+       End Do
+    End Do
+
+    if (gpc(1) .lt. input%structure%epslat) Then
+      
+      Do is = 1, nspecies
+        Do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+          t1 = fourpi * y00 * rmtl (3, is) / 3.d0
+          qi (1,ias) = qi (1,ias) + t1 * zvclir (1)
+        End Do
+      End Do
+    endif
+
+
+
+
+  
+  end subroutine
+
+    subroutine multipoles_ir4( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qi, zlambda,zilmt)
+    use modinput
+    use mod_atoms, only: nspecies, natoms, idxas,natmtot
+    use mod_muffin_tin, only: rmt,nrmtmax,nrmt
+    use constants, only: fourpi,y00,zil,zzero
+    !> maximum angular momentum \(l\)
+    integer, intent(in) :: lmax
+    !> total number of \({\bf G+p}\) vectors
+    integer, intent(in) :: ngvec
+    !> lengths of \({\bf G+p}\) vectors
+    real(dp), intent(in) :: gpc(:)
+    !> integer components \({\bf G}\) of \({\bf G+p}\) vectors
+    !integer, intent(in) :: ivgp(:,:)
+    !> spherical Bessel functions \(j_l(|{\bf G+p}| R_\alpha)\)
+    real(dp), intent(in) :: jlgpr(0:,:,:)
+    !> spherical harmonics \(Y_{lm}(\widehat{\bf G+p})\)
+    complex(dp), intent(in) :: ylmgp(:,:)
+    !> structure factors \({\rm e}^{{\rm i} ({\bf G+p}) \cdot {\bf \tau}_\alpha}\)
+    complex(dp), intent(in) :: sfacgp(:,:)
+    !> bounds for integer components of \({\bf G}\)
+    !integer, intent(in) :: intgv(3,2)
+    !> map from integer components of \({\bf G}\) vectors to \({\bf G}\) vector index
+    !integer, intent(in) :: ivgig(intgv(1,1):,intgv(2,1):,intgv(3,1):)
+    !> map from \({\bf G}\) vector index to point in FFT grid
+    integer, intent(in) :: igfft(:)
+    !> Fourier components \(\hat{f}({\bf G+p})\) of the function on the FFT grid
+    complex(dp), intent(in) :: zvclir(:)
+    !> multipole moments of the function's extension inside the muffin-tin spheres
+    complex(dp), intent(out) :: qi(:,:)
+    complex(dp),optional, intent(in) :: zlambda
+    complex(dp),optional, intent(in) :: zilmt(0:,:) 
+  
+    integer :: is, ia, ias, ig, ifg, l, lm, m
+    complex(dp) :: zt1,zt2,tbessi,zt3
+    complex(4) :: ct1
+    real(dp) :: t1,tbessj
+    logical :: yukawa
+
+    integer :: firstnonzeroG,lmmaxvr
+    Complex (8) :: sf(natmtot)
+    Complex (8) :: zlm ((lmax+1)**2), zlm2((lmax+1)**2)
+    real(8):: rmtl (0:lmax+3, nspecies)
+
+    integer, parameter :: blksize=64
+    Complex (8) :: zmat1((lmax+1)**2,blksize) ,zmat2((lmax+1)**2,blksize)
+    Complex (4) :: cmat1((lmax+1)**2,blksize) ,cmat2((lmax+1)**2,blksize)
+    complex (4) :: cqi((lmax+1)**2,natmtot), csf(blksize,natmtot)
+    real(4) :: sjl(0:lmax+1,blksize)
+    integer :: igoffset, chunksize, sfld
+
+  !external functions
+    Real (8) :: factnm
+    External factnm
+  
+    lmmaxvr=(lmax+1)**2
+    sfld=size(sfacgp,dim=1)
+
+    if (present(zlambda)) then
+      yukawa=.true.
+    else
+      yukawa=.false.
+    endif
+
+
+
+
+    cqi (:, :) = 0e0
+  
+    if (gpc(1) .lt. input%structure%epslat) Then
+      firstnonzeroG=2
+    else
+      firstnonzeroG=1
+    endif
+
+    ! compute (R_mt)^l
+    Do is = 1, nspecies
+      rmtl (0, is) = 1.d0
+      Do l = 1, input%groundstate%lmaxvr + 3
+         rmtl (l, is) = rmtl (l-1, is) * rmt (is)
+      End Do
+    End Do
+
+    chunksize=blksize
+!x$OMP PARALLEL DEFAULT(NONE) PRIVATE(ig,zt1,t1,lm,m,l,is,ia,ias,zlm,zlm2,sf) SHARED(gpc,sfacgp,zvclir,rmt,ngvec,ylmgp,jlgpr,zil,nspecies,natoms,idxas,firstnonzeroG,lmax,lmmaxvr) REDUCTION(+:qi) 
+!x$OMP DO 
+
+! Is the alignment worth the hassle?
+! The unaligned version goes as follows:
+!          Do igoffset = 1, ngvec,blksize    
+!            if (igoffset+blksize-1.gt.ngvec) chunksize=ngvec-igoffset+1
+!            Do ig=igoffset,igoffset+chunksize-1
+!             t1 = 1.d0 / gpc(ig)
+!             zt1 = zvclir (ig) * t1
+!             Do lm=1,lmmaxvr
+!               zmat1(lm,ig-igoffset+1)=zt1*conjg (ylmgp(lm, ig))
+!             End Do !lm
+!            End Do
+!            ...............
+! If it makes any difference (for better or worse), it should be visible in large systems.
+! For now, sticking with the aligned code. 
+          Do igoffset = 1, ngvec,blksize
+            if (igoffset+blksize-1.gt.ngvec) chunksize=ngvec-igoffset+1
+
+            if (gpc(igoffset).lt. input%structure%epslat) Then
+             Do ig=igoffset,igoffset+chunksize-1
+              If (.not.(gpc(ig) .lt. input%structure%epslat)) Then 
+                t1 = 1.d0 / gpc(ig)
+              Else
+                t1 = 0d0
+              End If
+              zt1 = zvclir (ig) * t1 
+              Do lm=1,lmmaxvr
+                cmat1(lm,ig-igoffset+1)=cmplx(zt1*conjg (ylmgp(lm, ig)),kind=4)
+              End Do !lm
+             End Do
+            else
+             Do ig=igoffset,igoffset+chunksize-1
+              t1 = 1.d0 / gpc(ig)
+              ct1=cmplx(zvclir (ig) * t1, kind=4)
+              Do lm=1,lmmaxvr
+                cmat1(lm,ig-igoffset+1)=ct1*conjg (cmplx(ylmgp(lm, ig),kind=4))
+              End Do !lm
+             End Do
+            endif
+            csf(1:chunksize,1:natmtot)=cmplx(sfacgp(igoffset:igoffset+chunksize-1,1:natmtot),kind=4)
+! End of the differing part
+
+             Do is = 1, nspecies
+               Do ig=igoffset,igoffset+chunksize-1
+                 sjl(0:lmax,ig-igoffset+1)=real(jlgpr (1:lmax+1, ig, is),kind=4)
+               End Do
+               Do ig=1,chunksize 
+                 lm = 0
+                 Do l = 0, lmax
+                   cmat2(lm+1:lm+1+2*l,ig)= sjl(l,ig) * cmat1(lm+1:lm+1+2*l,ig)
+                   lm=lm+1+2*l
+                 End Do !l
+               End Do ! ig       
+               Call cgemm('N','N', lmmaxvr, natoms(is), chunksize, (1.0e0,0.0), cmat2, lmmaxvr, csf(1,idxas (1, is)), blksize, (1.0e0,0.0), cqi(1,idxas (1, is)), lmmaxvr)
+
+             End Do !is
+
+          End Do
+!x$OMP END DO
+!x$OMP END PARALLEL
+    qi=cmplx(cqi,kind=8)
+
+    Do is = 1, nspecies
+       Do ia = 1, natoms (is)
+         ias = idxas (ia, is)
+         lm = 0
+         do l = 0, lmax
+           qi (lm+1:lm+1+2*l,ias) = qi (lm+1:lm+1+2*l,ias) * fourpi * zil (l) * rmtl (l+3, is) / rmt(is) ! šo va riznest ārā
+           lm=lm+1+2*l
+         enddo
+       End Do
+    End Do
+
+    if (gpc(1) .lt. input%structure%epslat) Then
+      
+      Do is = 1, nspecies
+        Do ia = 1, natoms (is)
+          ias = idxas (ia, is)
+          t1 = fourpi * y00 * rmtl (3, is) / 3.d0
+          qi (1,ias) = qi (1,ias) + t1 * zvclir (1)
+        End Do
+      End Do
+    endif
+
+  end subroutine
       
     subroutine multipoles_ir3( lmax, ngvec, gpc, jlgpr, ylmgp, sfacgp, igfft, zvclir, qi, zlambda,zilmt)
     use modinput
