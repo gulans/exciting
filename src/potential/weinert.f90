@@ -1029,7 +1029,7 @@ end subroutine
  
     integer :: l, m, lm, ir
     
-    complex(dp) :: f1(nr),f2(nr),g1(nr),g2(nr),zt1
+    complex(dp) :: f1(nr),f2(nr),g1(nr),g2(nr),zt1,zrho_tmp(nr)
     real(dp)  :: t1 
     complex(dp) ,allocatable :: rl(:),ril1(:),ri(:),r2(:),tr1(:),tr2(:)
     logical :: yukawa
@@ -1050,10 +1050,11 @@ end subroutine
       Do l = 0, lmax
         Do m= -l, l
             lm = lm + 1
-            f1 = il(:nr,l) * r2 * zrhomt(lm, :nr)
+            zrho_tmp = zrhomt(lm, :nr)
+            f1 = il(:nr,l) * r2 * zrho_tmp
             call integ_cf (nr, is, f1, g1, mt_integw)
             f1 = kl(:nr,l) * g1
-            f2 = kl(:nr,l) * r2 * zrhomt(lm, :nr)
+            f2 = kl(:nr,l) * r2 * zrho_tmp
             call integ_cf (nr, is, f2, g2, mt_integw)
             f2= il(:nr,l) * (g2(nr)-g2)
             zvclmt (lm, :nr)=zt1 * (f1+f2)
@@ -1075,11 +1076,12 @@ end subroutine
         tr2=ril1*r2
         Do m= -l, l
           lm = lm + 1
-          f1=zrhomt(lm, :nr)*tr1
+          zrho_tmp = zrhomt(lm, :nr)
+          f1=zrho_tmp*tr1
           call integ_cf (nr, is, f1, g1, mt_integw)
           f1=g1*ril1 !/ r(:nr)**(l+1)
 
-          f2=zrhomt(lm, :nr)*tr2 !/r(:nr)**(l-1)
+          f2=zrho_tmp*tr2 !/r(:nr)**(l-1)
           call integ_cf (nr, is, f2, g2, mt_integw)
           f2= rl * (g2(nr)-g2)
 

@@ -10,6 +10,9 @@ Type IntegWeightsType
                                                !!interpolation during integral calculation 
       integer,allocatable :: dstart(:,:)       !!array of grid point indexes for the beginning of the range that is being used for
                                                !!interpolation during derivative calculation
+      integer, allocatable :: ist_min(:,:)
+      integer, allocatable :: ist_max(:,:)
+      integer, allocatable :: ist(:,:)
 
 End Type IntegWeightsType
 
@@ -46,7 +49,7 @@ integer :: ir,i
 
 d_order=10  
 i_order=8
-integrate_0_r1=.true.
+integrate_0_r1=.false.
 i_order2=1 ! 1,2 or 3   
 
 !!!!!!!!!!!!!!!!!!!! 
@@ -64,25 +67,37 @@ allocate(mt_integw%intw    (nrmax,nspecies))
 allocate(mt_integw%fderivw (nrmax,dNpoints,nspecies))
 allocate(mt_integw%istart  (nrmax,nspecies))
 allocate(mt_integw%dstart  (nrmax,nspecies))
+allocate(mt_integw%ist_min (3,nspecies))
+allocate(mt_integw%ist_max (3,nspecies))
+allocate(mt_integw%ist (3,nspecies))
+
 
 allocate(atom_integw%fintw    (nrmax,iNpoints,nspecies))
 allocate(atom_integw%intw    (nrmax,nspecies))
 allocate(atom_integw%fderivw (nrmax,dNpoints,nspecies))
 allocate(atom_integw%istart  (nrmax,nspecies))
 allocate(atom_integw%dstart  (nrmax,nspecies))
-
+allocate(atom_integw%ist_min (3,nspecies))
+allocate(atom_integw%ist_max (3,nspecies))
+allocate(atom_integw%ist (3,nspecies))
 
 mt_integw%fintw=0d0
 mt_integw%intw=0d0
 mt_integw%fderivw=0d0
 mt_integw%istart=0
 mt_integw%dstart=0
+mt_integw%ist_min=0
+mt_integw%ist_max=0
+mt_integw%ist=0
 
 atom_integw%fintw=0d0   
 atom_integw%intw=0d0   
 atom_integw%fderivw=0d0
 atom_integw%istart=0
 atom_integw%dstart=0
+atom_integw%ist_min=0
+atom_integw%ist_max=0
+atom_integw%ist=0
 
 if (Npoints2.eq.2) then !Trapezoidal rule
         w2(1)=1d0
@@ -111,14 +126,20 @@ call gen_icoef_one_grid(nrmt(isp),&
           mt_integw%istart(1:nrmt(isp),isp),mt_integw%dstart(1:nrmt(isp),isp),&
           mt_integw%intw(1:nrmt(isp),isp),&
           mt_integw%fintw(1:nrmt(isp),:,isp),&
-          mt_integw%fderivw(1:nrmt(isp),:,isp) )
+          mt_integw%fderivw(1:nrmt(isp),:,isp),&
+          mt_integw%ist(:,isp),&
+          mt_integw%ist_min(:,isp),&
+          mt_integw%ist_max(:,isp))
 
   call gen_icoef_one_grid(nratom(isp),&
           r(1:nratom(isp),isp),iNpoints,dNpoints,&
           atom_integw%istart(1:nratom(isp),isp),atom_integw%dstart(1:nratom(isp),isp),&
           atom_integw%intw(1:nratom(isp),isp),&
           atom_integw%fintw(1:nratom(isp),:,isp),&
-          atom_integw%fderivw(1:nratom(isp),:,isp) )
+          atom_integw%fderivw(1:nratom(isp),:,isp),&
+          atom_integw%ist(:,isp),&
+          atom_integw%ist_min(:,isp),&
+          atom_integw%ist_max(:,isp))
 
 enddo
 
@@ -126,7 +147,7 @@ end subroutine
 
 
   !> Generates and returns all the needed coefficients for one given grid.
-subroutine gen_icoef_one_grid(Ngrid,r,iNpoints,dNpoints,istart1,dstart1,icv,icf,dcf)
+subroutine gen_icoef_one_grid(Ngrid,r,iNpoints,dNpoints,istart1,dstart1,icv,icf,dcf,ist1,ist_min1,ist_max1)
 implicit none
 integer, intent(in) :: Ngrid             !! number of grid points
 real(8), intent(in) :: r(Ngrid)          !! grid 
@@ -139,6 +160,7 @@ integer, intent(out) :: dstart1(Ngrid)   !! array of grid point indexes for the 
 real(8), intent(out) :: icv(Ngrid)          !! array of weights to evaluate integral value
 real(8), intent(inout) :: dcf(Ngrid,dNpoints) !! array of weights to evaluate derivative as a function
 real(8), intent(inout) :: icf(Ngrid,iNpoints) !! array of weights to evaluate integral as a function
+integer, intent(inout) :: ist1(3),ist_min1(3),ist_max1(3) !! 
 
 
 real(8) :: w(iNpoints)
@@ -148,6 +170,8 @@ real(8) :: xx2(dNpoints)   !Grid section
 integer :: Npoints2
 integer :: ir,i,j
 real(8) :: hh(Ngrid)
+
+
 
 Npoints2=i_order2+1
 
@@ -262,6 +286,38 @@ enddo
 do ir=Ngrid-int(iNpoints/2),Ngrid-1
    istart1(ir)=Ngrid-iNpoints+1
 enddo
+
+ist1(1)=1
+ist_min1(1)=1
+ist_max1(1)=int(iNpoints/2)
+
+ist_min1(2)=int(iNpoints/2)+1
+ist_max1(2)=Ngrid-int(iNpoints/2)-1
+if (MOD(iNpoints,2) .eq. 0) then
+  ist1(2)=-int(iNpoints/2)+1
+else
+  ist1(2)=-int(iNpoints/2)
+endif
+
+ist1(3)=Ngrid-iNpoints+1
+ist_min1(3)=Ngrid-int(iNpoints/2)
+ist_max1(3)=Ngrid-1
+
+! do ir=ist_min1(1),ist_max1(1)
+!   write(*,*)ir,ist1(1),istart1(ir)
+! enddo
+! write(*,*)
+! do ir=ist_min1(2),ist_max1(2)
+!   write(*,*)ir,ir+ist1(2),istart1(ir)
+! enddo
+! write(*,*)
+
+! do ir=ist_min1(3),ist_max1(3)
+!   write(*,*)ir,ist1(3),istart1(ir)
+! enddo
+
+! stop
+
 
 !-----------------------!
 ! Generate dstart array !
@@ -388,6 +444,40 @@ enddo
 end subroutine
 
 !> Evaluates integral function for the given function
+! subroutine integ_f(Ngrid,isp,fin,fout,integw)
+! integer, intent(in) :: Ngrid  !! Number of grid points
+! integer, intent(in) :: isp    !! species index
+! real(8), intent(in) :: fin(Ngrid) !! input function
+! real(8), intent(out) :: fout(Ngrid) !! output function (derivative)
+! Type(IntegWeightsType) , intent(in):: integw !! coefficient array, that lets the subroutine distinguish if this is a MT or atom grid
+
+! real(8) :: r1
+! integer :: ir,i,Npoints,Npoints2
+
+! Npoints2=i_order2+1
+
+! Npoints=i_order+1
+
+! if (integrate_0_r1) then
+!   r1=0d0
+!   r1=r1+integw%fintw(1,1,isp)*0d0
+!     do i=2, Npoints2
+!       r1=r1+integw%fintw(1,i,isp)*fin(i-1)
+!     enddo
+!   fout(1)=r1
+! else
+!   fout(1)=0d0
+! endif
+
+! do ir=1, Ngrid-1
+!   r1=0d0
+!   do i=1, Npoints
+!     r1=r1+integw%fintw(ir+1,i,isp)*fin(integw%istart(ir,isp)+i-1)
+!   enddo
+!   fout(ir+1)=fout(ir)+r1
+! enddo
+! end subroutine
+
 subroutine integ_f(Ngrid,isp,fin,fout,integw)
 integer, intent(in) :: Ngrid  !! Number of grid points
 integer, intent(in) :: isp    !! species index
@@ -396,55 +486,80 @@ real(8), intent(out) :: fout(Ngrid) !! output function (derivative)
 Type(IntegWeightsType) , intent(in):: integw !! coefficient array, that lets the subroutine distinguish if this is a MT or atom grid
 
 real(8) :: r1
-integer :: ir,i,Npoints,Npoints2
-
-Npoints2=i_order2+1
+integer :: ir,i,Npoints
 
 Npoints=i_order+1
-
-if (integrate_0_r1) then
-  r1=0d0
-  r1=r1+integw%fintw(1,1,isp)*0d0
-    do i=2, Npoints2
-      r1=r1+integw%fintw(1,i,isp)*fin(i-1)
-    enddo
-  fout(1)=r1
-else
-  fout(1)=0d0
-endif
-
-do ir=1, Ngrid-1
-  r1=0d0
-  do i=1, Npoints
-    r1=r1+integw%fintw(ir+1,i,isp)*fin(integw%istart(ir,isp)+i-1)
+fout=0d0
+do i=1, Npoints
+  do ir=integw%ist_min(1,isp), integw%ist_max(1,isp)
+    fout(ir+1)=fout(ir+1) + integw%fintw(ir+1,i,isp)*fin(integw%ist(1,isp)+i-1)
   enddo
-  fout(ir+1)=fout(ir)+r1
+  do ir=integw%ist_min(2,isp), integw%ist_max(2,isp)
+    fout(ir+1)=fout(ir+1) + integw%fintw(ir+1,i,isp)*fin(integw%ist(2,isp)+ir+i-1) !
+  enddo
+  do ir=integw%ist_min(3,isp), integw%ist_max(3,isp)
+    fout(ir+1)=fout(ir+1) + integw%fintw(ir+1,i,isp)*fin(integw%ist(3,isp)+i-1)
+  enddo
 enddo
+do ir=1, Ngrid-1
+  fout(ir+1)=fout(ir)+fout(ir+1)
+enddo
+
 end subroutine
 
-subroutine integ_cf(Ngrid,isp,fin,rez,integw)
-implicit none
-integer, intent(in) :: Ngrid
-integer, intent(in) :: isp
-complex(8), intent(in)  :: fin(Ngrid)
-complex(8), intent(out) :: rez(Ngrid)
-Type(IntegWeightsType) , intent(in):: integw 
-integer :: ir
+subroutine integ_cf(Ngrid,isp,fin,fout,integw)
+use constants, only: zzero
+integer, intent(in) :: Ngrid  !! Number of grid points
+integer, intent(in) :: isp    !! species index
+complex(8), intent(in) :: fin(Ngrid) !! input function
+complex(8), intent(out) :: fout(Ngrid) !! output function (derivative)
+Type(IntegWeightsType) , intent(in):: integw !! coefficient array, that lets the subroutine distinguish if this is a MT or atom grid
+integer :: ir,i,Npoints
 
-real(8) :: finRe(Ngrid),finIm(Ngrid),rezRe(Ngrid),rezIm(Ngrid)
-
-do ir=1, Ngrid
-  finRe(ir)=dble(fin(ir))
-  finIm(ir)=imag(fin(ir))
+Npoints=i_order+1
+fout=zzero
+do i=1, Npoints
+  do ir=integw%ist_min(1,isp), integw%ist_max(1,isp)
+    fout(ir+1)=fout(ir+1) + integw%fintw(ir+1,i,isp)*fin(integw%ist(1,isp)+i-1)
+  enddo
+  do ir=integw%ist_min(2,isp), integw%ist_max(2,isp)
+    fout(ir+1)=fout(ir+1) + integw%fintw(ir+1,i,isp)*fin(integw%ist(2,isp)+ir+i-1) !
+  enddo
+  do ir=integw%ist_min(3,isp), integw%ist_max(3,isp)
+    fout(ir+1)=fout(ir+1) + integw%fintw(ir+1,i,isp)*fin(integw%ist(3,isp)+i-1)
+  enddo
+enddo
+do ir=1, Ngrid-1
+  fout(ir+1)=fout(ir)+fout(ir+1)
 enddo
 
-call integ_f(Ngrid,isp,finRe,rezRe,integw)
-call integ_f(Ngrid,isp,finIm,rezIm,integw)
-
-do ir=1, Ngrid
-  rez(ir)=cmplx(rezRe(ir),rezIm(ir),8)
-enddo
 end subroutine
+
+
+
+! subroutine integ_cf(Ngrid,isp,fin,rez,integw)
+! implicit none
+! integer, intent(in) :: Ngrid
+! integer, intent(in) :: isp
+! complex(8), intent(in)  :: fin(Ngrid)
+! complex(8), intent(out) :: rez(Ngrid)
+! Type(IntegWeightsType) , intent(in):: integw 
+! integer :: ir
+
+! real(8) :: finRe(Ngrid),finIm(Ngrid),rezRe(Ngrid),rezIm(Ngrid)
+
+! do ir=1, Ngrid
+!   finRe(ir)=dble(fin(ir))
+!   finIm(ir)=imag(fin(ir))
+! enddo
+
+! call integ_f(Ngrid,isp,finRe,rezRe,integw)
+! call integ_f(Ngrid,isp,finIm,rezIm,integw)
+
+! do ir=1, Ngrid
+!   rez(ir)=cmplx(rezRe(ir),rezIm(ir),8)
+! enddo
+! end subroutine
 
 subroutine integ_cv(Ngrid,isp,fin,rez,integw)
   implicit none
