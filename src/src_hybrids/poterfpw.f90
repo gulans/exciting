@@ -39,7 +39,8 @@ subroutine poterfpw_sp (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,p
       real (4) :: sfr(nrmtmax), srefr(nrmtmax,lmmaxvr),simfr(nrmtmax,lmmaxvr), sjl(nrmtmax)
       real (8) :: reint,imint
       real (4) :: sreint,simint
-      real (8), external :: ddot,sdot
+      real (8), external :: ddot
+      real (4), external :: sdot
 
 
       lmaxvr=input%groundstate%lmaxvr
@@ -133,8 +134,8 @@ enddo ! is
                 zt2=zt1*conjg(ylmgq(lm,ig))
                 sreint=real(zt2,kind=4)
                 simint=aimag(zt2)
-                call saxpy(nr,sreint,sjl,1,srefr,1)
-                call saxpy(nr,simint,sjl,1,simfr,1)
+                call saxpy(nr,sreint,sjl,1,srefr(1,lm),1)
+                call saxpy(nr,simint,sjl,1,simfr(1,lm),1)
               enddo
             enddo
           endif
@@ -272,8 +273,8 @@ enddo ! is
                 zt2=zt1*conjg(ylmgq(lm,ig))
                 reint=dble(zt2)
                 imint=dimag(zt2)
-                call daxpy(nr,reint,jlgqsmallr(1,l,ig,is),1,refr,1)
-                call daxpy(nr,imint,jlgqsmallr(1,l,ig,is),1,imfr,1)
+                call daxpy(nr,reint,jlgqsmallr(1,l,ig,is),1,refr(1,lm),1)
+                call daxpy(nr,imint,jlgqsmallr(1,l,ig,is),1,imfr(1,lm),1)
               enddo
             enddo
           endif
