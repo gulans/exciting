@@ -224,7 +224,7 @@ subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
   complex(8) ,intent(out) :: vlm(:,:)!lm,ias
   complex(8) :: zvaxft(ngrid(1))
   integer :: ig1,ig2,iax,is,ia,ias,iy,iz 
-  complex(8),allocatable :: vmu(:,:)
+  complex(8),allocatable :: vmu(:,:),zvaxft_all(:,:,:)
   real(8) :: xx, irf,ir2,ta,tb,rv(3)
   complex(8) ::zt1, ii
   integer :: ir
@@ -240,6 +240,19 @@ subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
 
 
 call timesec(ta)
+
+  allocate(zvaxft_all(ngrid(1),ngrid(2),ngrid(3)))
+  zvaxft_all=zzero
+  do iz=0,ngrid(3)-1
+    do iy=0,ngrid(2)-1
+        ig1=iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
+        ig2 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + ngrid(1)
+        zvaxft(:)=zvclir(ig1:ig2)
+        call cfftnd(1,ngrid(1),-1,zvaxft)
+        zvaxft_all(:,iy+1,iz+1)=zvaxft
+    enddo
+  enddo
+
   do is=1, nspecies
     do ia=1, natoms(is)
       ias=idxas(ia,is)
@@ -248,16 +261,17 @@ call timesec(ta)
         iz=axisz(iax,ias)
         iy=axisy(iax,ias)
 
-        ig1 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
-        ig2 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + ngrid(1)
-        zvaxft(:)=zvclir(ig1:ig2)
-        !write(*,*)"krustpunkts ar sferu",axisx_sph(iax,ias)
-        !zvaxft=zvax
-        call cfftnd(1,ngrid(1),-1,zvaxft)
+        ! ig1 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
+        ! ig2 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + ngrid(1)
+        ! zvaxft(:)=zvclir(ig1:ig2)
+        ! !write(*,*)"krustpunkts ar sferu",axisx_sph(iax,ias)
+        ! !zvaxft=zvax
+        ! call cfftnd(1,ngrid(1),-1,zvaxft)
 
         zt1=zzero
         do ir=1, ngrid(1)
-          zt1 = zt1 + zvaxft(ir) * interp_exp(ir,iax,ias)
+          ! zt1 = zt1 + zvaxft(ir) * interp_exp(ir,iax,ias)
+          zt1 = zt1 + zvaxft_all(ir,iy+1,iz+1) * interp_exp(ir,iax,ias)
         enddo
         rv(:)=raxis(:,iax,ias)
         phase=exp(ii*sum(qvec*rv))
@@ -277,9 +291,16 @@ call timesec(ta)
   enddo !is
 call timesec(tb)
 deallocate(vmu)
-
+deallocate(zvaxft_all)
 !write(*,*)"lm_komplekts:",tb-ta
-
+! open(1, file = 'vlm_new.dat', status = 'replace')
+! do ias=1, natmtot
+! do ir=1,(lmax+1)**2
+!   write(1,*)dble(vlm(ir,ias)),",",aimag(vlm(ir,ias)),",", ias, ir
+! enddo
+! enddo
+! close(1)
+! stop
 end subroutine
 
 subroutine inv_svd(m,n,A_in,Ainv)

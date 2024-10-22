@@ -266,8 +266,8 @@ endif
 
 
   call timesec(tb)
-  !write(*,*)"surface_ir:",tb-ta
-!stop
+!   write(*,*)"surface_ir:",tb-ta
+! stop
 
 call timesec(ta)
 ! match muffin-tin and interstitial potential on muffin-tin boundaries
