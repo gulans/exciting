@@ -217,7 +217,7 @@ else
     call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
       & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm,zlambda,zilmt)
   else
-    call pseudocharge_gspace2(input%groundstate%lmaxvr, ngp, gpc, &
+    call pseudocharge_gspace3(input%groundstate%lmaxvr, ngp, gpc, &
       & jlgpr, ylmgp, sfacgp, igfft, zrhoig_sort, qlm)
   endif
 endif
