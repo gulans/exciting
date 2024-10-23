@@ -39,10 +39,15 @@ subroutine generate_surf_grid(lmax)
   integer,allocatable  :: axisy_tmp(:,:),axisz_tmp(:,:)
   complex(8),allocatable  :: A(:,:),Ainv(:,:),AA(:,:)
   complex(8) :: ii
+  integer :: lmax_ylm, lmax_tmp
+  integer,allocatable  :: lmax_ias(:)
+  complex(8),allocatable :: ylm_mat_large(:,:,:),ylm_tmat_large(:,:,:)
   ii=cmplx(0d0,1d0,8)
-  
 
+  lmax_ylm=20
   lmmax=(lmax+1)**2
+
+
   !write(*,*)"Režģa izmērs",ngrid
   !write(*,*)"x ass garums",sqrt(sum(input%structure%crystal%basevect(:, 1)**2))
 
@@ -121,6 +126,24 @@ allocate(axisx_sph(naxismax,natmtot))
 allocate(ylm_mat(lmmax,naxismax,natmtot))
 allocate(ylm_tmat(lmmax,naxismax,natmtot))
 Allocate(raxis(3,naxismax,natmtot))
+
+allocate(lmax_ias(natmtot))
+do ias=1, natmtot
+  lmax_tmp=int(sqrt(dble(naxis(ias)/2d0)))-1 !! 2d0 or 1.6d0 ????
+  if (lmax_tmp.ge.lmax_ylm)then
+    lmax_ias(ias)=lmax_ylm
+  else if(lmax_tmp.le.lmax) then
+    lmax_ias(ias)=lmax
+  else
+    lmax_ias(ias)=lmax_tmp
+  endif
+enddo
+
+Allocate(ylm_mat_large((lmax_ylm+1)**2,naxismax,natmtot))
+Allocate(ylm_tmat_large((lmax_ylm+1)**2,naxismax,natmtot))
+
+
+
 ylm_mat=zzero
 axisy=0
 axisz=0
@@ -135,7 +158,7 @@ do is=1, nspecies
     
     do iax=1, naxis(ias)
       raxis(:,iax,ias)=raxis_tmp(:,iax,ias)+ratom
-      Call genylm (lmax, tp_tmp(:, iax,ias), ylm_mat(:,iax,ias))
+      Call genylm (lmax_ias(ias), tp_tmp(:, iax,ias), ylm_mat_large(1:(lmax_ias(ias)+1)**2,iax,ias))
     enddo
   enddo
 enddo
@@ -143,9 +166,15 @@ enddo
 do is=1, nspecies
   do ia=1, natoms(is)
     ias=idxas(ia,is)
-    call inv_svd(naxis(ias),lmmax,transpose(ylm_mat(:,1:naxis(ias),ias)),ylm_tmat(:,1:naxis(ias),ias))
+    call inv_svd(naxis(ias),(lmax_ias(ias)+1)**2,transpose(ylm_mat_large(1:(lmax_ias(ias)+1)**2,1:naxis(ias),ias)),ylm_tmat_large(1:(lmax_ias(ias)+1)**2,1:naxis(ias),ias))
+    ylm_mat(1:lmmax,1:naxis(ias),ias)=ylm_mat_large(1:lmmax,1:naxis(ias),ias)
+    ylm_tmat(1:lmmax,1:naxis(ias),ias)=ylm_tmat_large(1:lmmax,1:naxis(ias),ias)
   enddo!ia
 enddo!is
+
+deallocate(ylm_mat_large)
+deallocate(ylm_tmat_large)
+
 
 allocate(interp_exp(ngrid(1),naxismax,natmtot))
 interp_exp=zzero
@@ -199,14 +228,15 @@ deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp,raxis_tmp)
 
 open(11,file='surf_info.dat',status='replace')
 write(11,*)"lmmax:",lmmax
-write(11,*)"is, ia, number_of_ponts_on_MTsurface"
+write(11,*)"is, ia, number_of_ponts_on_MTsurface,lmax_ylm,lmmax, naxis/lmmax"
 do is=1, nspecies
   do ia=1, natoms(is)
     ias=idxas(ia,is)
-    write(11,*)is,ia,naxis(ias)
+    write(11,*)is,ia,naxis(ias),lmax_ias(ias),(lmax_ias(ias)+1)**2,real(naxis(ias))/real((lmax_ias(ias)+1)**2)
   enddo
 enddo
 close(11)
+deallocate(lmax_ias)
 end subroutine 
 
 subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)

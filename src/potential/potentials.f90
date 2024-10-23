@@ -179,17 +179,19 @@ ig=ngp
   else
     ngp2=ig + 1
   endif
-
+  call timesec(ta)
 if (yukawa) then
   call multipoles_ir3( input%groundstate%lmaxvr, ngp2, gpc, &
     & jlgpr, ylmgp, sfacgp, igfft, &
     zrhoig_sort, qlmir,zlambda,zilmt)
 else
+  ! multipoles_ir4 - some data in single precision 
   call multipoles_ir4( input%groundstate%lmaxvr, ngp2, gpc, &
     & jlgpr, ylmgp, sfacgp, igfft, &
     zrhoig_sort, qlmir)
 endif
-
+call timesec(tb)
+!write(*,*)"multipoles:",tb-ta
 
 ! take difference of muffin-tin and interstitial multipole moments
 qlm = qlm - qlmir
@@ -197,9 +199,9 @@ qlm = qlm - qlmir
 
 
  ! !solve Poisson's equation in interstitial region
-
+call timesec(ta)
 if(rpseudo)then
-  call timesec(ta)
+
   do ig=1, ngp   
     ifg = igfft (ig)
     zrhoig(ifg)=zrhoig_sort(ig)
@@ -222,7 +224,7 @@ else
   endif
 endif
 call timesec(tb)
-
+!write(*,*)"pseudocharge:",tb-ta
 
 call timesec(ta)
 if (yukawa) then
@@ -268,6 +270,16 @@ endif
   call timesec(tb)
 !   write(*,*)"surface_ir:",tb-ta
 ! stop
+
+  ! open(1, file = 'vlm_original.dat', status = 'replace')
+  ! do ias=1, natmtot
+  ! do lm=1,lmmaxvr
+  !   write(1,*)dble(qlmir(lm,ias)),",",aimag(qlmir(lm,ias)),",", ias, lm
+  ! enddo
+  ! enddo
+  ! close(1)
+  ! stop
+
 
 call timesec(ta)
 ! match muffin-tin and interstitial potential on muffin-tin boundaries
