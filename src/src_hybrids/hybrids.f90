@@ -10,6 +10,7 @@ Subroutine hybrids
     Use modmpi
     Use scl_xml_out_Module
     Use mod_hybrids
+    use modinput
 !
 ! !DESCRIPTION:
 !   Main routine for Hartree-Fock based hybrid functionals.
@@ -295,11 +296,10 @@ Subroutine hybrids
       call timesec(ts0)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!atņemt serdes blīvumu
-      call gencore()        ! generate the core wavefunctions and densities
-      call energykncr()   
-!pieskaitī serdes blīvumu
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/gencore
+      if (input%groundstate%Hybrid%updateCore) then
+        call gencore()        ! generate the core wavefunctions and densities
+        call energykncr()   
+      endif
 
       call calc_vxnl()
       call timesec(ts1)

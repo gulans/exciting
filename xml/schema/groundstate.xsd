@@ -3143,6 +3143,20 @@
                 </xs:restriction>
               </xs:simpleType>
             </xs:attribute>
+
+            <xs:attribute ex:importance="expert" ex:unit="" name="CoreSolver" default="original">
+              <xs:annotation>
+                <xs:documentation>Pick either "original" or "atomHF".
+                </xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="original"/>
+                  <xs:enumeration value="atomHF"/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+
       <xs:attribute ex:importance="expert" ex:unit="" name="energyref" type="fortrandouble"
         default="0.0d0">
         <xs:annotation>

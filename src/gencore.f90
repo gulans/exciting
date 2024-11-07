@@ -65,11 +65,12 @@ hybx_coef = ex_coef !mod_hybrids variable
 e_kin=0d0
 engy_exnl_core=0d0
 
-
 zora=(input%groundstate%ValenceRelativity.eq."zora")
 
       dirac_eq=(input%groundstate%CoreRelativity.eq."dirac")
-     
+write(*,*)"gencore.f90 Zora:",zora, "non-local-coef",hybx_coef
+      
+
       Do is = 1, nspecies
          done (:) = .False.
          Do ia = 1, natoms (is)
@@ -91,8 +92,8 @@ zora=(input%groundstate%ValenceRelativity.eq."zora")
                rhocr (:, ias) = 0.d0
 
                
-if (.false.) then               
-
+if (input%groundstate%CoreSolver.eq."original") then               
+write(*,*)"gencore original solver, Dirac:",dirac_eq
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP PRIVATE(ir,t1)
 !$OMP DO
@@ -126,10 +127,10 @@ if (.false.) then
 
 
 
-else !new solver
-
+else !input%groundstate%CoreSolver.eq."atomHF"
+write(*,*)"gencore atomHF solver"
         if (dirac_eq) then
-               write(*,*) "gencore.f90 can't do CoreRelativity='dirac'"
+               write(*,*) "gencore.f90 atomHF solver can't do CoreRelativity='dirac'"
                stop
         endif
 
