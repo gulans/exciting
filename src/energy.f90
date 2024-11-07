@@ -235,7 +235,7 @@ endif
           If (tlast) Call exxengy
        End If
 ! Hybrids
-      if (task == 7) engyx = engyx + ex_coef*exnl
+      if (task == 7) engyx = engyx + ex_coef*exnl + ex_coef*0.5d0* engy_exnl_core
 
 !----------------------------!
 !     correlation energy     !

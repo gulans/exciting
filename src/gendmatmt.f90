@@ -241,6 +241,12 @@ call timesec(t2)
       End Do
 
 
+      if (.not.allocated(dm_copy)) then
+            allocate(dm_copy (wfsize,wfsize,natmtot) )
+          endif
+        
+          dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
+
       deallocate(wf1,wf2prime,wfalpha,wfbeta)
       deallocate(apwi,apwalm)
       deallocate(dm2)

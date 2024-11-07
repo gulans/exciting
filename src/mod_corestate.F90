@@ -17,5 +17,9 @@ Module mod_corestate
 ! true for a frozen-core calculation (core state wavefunctions, densities and
 ! energies calculated only in the first iteration)
 !replaced by inputstructurelogical :: frozencore
+
+      real (8) :: engy_exnl_core
+      integer , Allocatable :: c_count(:)
+      integer , Allocatable :: c_list(:,:) !list of indexes of core orbitals for each species
 End Module
 !

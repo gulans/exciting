@@ -293,6 +293,14 @@ Subroutine hybrids
       ! Calculate the non-local potential
       !-----------------------------------
       call timesec(ts0)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!atņemt serdes blīvumu
+      call gencore()        ! generate the core wavefunctions and densities
+      call energykncr()   
+!pieskaitī serdes blīvumu
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!/gencore
+
       call calc_vxnl()
       call timesec(ts1)
       if ((input%groundstate%outputlevelnumber>1) .and.rank==0) then

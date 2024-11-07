@@ -60,6 +60,10 @@ Subroutine init0
       !> This will only be set when using sirius
       integer :: comm_band
       real(8) :: mb, ylmg_mb, sfacg_mb
+
+      integer :: i2,i3, core_count
+
+
       !> Command line arguments
       type(cmd_line_args_type) :: args
 
@@ -435,6 +439,49 @@ endif
 #ifdef XS
       If (init0symonly) Go To 10
 #endif
+
+! allocate core state radial wavefunction array
+If (allocated(rwfcr)) deallocate (rwfcr)
+Allocate (rwfcr(spnrmax, 2, spnstmax, natmtot))
+rwfcr=0d0
+
+
+ If (allocated(c_count)) deallocate (c_count)
+      Allocate (c_count(nspecies))
+
+
+!count how many core orbitals for each species
+!and store in mod_corestate variable c_count(nspecies)
+do is=1, nspecies
+  core_count=0
+  do i2=1, spnst(is) 
+     if (spcore(i2,is)) core_count = core_count + 1
+  enddo
+  c_count(is)=core_count
+enddo
+
+!generate a list of core orbital indexes
+!and store in mod_corestate variable c_list(1:c_count(nspecies),nspecies)
+ If (allocated(c_list)) deallocate (c_list)
+ Allocate (c_list(maxspst,nspecies))
+c_list(:,:)=0d0
+do is=1, nspecies
+  i3=0
+  do i2=1, spnst(is)
+    if (spcore(i2,is)) then
+            i3=i3+1
+            c_list(i3,is)=i2 
+    endif
+  enddo
+enddo
+
+do is=1, nspecies
+  write(*,*)"is=",is,"core list:",c_list(1:c_count(is),is)
+enddo
+
+
+
+
 ! solve the Kohn-Sham-Dirac equations for all atoms
       Call allatoms(1)
 ! allocate core state eigenvalue array and set to default
@@ -448,9 +495,7 @@ endif
             End Do
          End Do
       End Do
-! allocate core state radial wavefunction array
-      If (allocated(rwfcr)) deallocate (rwfcr)
-      Allocate (rwfcr(spnrmax, 2, spnstmax, natmtot))
+
 ! allocate core state charge density array
       If (allocated(rhocr)) deallocate (rhocr)
       Allocate (rhocr(spnrmax, natmtot))

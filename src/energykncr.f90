@@ -35,6 +35,7 @@ Subroutine energykncr
            & lmmaxvr, rfmt, veffmt(:, :, ias))
          End Do
       End Do
+      engykncr = engykncr - ex_coef*engy_exnl_core
       Deallocate (rfmt)
       Return
 End Subroutine
