@@ -17,8 +17,9 @@ integer ::shell_l(c_count(is))
 real(8) ::u_all(Ngrid,c_count(is)),shell_occ(c_count(is))
 
 
-complex(8) ::rez(Ngrid)
-complex(8) :: integc1(Ngrid),integc2(Ngrid),t1c,t2c
+!complex(8) ::rez(Ngrid)
+!complex(8) :: integc1(Ngrid),integc2(Ngrid)
+complex(8) :: t1c,t2c
 integer :: k,i,ir,ish,lpri,lpripri
 real(8) :: gc
 real(8) :: integ(Ngrid)
@@ -56,7 +57,7 @@ vx_u=0d0
 
 
 if ((mt_dm%maxnlo.ne.0) .or. (mt_dm%maxaa.ne.0))then
-
+!if (.false.)then
 
 maxnlo=mt_dm%maxnlo
 losize=>mt_dm%losize
@@ -279,6 +280,9 @@ end subroutine
 
 subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
   use modinteg
+  use modinput, only:input
+  use modbess, only: erfc_fit,nfit,msbesselic,msbesselkc
+  use constants, only: zzero
   implicit none
   
   integer, intent(in) :: Ngrid,is, l, lpri
@@ -286,10 +290,22 @@ subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
   logical, intent(in) :: mt
   real(8), intent(out) ::vx_u(Ngrid)
   
+  complex(8) :: zbi(Ngrid,nfit), zbk(Ngrid,nfit),bi,bk,z
+  complex(8) :: integc1(Ngrid),integc2(Ngrid),integc3(Ngrid),zf1(Ngrid),zf2(Ngrid)
+  integer :: ifit, ir
   real (8)  :: wigner3j
   
   integer :: lpripri
   real(8) :: gc,integ1(Ngrid),integ2(Ngrid),integ3(Ngrid)
+  logical :: erfc_kernel
+
+
+  if (input%groundstate%hybrid%erfcapprox.ne."none") then
+    erfc_kernel=.true.
+  else
+    erfc_kernel=.false.
+  endif
+
   vx_u=0d0
     do lpripri=abs(l-lpri),l+lpri,2
   !    call wigner3j_list(l,lpri,lpripri,gc)
@@ -298,23 +314,85 @@ subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
       gc=0.5d0*occ*gc**2
       !    write(*,*)"(l,l',l'') (",l,",",lpri,",",lpripri,")", " Gaunt_coef=",gc
       if (gc.ne.0d0) then
-        if (mt) then      
-          call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,mt_integw)
-        else
-          call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,atom_integw)
-        endif
-        integ1=integ1/r**(lpripri+1)
-        if (mt) then
-          call integ_f_rev(Ngrid,r,is,u2*u/r**(lpripri+1),integ2,mt_integw)
-        else
-          call integ_f_rev(Ngrid,r,is,u2*u/r**(lpripri+1),integ2,atom_integw)
-        endif
-  
-  
-        integ2=integ2*r**lpripri
-        vx_u=vx_u + gc*u1*(-integ1-integ2)
+        if (erfc_kernel) then
+          !!Generate set of complex bessel functions for current lpripri
+          do ifit=1,nfit
+            do ir = 1,Ngrid
+              z=erfc_fit(ifit,2)*r(ir)
+              call msbesselic (lpripri, z, bi)
+              call msbesselkc (lpripri, z, bk)
+              zbi(ir,ifit) = bi
+              zbk(ir,ifit) = bk
+            end do
+          end do
+          !! Bessel functoins ready
+          
+          integc3=zzero
+          do ifit=1, nfit
+            if (mt) then
+              call integ_cf (Ngrid, is, zbi(:,ifit)*u2*u , zf1, mt_integw)
+            else
+              call integ_cf (Ngrid, is, zbi(:,ifit)*u2*u , zf1, atom_integw)
+            endif
+            integc1 = erfc_fit(ifit,2) * zbk(:,ifit) * zf1(:)
+            if (mt) then
+              call integ_cf (Ngrid, is, zbk(:,ifit)*u2*u, zf2, mt_integw)
+            else
+              call integ_cf (Ngrid, is, zbk(:,ifit)*u2*u, zf2, atom_integw)
+            endif
+            integc2= erfc_fit(ifit,2)* zbi(:,ifit) * (zf2(Ngrid)-zf2)
+            
+            integc3=integc3 + erfc_fit(ifit,1) * (integc1+integc2)
+          enddo
+
+          do ifit=2, nfit
+            if (mt) then
+              call integ_cf (Ngrid, is, conjg(zbi(:,ifit))*u2*u , zf1, mt_integw)
+            else
+              call integ_cf (Ngrid, is, conjg(zbi(:,ifit))*u2*u , zf1, atom_integw)
+            endif
+              integc1 = conjg(erfc_fit(ifit,2)) * conjg(zbk(:,ifit)) * zf1(:)
+            if (mt) then
+              call integ_cf (Ngrid, is, conjg(zbk(:,ifit))*u2*u, zf2, mt_integw)
+            else
+              call integ_cf (Ngrid, is, conjg(zbk(:,ifit))*u2*u, zf2, atom_integw)
+            endif
+              integc2= conjg(erfc_fit(ifit,2)) * conjg(zbi(:,ifit)) * (zf2(Ngrid)-zf2)
+            
+            integc3=integc3 + conjg(erfc_fit(ifit,1)) * (integc1+integc2)
+          enddo
+            ! do ir = 1,Ngrid
+            !   write(*,*)ir,integc3(ir)
+            ! enddo
+            ! stop
+          vx_u=vx_u - gc * u1 * dble(integc3) * dble(2*lpripri+1)
+            ! !atomHF:
+            ! call integC_BodesN_fun(Ngrid,r, tools, tools_info,1,  Bess_ik(:,k,lpripri+1,1) *u_all(:,ish)*u    ,integc1)
+            ! integc1=integc1*rsfunC(k,2)*Bess_ik(:,k,lpripri+1,2)
+            ! call integC_BodesN_fun(Ngrid,r, tools, tools_info,-1, Bess_ik(:,k,lpripri+1,2) *u_all(:,ish)*u    ,integc2)
+            ! integc2=integc2*rsfunC(k,2)*Bess_ik(:,k,lpripri+1,1)
+            ! rez=rez+rsfunC(k,1)*(integc1+integc2)
+          
+
+        else !Coulomb kernel
+          if (mt) then      
+            call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,mt_integw)
+          else
+            call integ_f(Ngrid,is,u2*u*r**lpripri,integ1,atom_integw)
+          endif
+          integ1=integ1/r**(lpripri+1)
+          if (mt) then
+            call integ_f_rev(Ngrid,r,is,u2*u/r**(lpripri+1),integ2,mt_integw)
+          else
+            call integ_f_rev(Ngrid,r,is,u2*u/r**(lpripri+1),integ2,atom_integw)
+          endif
+          integ2=integ2*r**lpripri
+          vx_u=vx_u + gc*u1*(-integ1-integ2)
+        endif!erfc or Coulomb kernel
+
+
       endif !(gc.ne.0d0)
     enddo !lpripri
   
-  
+
   end subroutine

@@ -75,8 +75,7 @@ else
         spin=.false.
 endif
 
-write(*,*)"gencore hyb_coef:",hybx_coef
-write(*,*)"zora:",relativity
+
 
 if (abs(hybx_coef).gt.1d-20) then
    do inn=1,nmax

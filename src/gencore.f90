@@ -212,7 +212,7 @@ write(*,*)"gencore atomHF solver"
              occ(l_n,1)=occ(l_n,1)+spocc (k, is)   
            endif
         end do
-      write(*,*)"l_n=",l_n,"l=",number_l(l_n)," n=",number_n(l_n), "eig=",eig(l_n),"occ=",occ(l_n,1)
+      !write(*,*)"l_n=",l_n,"l=",number_l(l_n)," n=",number_n(l_n), "eig=",eig(l_n),"occ=",occ(l_n,1)
       l_n=l_n+1
       end do
    end do
