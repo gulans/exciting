@@ -192,7 +192,7 @@ write(*,*)"gencore atomHF solver"
       do k = 1, spnst(is)
          if ( ((il-1).eq.spl(k,is)) .and. (spcore(k,is)) .and. (spn(k,is).eq.nn ) )  then
 !             write(*,*)"OK: l=",il-1," n=",nn, " k=",k,"eig=",evalcr(k,ias)
-             wf0(:,l_n,1)=rwfcr(:,1,k,ias)
+             wf0(:,l_n,1)=rwfcr(:spnr(is),1,k,ias)
              eig(l_n)=evalcr(k,ias)
              number_n(l_n)=spn(k,is)
              number_l(l_n)=il-1
@@ -224,7 +224,7 @@ l_n=0
 
 
 if (zora)then !ca be created a cese for nZORA
-        v_rel=vr 
+        v_rel=vr(:spnr(is))
 endif
 
 Do il = 1, lmax+1
@@ -232,8 +232,8 @@ Do il = 1, lmax+1
 
 
 
-       call LS_iteration(spnr(is),is,ia,hybx_coef,spr(:,is),& !in
-               vr,il-1,number_l,occ(:,1),1,count_l(il),l_n,& !in
+       call LS_iteration(spnr(is),is,ia,hybx_coef,spr(:spnr(is),is),& !in
+               vr(:spnr(is)),il-1,number_l,occ(:,1),1,count_l(il),l_n,& !in
                number_of_states,1,zora,v_rel,lmax, wf0,& !in
                wf(:,l_n+1:l_n+count_l(il),1),vx_wf(:,l_n+1:l_n+count_l(il),1),&
                eig(l_n+1:l_n+count_l(il)))  
