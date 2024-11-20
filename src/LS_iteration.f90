@@ -97,9 +97,12 @@ do iscl=1,maxscl
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Convergence check  !!
 !!!!!!!!!!!!!!!!!!!!!!!!
-
-write(*,*)l,iscl,". eig-eigp: ",eig-eigp
-!convergence check
+if (abs(hybx_coef).gt.1d-20) then
+  write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)),"(HYB)"
+else
+  write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp))
+endif
+  !convergence check
 if((maxval(abs((eig-eigp)/(eig-1d0)))).lt.1d-14)then
         iner_loop=iscl-1
 !       write(*,*)"Convergence of internal cycle reached, iteration ",iscl
@@ -179,8 +182,10 @@ call orthonorm_get_eig(Ngrid,is,r,vloc,l,nmax,relativity,v_rel,hybx_coef,&
 
 
 enddo !self consistent loop
-
-
+if (iscl.ge.maxscl) then
+  write(*,*)"Warning! max scl itterarion number reached!"
+  write(*,*)"is=",is,"l=",l
+endif
   do inn=1,nmax
     u(:,inn)=psi(:,inn)*r
     vx_u(:,inn)=vx_psi(:,inn)*r

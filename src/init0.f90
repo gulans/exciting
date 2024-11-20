@@ -464,7 +464,7 @@ enddo
 !and store in mod_corestate variable c_list(1:c_count(nspecies),nspecies)
  If (allocated(c_list)) deallocate (c_list)
  Allocate (c_list(maxspst,nspecies))
-c_list(:,:)=0d0
+c_list(:,:)=0
 do is=1, nspecies
   i3=0
   do i2=1, spnst(is)

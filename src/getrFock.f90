@@ -64,7 +64,7 @@ losize=>mt_dm%losize
 maxaa=mt_dm%maxaa
 wfsize=maxaa+maxnlo
 
-if (.true.)then !write dm to a file
+if (.false.)then !write dm to a file
   write(*,*)"maxaa",maxaa
   write(*,*)"dm size",wfsize
   write(*,*)"lmaxmat",input%groundstate%lmaxmat
@@ -88,7 +88,7 @@ if (.true.)then !write dm to a file
   close(11)
 endif !exta outputs
 
-if (.true.) then !write diagonal to a file
+if (.false.) then !write diagonal to a file
    open (11, file = 'dm-diago1.dat', status = 'replace')
 
    do if1=1, wfsize

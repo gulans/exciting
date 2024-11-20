@@ -84,15 +84,15 @@ Subroutine allatoms(verbosity)
          Call atom (input%groundstate%ptnucl, spzn(is), spnst(is), &
         & spn(:, is), spl(:, is), spk(:, is), spocc(:, is), xctypearray, &
         & xcgrad_, spnr(is), spr(:, is), &
-        & speval(:, is), sprho(:, is), spvr(:, is), rwf,nrmt(is),dirac_eq)
+        & speval(:, is), sprho(:, is), spvr(:, is), rwf(:spnr(is),:,:spnst(is)),nrmt(is),dirac_eq)
 
 !!!! copy the atom wave functions to core for LS_iteration first iteration.
         do ia = 1, natoms (is)
           ias = idxas (ia, is)
             do ist=1,spnst (is)
                if (spcore(ist,is)) then
-                 rwfcr(:,1,ist,ias)=rwf(:,1,ist)
-                 rwfcr(:,2,ist,ias)=rwf(:,2,ist)
+                 rwfcr(:spnr(is),1,ist,ias)=rwf(:spnr(is),1,ist)
+                 rwfcr(:spnr(is),2,ist,ias)=rwf(:spnr(is),2,ist)
                endif
             enddo!ist
         enddo!ia
