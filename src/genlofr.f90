@@ -55,6 +55,7 @@ Subroutine genlofr
 ! variables for the lo recommendation
       Real (8) energy,energyp,tmp,tmp2,ens(0:20),elo,ehi,flo,fhi,emi,fmi
       integer nodes
+      character(len=1024) :: filename
       call stopwatch("exciting:genlofr", 1)
       
       np = Max (maxlorbord+1, 4)
@@ -77,10 +78,17 @@ Subroutine genlofr
                           & q1(:, io2), .false.)
                   else
                      ! integrate the radial Schrodinger equation
-                     Call rschroddme (lorbdm(io2, ilo, is), l, 0, &
-                          & lorbe(io2, ilo, ias), nr, &
-                          & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
-                          & q1(:, io2))
+                     if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0)) then
+                        Call rschroddme2 (is,ia,lorbdm(io2, ilo, is), l, 0, &
+                                 & lorbe(io2, ilo, ias), nr, &
+                                 & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
+                                 & q1(:, io2))
+                     else
+                        Call rschroddme (lorbdm(io2, ilo, is), l, 0, &
+                           & lorbe(io2, ilo, ias), nr, &
+                           & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
+                           & q1(:, io2))
+                     endif
                   endif
 ! normalise radial functions
                   Do ir = 1, nr
@@ -92,6 +100,21 @@ Subroutine genlofr
                   p1 (1:nr, io2) = t1 * p1 (1:nr, io2)
                   q0 (1:nr, io2) = t1 * q0 (1:nr, io2)
                   q1 (1:nr, io2) = t1 * q1 (1:nr, io2)
+
+
+                  if(ex_coef.gt.0d0)then
+                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf',lorbe(io2, ilo, ias),"-o",lorbdm(io2, ilo, is),"-l",l,'HF.dat'
+                  else
+                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf',lorbe(io2, ilo, ias),"-o",lorbdm(io2, ilo, is),"-l",l,'.dat'
+                  endif
+                     
+                  open (11, file = filename, status = 'replace')
+                  Do ir = 1, nr
+                  write(11,*)spr(ir, is),",",p0(ir, io2)
+                  enddo
+                  close(11)
+
+
 ! set up the matrix of radial derivatives
                   Do j = 1, np
                      ir = nr - np + j
@@ -143,13 +166,22 @@ Subroutine genlofr
                q1s (1:nr) = t1 * q1s (1:nr)
                Do ir = 1, nr
                  t1 = 1.d0 / spr (ir, is)
-                 lofr (ir, 1, ilo, ias) = t1 * p0s (ir)
-                 lofr (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
+                 lofr_old (ir, 1, ilo, ias) = lofr (ir, 1, ilo, ias)
+                 lofr_old (ir, 2, ilo, ias) = lofr (ir, 2, ilo, ias) 
+                 lofr_new (ir, 1, ilo, ias) = t1 * p0s (ir)
+                 lofr_new (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
                End Do
             End Do
          End Do
       End Do
       Deallocate (ipiv, xa, ya, a, b, c)
+      if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
+         lofr =lofr_new
+         write(*,*)"*** atjaunojam lo"
+      else
+         write(*,*)"*** neatjaunojam lo" !(darīs to vēlāk)
+      endif
+
       call stopwatch("exciting:genlofr", 0)
       Return
 End Subroutine

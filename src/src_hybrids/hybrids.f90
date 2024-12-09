@@ -185,8 +185,20 @@ Subroutine hybrids
         ! (initialzed from PBE)
         call gencore()          ! generate the core wavefunctions and densities
         call linengy()          ! find the new linearization energies
-        call genapwfr()         ! generate the APW radial functions
-        call genlofr(.false.)   ! generate the local-orbital radial functions
+
+        if(input%groundstate%Hybrid%updateRadial)then
+          write(*,*)"update radial iter",ihyb
+          !call loadapwloe()
+          call genapwfr()
+          call genlofr()
+          write(*,*)"*** atjaunojam apw un lo restart init"
+          lofr = lofr_new
+          apwfr =apwfr_new
+        else
+          call genapwfr()         ! generate the APW radial functions
+          call genlofr(.false.)   ! generate the local-orbital radial functions
+        endif
+
         call olprad()           ! compute the overlap radial integrals
         call energykncr()       ! core kinetic energy
         !
@@ -300,6 +312,20 @@ Subroutine hybrids
         call gencore()        ! generate the core wavefunctions and densities
         call energykncr()   
       endif
+
+      if(input%groundstate%Hybrid%updateRadial)then
+        write(*,*)"update radial iter",ihyb
+        !call loadapwloe()
+        !call linengy1() 
+        call genapwfr()       
+        call genlofr() 
+        write(*,*)"*** atjaunojam apw un lo hybrids.f90"
+        lofr = lofr_new
+        apwfr =apwfr_new
+        !stop
+        call olprad  
+      endif
+
 
       call calc_vxnl()
       call timesec(ts1)

@@ -302,9 +302,21 @@ else ! Use oepvnl
 #endif
         vxpsiir=zzero
         vxpsimt=zzero
+        if (input%groundstate%Hybrid%updateRadial) then        
+          !!!!!!!veca baze!!!!!!!
+          apwfr=apwfr_old
+          lofr=lofr_old
+          !!!!!!!!!!!!!!!!!!!!!!!
+        endif
         call timesec(ta)
         call FockExchange (ik, sxs2*kiw(1,ik) ,vxnl(:, :, ik),vxpsiir,vxpsimt)
         call timesec(tb)
+        if (input%groundstate%Hybrid%updateRadial) then 
+          !!!!!!!jauna baze!!!!!!!
+          apwfr=apwfr_new
+          lofr=lofr_new
+          !!!!!!!!!!!!!!!!!!!!!!!
+        endif
         if (rank==0) write(*,*) 'FockExchange :',tb-ta
 
         do ie1 = 1, nstfv

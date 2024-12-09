@@ -41,7 +41,7 @@ Subroutine genapwfr
      & (apwordmax)
       Real (8) :: q0 (nrmtmax, apwordmax), q1 (nrmtmax, apwordmax)
       Real (8) :: hp0 (nrmtmax)
-
+      character(len=1024) :: filename
       call stopwatch("exciting:genapwfr", 1)
 
       Do is = 1, nspecies
@@ -52,9 +52,17 @@ Subroutine genapwfr
             Do l = 0, input%groundstate%lmaxapw
                Do io1 = 1, apword (l, is)
 ! integrate the radial Schrodinger equation
+
+               if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0)) then
+                  Call rschroddme2 (is,ia,apwdm(io1, l, is), l, 0, apwe(io1, &
+                    & l, ias), nr, spr(:, is), &
+                    & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
+               else
+
                   Call rschroddme (apwdm(io1, l, is), l, 0, apwe(io1, &
                  & l, ias), nr, spr(:, is), &
                  & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
+               endif
 ! normalise radial functions
                   Do ir = 1, nr
                      fr (ir) = p0 (ir, io1) ** 2
@@ -66,6 +74,21 @@ Subroutine genapwfr
                   p1 (1:nr, io1) = t1 * p1 (1:nr, io1)
                   q0 (1:nr, io1) = t1 * q0 (1:nr, io1)
                   q1 (1:nr, io1) = t1 * q1 (1:nr, io1)
+
+
+                  if(ex_coef.gt.0d0)then
+                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'HF.dat'   
+                  else
+                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'.dat'
+                  endif
+                                       
+                  open (11, file = filename, status = 'replace')
+                  Do ir = 1, nr
+                     write(11,*)spr(ir, is),",",p0(ir, io1)
+                  enddo
+                  close(11)
+
+
 ! subtract linear combination of previous vectors
                   Do io2 = 1, io1 - 1
                      Do ir = 1, nr
@@ -104,13 +127,22 @@ Subroutine genapwfr
                   q1 (1:nr, io1) = t1 * q1 (1:nr, io1)
                   Do ir = 1, nr
                      t1 = 1.d0 / spr (ir, is)
-                     apwfr (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
-                     apwfr (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
+                     apwfr_old (ir, 1, io1, l, ias)=apwfr (ir, 1, io1, l, ias)
+                     apwfr_old (ir, 2, io1, l, ias)=apwfr (ir, 2, io1, l, ias)
+
+                     apwfr_new (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
+                     apwfr_new (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
                   End Do
                End Do
             End Do
          End Do
       End Do
+      if (.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
+         apwfr =apwfr_new
+         write(*,*)"*** atjaunojam apw"
+      else
+         write(*,*)"*** neatjaunojam apw"  !(darīs to vēlāk)
+      endif
       call stopwatch("exciting:genapwfr", 0)
       Return
 End Subroutine
