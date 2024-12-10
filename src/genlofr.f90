@@ -175,12 +175,9 @@ Subroutine genlofr
          End Do
       End Do
       Deallocate (ipiv, xa, ya, a, b, c)
-      if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
-         lofr =lofr_new
-         write(*,*)"*** atjaunojam lo"
-      else
-         write(*,*)"*** neatjaunojam lo" !(darīs to vēlāk)
-      endif
+     
+      lofr =lofr_new
+
 
       call stopwatch("exciting:genlofr", 0)
       Return

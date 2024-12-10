@@ -64,6 +64,11 @@ subroutine scf_cycle(verbosity)
     Call timesec (ts0)
     If ((task == 1) .or. (task == 3)) Then
         Call readstate
+        if (input%groundstate%CoreSolver.eq."atomHF") then   
+            write(*,*)"Restart: loading core from STATE_CORE.OUT"
+            call loadcore()
+        endif
+
         If ((verbosity>-1).and.(rank==0)) write(60,'(" Potential read in from STATE.OUT")')
     Else If (task == 7) Then
         ! restart from previous HYBRID iteration

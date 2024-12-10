@@ -354,6 +354,7 @@ endif !new solver solved
          End Do!ia
       End Do!is
 
+      call storecore
       Return
 End Subroutine
 !EOC

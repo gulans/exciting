@@ -137,12 +137,9 @@ Subroutine genapwfr
             End Do
          End Do
       End Do
-      if (.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
-         apwfr =apwfr_new
-         write(*,*)"*** atjaunojam apw"
-      else
-         write(*,*)"*** neatjaunojam apw"  !(darīs to vēlāk)
-      endif
+
+      apwfr =apwfr_new
+      
       call stopwatch("exciting:genapwfr", 0)
       Return
 End Subroutine

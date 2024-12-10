@@ -183,23 +183,30 @@ Subroutine hybrids
 
         ! Core/Valence radial functions and integrals required for scf_cycle() + task=7
         ! (initialzed from PBE)
-        call gencore()          ! generate the core wavefunctions and densities
+
         call linengy()          ! find the new linearization energies
 
         if(input%groundstate%Hybrid%updateRadial)then
-          write(*,*)"update radial iter",ihyb
-          !call loadapwloe()
-          call genapwfr()
-          call genlofr()
-          write(*,*)"*** atjaunojam apw un lo restart init"
-          lofr = lofr_new
-          apwfr =apwfr_new
+          write(*,*)"Restart (HYB): loading core from STATE_BASE.OUT"
+          call loadbase()
         else
           call genapwfr()         ! generate the APW radial functions
           call genlofr(.false.)   ! generate the local-orbital radial functions
         endif
 
         call olprad()           ! compute the overlap radial integrals
+
+
+        if (input%groundstate%CoreSolver.eq."atomHF") then   
+          write(*,*)"Restart (HYB): loading core from STATE_CORE.OUT"
+          call loadcore()
+          write(*,*)"Restart (HYB): loading DM from DM.OUT"
+          call loaddm()
+
+        else
+          call gencore()          ! generate the core wavefunctions and densities
+        endif
+
         call energykncr()       ! core kinetic energy
         !
         ! Inizialize mixed-product basis
@@ -318,10 +325,9 @@ Subroutine hybrids
         !call loadapwloe()
         !call linengy1() 
         call genapwfr()       
-        call genlofr() 
-        write(*,*)"*** atjaunojam apw un lo hybrids.f90"
-        lofr = lofr_new
-        apwfr =apwfr_new
+        call genlofr()
+        write(*,*)"Radial functions updated" 
+        call storebase()
         !stop
         call olprad  
       endif

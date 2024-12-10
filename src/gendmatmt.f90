@@ -40,7 +40,7 @@ Subroutine gendmatmt (ik, evecfv, evecsv)
       Complex (8), pointer :: wf1(:,:), wf2prime(:,:), wfalpha(:,:),wfbeta(:,:)
       Complex (8), Allocatable :: dm2(:,:)
       integer :: l3,lm3,if3,ngp,l1,lm1,j1,j3
-
+      integer :: wfi1,wfi2
       Call timesec (ts0)
 
 !      ist=1
@@ -246,6 +246,22 @@ call timesec(t2)
           endif
         
           dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
+
+
+            open (11, file = "DM.OUT", status = 'replace')
+            write(11,*)wfsize
+            write(11,*)mt_dm%maxnlo
+            write(11,*)mt_dm%losize
+            write(11,*)mt_dm%maxaa
+            do ias=1, natmtot
+                  Do wfi1 = 1, wfsize
+                        Do wfi2 = 1, wfsize
+                              write(11,*)dm_copy(wfi1,wfi2,ias)
+                        enddo
+                  enddo
+            enddo
+            close(11)
+
 
       deallocate(wf1,wf2prime,wfalpha,wfbeta)
       deallocate(apwi,apwalm)
