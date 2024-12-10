@@ -186,7 +186,7 @@ if (yukawa) then
     zrhoig_sort, qlmir,zlambda,zilmt)
 else
   ! multipoles_ir4 - some data in single precision 
-  call multipoles_ir4( input%groundstate%lmaxvr, ngp2, gpc, &
+  call multipoles_ir3( input%groundstate%lmaxvr, ngp2, gpc, &
     & jlgpr, ylmgp, sfacgp, igfft, &
     zrhoig_sort, qlmir)
 endif
