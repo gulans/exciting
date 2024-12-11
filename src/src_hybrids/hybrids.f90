@@ -187,7 +187,7 @@ Subroutine hybrids
         call linengy()          ! find the new linearization energies
 
         if(input%groundstate%Hybrid%updateRadial)then
-          write(*,*)"Restart (HYB): loading core from STATE_BASE.OUT"
+          write(*,*)"Restart (HYB): loading radial basis from STATE_BASE.OUT"
           call loadbase()
         else
           call genapwfr()         ! generate the APW radial functions

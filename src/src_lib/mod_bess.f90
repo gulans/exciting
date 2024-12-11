@@ -11,47 +11,75 @@ complex (8),allocatable :: zilmt(:,:,:) ! (nfit, l, nspecies)
 
 contains
 
-subroutine init_bess(nrmtmax,nspecies,nrmt,r)
+subroutine init_bess(nrmax,nspecies,nr,r)
   use constants, only: zzero
+  use mod_atoms, only: spnst, spl, spcore
+  use mod_muffin_tin, only: nrmt
   Use modinput
   implicit none
-  integer, intent(in) :: nrmtmax
+  integer, intent(in) :: nrmax
   integer, intent(in) :: nspecies
-  integer, intent(in) :: nrmt(nspecies)
-  real(8), intent(in) :: r(nrmtmax,nspecies)
+  integer, intent(in) :: nr(nspecies)
+  real(8), intent(in) :: r(nrmax,nspecies)
   
-  integer :: ii,ir,is,lmax_bess
+  integer :: ii,ir,is,lmax_bess,lmax_core,i2
 
   nfit=9
   
   lambda=input%groundstate%Hybrid%omega
 
   if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
+  !!! Bessel functions needed in Pseudocharge construction and for MT potential in Preudochargw method.
     if(input%groundstate%Hybrid%rpseudo) then
       lmax_bess=input%groundstate%lmaxvr
     else
       lmax_bess=input%groundstate%lmaxvr+input%groundstate%npsden+1
     endif
-  elseif (input%groundstate%hybrid%erfcapprox.eq."PW") then
+  else
+  !!! functions needed in FockExchange.f90 for core-valence exhange
     lmax_bess=input%groundstate%lmaxvr
   endif
 
+
+  if ((input%groundstate%CoreSolver.eq."atomHF").and.(input%groundstate%hybrid%updateCore)) then
+    !find the largest l between core orbitals
+    lmax_core=0
+    do is=1, nspecies
+      do i2 = 1,spnst(is)
+        if ((spl(i2,is).ge.lmax_core).and.(spcore(i2,is))) then
+          lmax_core = spl(i2,is)
+        end if
+      end do
+    enddo
+
+!!! functions needed for core solver
+    if (lmax_bess.lt.(input%groundstate%lmaxmat+lmax_core)) then
+      lmax_bess = input%groundstate%lmaxmat + lmax_core
+    endif
+  endif
+
+  if (input%groundstate%hybrid%updateRadial) then
+!!! functions needed for hybrid radial basis functions
+    if (lmax_bess.lt.(2*input%groundstate%lmaxapw)) then
+      lmax_bess = 2 * input%groundstate%lmaxapw
+    endif
+  endif
+  
 
   write(*,*)"Initialising modbess with lmax:", lmax_bess, "and lambda:", lambda
 
   allocate (erfc_fit(nfit,2))
   call errfun(nfit,lambda,erfc_fit)
 
-  allocate (zbessi(nrmtmax,nfit,0:lmax_bess,nspecies))
-  allocate (zbessk(nrmtmax,nfit,0:lmax_bess,nspecies))
+  allocate (zbessi(nrmax,nfit,0:lmax_bess,nspecies))
+  allocate (zbessk(nrmax,nfit,0:lmax_bess,nspecies))
   allocate (zilmt(nfit,0:lmax_bess,nspecies))
   zbessi=zzero
   zbessk=zzero
 
   do is=1, nspecies
-    call get_Bess_fun( nrmt(is), r(1:nrmt(is),is),lmax_bess,&
-      &nfit,erfc_fit,zbessi(1:nrmt(is),:,:,is),zbessk(1:nrmt(is),:,:,is))
-  
+    call get_Bess_fun( nr(is), r(1:nr(is),is),lmax_bess,&
+      &nfit,erfc_fit,zbessi(1:nr(is),:,:,is),zbessk(1:nr(is),:,:,is))
   enddo
 
   do ii=1, nfit

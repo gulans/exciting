@@ -281,7 +281,7 @@ end subroutine
 subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
   use modinteg
   use modinput, only:input
-  use modbess, only: erfc_fit,nfit,msbesselic,msbesselkc
+  use modbess, only: erfc_fit,nfit,zbessi,zbessk ! (nrmax,nfit,0:lmax_bess,nspecies) 
   use constants, only: zzero
   implicit none
   
@@ -290,7 +290,7 @@ subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
   logical, intent(in) :: mt
   real(8), intent(out) ::vx_u(Ngrid)
   
-  complex(8) :: zbi(Ngrid,nfit), zbk(Ngrid,nfit),bi,bk,z
+  !complex(8) :: zbi(Ngrid,nfit), zbk(Ngrid,nfit),bi,bk,z
   complex(8) :: integc1(Ngrid),integc2(Ngrid),integc3(Ngrid),zf1(Ngrid),zf2(Ngrid)
   integer :: ifit, ir
   real (8)  :: wigner3j
@@ -298,6 +298,16 @@ subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
   integer :: lpripri
   real(8) :: gc,integ1(Ngrid),integ2(Ngrid),integ3(Ngrid)
   logical :: erfc_kernel
+  
+  ! logical :: file_exists
+  ! inquire(file='lpripri.out',EXIST=file_exists)
+  ! if (file_exists) then
+  !    open(11,file='lpripri.out',status='old', access='append')
+  ! else
+  !    open(11,file='lpripri.out',status='new')
+  ! endif
+  ! write(11,*)l,",",lpri,",",l+lpri
+  ! close(11)
 
 
   if (input%groundstate%hybrid%erfcapprox.ne."none") then
@@ -315,49 +325,37 @@ subroutine  insum(Ngrid,r,is,l,lpri,occ,u1,u2,u,vx_u,mt)
       !    write(*,*)"(l,l',l'') (",l,",",lpri,",",lpripri,")", " Gaunt_coef=",gc
       if (gc.ne.0d0) then
         if (erfc_kernel) then
-          !!Generate set of complex bessel functions for current lpripri
-          do ifit=1,nfit
-            do ir = 1,Ngrid
-              z=erfc_fit(ifit,2)*r(ir)
-              call msbesselic (lpripri, z, bi)
-              call msbesselkc (lpripri, z, bk)
-              zbi(ir,ifit) = bi
-              zbk(ir,ifit) = bk
-            end do
-          end do
-          !! Bessel functoins ready
-          
           integc3=zzero
           do ifit=1, nfit
             if (mt) then
-              call integ_cf (Ngrid, is, zbi(:,ifit)*u2*u , zf1, mt_integw)
+              call integ_cf (Ngrid, is, zbessi(1:Ngrid,ifit,lpripri,is)*u2*u , zf1, mt_integw)
             else
-              call integ_cf (Ngrid, is, zbi(:,ifit)*u2*u , zf1, atom_integw)
+              call integ_cf (Ngrid, is, zbessi(1:Ngrid,ifit,lpripri,is)*u2*u , zf1, atom_integw)
             endif
-            integc1 = erfc_fit(ifit,2) * zbk(:,ifit) * zf1(:)
+            integc1 = erfc_fit(ifit,2) * zbessk(1:Ngrid,ifit,lpripri,is) * zf1(:)
             if (mt) then
-              call integ_cf (Ngrid, is, zbk(:,ifit)*u2*u, zf2, mt_integw)
+              call integ_cf (Ngrid, is, zbessk(1:Ngrid,ifit,lpripri,is)*u2*u, zf2, mt_integw)
             else
-              call integ_cf (Ngrid, is, zbk(:,ifit)*u2*u, zf2, atom_integw)
+              call integ_cf (Ngrid, is, zbessk(1:Ngrid,ifit,lpripri,is)*u2*u, zf2, atom_integw)
             endif
-            integc2= erfc_fit(ifit,2)* zbi(:,ifit) * (zf2(Ngrid)-zf2)
+            integc2= erfc_fit(ifit,2)* zbessi(1:Ngrid,ifit,lpripri,is) * (zf2(Ngrid)-zf2)
             
             integc3=integc3 + erfc_fit(ifit,1) * (integc1+integc2)
           enddo
 
           do ifit=2, nfit
             if (mt) then
-              call integ_cf (Ngrid, is, conjg(zbi(:,ifit))*u2*u , zf1, mt_integw)
+              call integ_cf (Ngrid, is, conjg(zbessi(1:Ngrid,ifit,lpripri,is))*u2*u , zf1, mt_integw)
             else
-              call integ_cf (Ngrid, is, conjg(zbi(:,ifit))*u2*u , zf1, atom_integw)
+              call integ_cf (Ngrid, is, conjg(zbessi(1:Ngrid,ifit,lpripri,is))*u2*u , zf1, atom_integw)
             endif
-              integc1 = conjg(erfc_fit(ifit,2)) * conjg(zbk(:,ifit)) * zf1(:)
+              integc1 = conjg(erfc_fit(ifit,2)) * conjg(zbessk(1:Ngrid,ifit,lpripri,is)) * zf1(:)
             if (mt) then
-              call integ_cf (Ngrid, is, conjg(zbk(:,ifit))*u2*u, zf2, mt_integw)
+              call integ_cf (Ngrid, is, conjg(zbessk(1:Ngrid,ifit,lpripri,is))*u2*u, zf2, mt_integw)
             else
-              call integ_cf (Ngrid, is, conjg(zbk(:,ifit))*u2*u, zf2, atom_integw)
+              call integ_cf (Ngrid, is, conjg(zbessk(1:Ngrid,ifit,lpripri,is))*u2*u, zf2, atom_integw)
             endif
-              integc2= conjg(erfc_fit(ifit,2)) * conjg(zbi(:,ifit)) * (zf2(Ngrid)-zf2)
+              integc2= conjg(erfc_fit(ifit,2)) * conjg(zbessi(1:Ngrid,ifit,lpripri,is)) * (zf2(Ngrid)-zf2)
             
             integc3=integc3 + conjg(erfc_fit(ifit,1)) * (integc1+integc2)
           enddo

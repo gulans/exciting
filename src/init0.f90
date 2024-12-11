@@ -61,7 +61,7 @@ Subroutine init0
       integer :: comm_band
       real(8) :: mb, ylmg_mb, sfacg_mb
 
-      integer :: i2,i3, core_count
+      integer :: i2,i3, core_count,lmax_core
 
 
       !> Command line arguments
@@ -337,14 +337,7 @@ if (allocated(mt_integw%fintw)) then
   call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
   endif
 
-!-----------------------!
-! initialize modbess    !
-!-----------------------!
- if (associated(input%groundstate%Hybrid)) then
-      if (input%groundstate%hybrid%erfcapprox.ne."none") then
-            call init_bess(nrmtmax,nspecies,nrmt,spr(1:nrmtmax,:))
-      endif
-endif
+
 
 
 !--------------------------------------!
@@ -462,6 +455,7 @@ enddo
 
 !generate a list of core orbital indexes
 !and store in mod_corestate variable c_list(1:c_count(nspecies),nspecies)
+lmax_core=0
  If (allocated(c_list)) deallocate (c_list)
  Allocate (c_list(maxspst,nspecies))
 c_list(:,:)=0
@@ -480,6 +474,15 @@ do is=1, nspecies
 enddo
 
 
+!-----------------------!
+! initialize modbess    !
+!-----------------------!
+
+if (associated(input%groundstate%Hybrid)) then
+      if (input%groundstate%hybrid%erfcapprox.ne."none") then
+            call init_bess(spnrmax,nspecies,spnr,spr(1:spnrmax,:))
+      endif
+endif
 
 
 ! solve the Kohn-Sham-Dirac equations for all atoms
