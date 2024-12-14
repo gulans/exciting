@@ -26,7 +26,7 @@ integer :: nratom
 real(8) :: ratom(spnr(is))
 
 nratom=spnr(is)
-ratom(:)=spr(:,is)
+ratom(:)=spr(:spnr(is),is)
 
 original=.true.
 

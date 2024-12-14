@@ -49,7 +49,7 @@ integer :: ir,i
 
 d_order=10  
 i_order=8
-integrate_0_r1=.false.
+integrate_0_r1=.true.
 i_order2=1 ! 1,2 or 3   
 
 !!!!!!!!!!!!!!!!!!!! 

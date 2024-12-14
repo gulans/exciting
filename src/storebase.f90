@@ -20,9 +20,9 @@ Subroutine storebase
               Do io1 = 1, apword (l, is)
                 do ir =1 ,nr
                     write(11,*)apwfr (ir, 1, io1, l, ias), apwfr (ir, 2, io1, l, ias)
-                enddo
-              enddo
-            enddo
+                enddo !ir
+              enddo !io
+            enddo!l
         enddo
     enddo
 

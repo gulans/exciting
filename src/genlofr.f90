@@ -81,8 +81,8 @@ Subroutine genlofr
                      if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0)) then
                         Call rschroddme2 (is,ia,lorbdm(io2, ilo, is), l, 0, &
                                  & lorbe(io2, ilo, ias), nr, &
-                                 & spr(:, is), vr, nn, p0(:, io2), p1(:, io2), q0(:, io2), &
-                                 & q1(:, io2))
+                                 & spr(:nr, is), vr(:nr), nn, p0(:nr, io2), p1(:nr, io2), q0(:nr, io2), &
+                                 & q1(:nr, io2))
                      else
                         Call rschroddme (lorbdm(io2, ilo, is), l, 0, &
                            & lorbe(io2, ilo, ias), nr, &
@@ -176,7 +176,13 @@ Subroutine genlofr
       End Do
       Deallocate (ipiv, xa, ya, a, b, c)
      
-      lofr =lofr_new
+      if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
+         lofr =lofr_new
+         !write(*,*)"*** atjaunojam lo"
+      else
+         !write(*,*)"*** neatjaunojam lo" 
+      endif
+
 
 
       call stopwatch("exciting:genlofr", 0)

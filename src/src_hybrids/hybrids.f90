@@ -189,6 +189,8 @@ Subroutine hybrids
         if(input%groundstate%Hybrid%updateRadial)then
           write(*,*)"Restart (HYB): loading radial basis from STATE_BASE.OUT"
           call loadbase()
+          write(*,*)"Restart (HYB): loading DM from DM.OUT"
+          call loaddm()
         else
           call genapwfr()         ! generate the APW radial functions
           call genlofr(.false.)   ! generate the local-orbital radial functions
@@ -202,7 +204,6 @@ Subroutine hybrids
           call loadcore()
           write(*,*)"Restart (HYB): loading DM from DM.OUT"
           call loaddm()
-
         else
           call gencore()          ! generate the core wavefunctions and densities
         endif
@@ -325,7 +326,9 @@ Subroutine hybrids
         !call loadapwloe()
         !call linengy1() 
         call genapwfr()       
-        call genlofr()
+        call genlofr() 
+        apwfr = apwfr_new
+        lofr = lofr_new
         write(*,*)"Radial functions updated" 
         call storebase()
         !stop

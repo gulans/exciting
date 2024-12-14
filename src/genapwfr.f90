@@ -55,8 +55,8 @@ Subroutine genapwfr
 
                if(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0)) then
                   Call rschroddme2 (is,ia,apwdm(io1, l, is), l, 0, apwe(io1, &
-                    & l, ias), nr, spr(:, is), &
-                    & vr, nn, p0(:, io1), p1(:, io1), q0(:, io1), q1(:, io1))
+                    & l, ias), nr, spr(:nr, is), &
+                    & vr(:nr), nn, p0(:nr, io1), p1(:nr, io1), q0(:nr, io1), q1(:nr, io1))
                else
 
                   Call rschroddme (apwdm(io1, l, is), l, 0, apwe(io1, &
@@ -138,7 +138,14 @@ Subroutine genapwfr
          End Do
       End Do
 
-      apwfr =apwfr_new
+      if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
+         apwfr =apwfr_new
+         !write(*,*)"*** atjaunojam apw"
+      else
+         !write(*,*)"*** neatjaunojam apw" 
+      endif
+
+      
       
       call stopwatch("exciting:genapwfr", 0)
       Return
