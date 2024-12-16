@@ -101,11 +101,12 @@ Subroutine genlofr
                   q0 (1:nr, io2) = t1 * q0 (1:nr, io2)
                   q1 (1:nr, io2) = t1 * q1 (1:nr, io2)
 
+               if (lorbdm(io2, ilo, is).eq.0) then
 
                   if(ex_coef.gt.0d0)then
-                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf',lorbe(io2, ilo, ias),"-o",lorbdm(io2, ilo, is),"-l",l,'HF.dat'
+                     WRITE(filename, '(a3,A2,a2,i1,F6.2,a6)')'rf-',input%structure%speciesarray(is)%species%chemicalSymbol,"-l",l,lorbe(io2, ilo, ias),'HF.dat'
                   else
-                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf',lorbe(io2, ilo, ias),"-o",lorbdm(io2, ilo, is),"-l",l,'.dat'
+                     WRITE(filename, '(a3,A2,a2,i1,F6.2,a7)')'rf-',input%structure%speciesarray(is)%species%chemicalSymbol,"-l",l,lorbe(io2, ilo, ias),'PBE.dat'
                   endif
                      
                   open (11, file = filename, status = 'replace')
@@ -113,7 +114,7 @@ Subroutine genlofr
                   write(11,*)spr(ir, is),",",p0(ir, io2)
                   enddo
                   close(11)
-
+               endif
 
 ! set up the matrix of radial derivatives
                   Do j = 1, np

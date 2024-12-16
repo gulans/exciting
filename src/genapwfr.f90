@@ -76,17 +76,17 @@ Subroutine genapwfr
                   q1 (1:nr, io1) = t1 * q1 (1:nr, io1)
 
 
-                  if(ex_coef.gt.0d0)then
-                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'HF.dat'   
-                  else
-                     WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'.dat'
-                  endif
+                  ! if(ex_coef.gt.0d0)then
+                  !    WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a6)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'HF.dat'   
+                  ! else
+                  !    WRITE(filename, '(a2,F5.2,a2,i1,a2,i1,a4)')'rf', apwe(io1,l,ias),"-o",apwdm(io1, l, is),"-l",l,'.dat'
+                  ! endif
                                        
-                  open (11, file = filename, status = 'replace')
-                  Do ir = 1, nr
-                     write(11,*)spr(ir, is),",",p0(ir, io1)
-                  enddo
-                  close(11)
+                  ! open (11, file = filename, status = 'replace')
+                  ! Do ir = 1, nr
+                  !    write(11,*)spr(ir, is),",",p0(ir, io1)
+                  ! enddo
+                  ! close(11)
 
 
 ! subtract linear combination of previous vectors
