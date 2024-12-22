@@ -11,7 +11,8 @@ Subroutine hybrids
     Use scl_xml_out_Module
     Use mod_hybrids
     use modinput
-!
+    use lo_recommendation1
+    use mod_potential_and_density, only: veffmt
 ! !DESCRIPTION:
 !   Main routine for Hartree-Fock based hybrid functionals.
 !
@@ -27,7 +28,7 @@ Subroutine hybrids
     integer :: ihyb, maxscl
     real(8) :: et
 ! time measurements
-    real(8) :: timetot, ts0, ts1, tsg0, tsg1, tin1, tin0, time_hyb
+    real(8) :: timetot, ts0, ts1, tsg0, tsg1, tin1, tin0, time_hyb,ts10,ts11
     character(80) :: string
 
     ! Charge distance
@@ -35,6 +36,7 @@ Subroutine hybrids
     Real (8), Allocatable :: rhoirref(:)     ! interstitial real-space charge density (reference)
     real(8) :: conv_old, conv_emp ! convergence for more empty orbitals 
     logical :: exist
+    character(64) :: sp_symb
     Type (apw_lo_basis_type) :: mt_basis
 !! TIME - Initialisation segment
     call timesec(tsg0)
@@ -324,12 +326,25 @@ Subroutine hybrids
       if(input%groundstate%Hybrid%updateRadial)then
         write(*,*)"update radial iter",ihyb
         !call loadapwloe()
-        !call linengy1() 
+        
+        
+        !(nodesmax, lmax, nspecies, spsymb, idxas, nrmt, spr, veffmt)
+        if(input%groundstate%Hybrid%lo)then
+          call timesec(ts10)
+          !                                  nodes_max, lmax
+          call recommend_local_orbital_trial_energies1(8, 2, nspecies, spsymb, idxas, nrmt, spr, veffmt(1,:,:))
+          call timesec(ts11)
+          write(*,*)"lo time stop:",ts11-ts10
+          stop
+        endif
+        !call linengy1()
+        call timesec(ts10)
         call genapwfr()       
-        call genlofr() 
+        call genlofr()
+        call timesec(ts11)
         apwfr = apwfr_new
         lofr = lofr_new
-        write(*,*)"Radial functions updated" 
+        write(*,*)"Radial functions updated, time:", ts11-ts10
         call storebase()
         !stop
         call olprad  

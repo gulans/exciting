@@ -427,6 +427,14 @@
               </xs:annotation>
             </xs:attribute>
 
+<xs:attribute ex:importance="experimental" ex:unit="" name="lo" type="xs:boolean" default="false">
+              <xs:annotation>
+                <xs:documentation>
+                  lo-recomendation in hybrid workflow in first scf iteration - for use in fromfile calculation. 
+                </xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+
 <xs:attribute ex:importance="experimental" ex:unit="" name="updateCore" type="xs:boolean" default="false">
               <xs:annotation>
                 <xs:documentation>
