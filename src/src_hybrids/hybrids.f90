@@ -332,7 +332,7 @@ Subroutine hybrids
         if(input%groundstate%Hybrid%lo)then
           call timesec(ts10)
           !                                  nodes_max, lmax
-          call recommend_local_orbital_trial_energies1(8, 2, nspecies, spsymb, idxas, nrmt, spr, veffmt(1,:,:))
+          call recommend_local_orbital_trial_energies1(8, 3, nspecies, spsymb, idxas, nrmt, spr, veffmt(1,:,:))
           call timesec(ts11)
           write(*,*)"lo time stop:",ts11-ts10
           stop

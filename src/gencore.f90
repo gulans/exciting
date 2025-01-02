@@ -55,7 +55,7 @@ logical ::file_exists
 logical :: zora
 real(8), allocatable :: v_rel(:)
 real(8) :: ftemp1(spnrmax),e_kin,e1,e2,hybx_coef
-
+real(8) :: engy_exnl_core_ias
 
 
 hybx_coef = ex_coef !mod_hybrids variable
@@ -64,6 +64,7 @@ hybx_coef = ex_coef !mod_hybrids variable
 
 e_kin=0d0
 engy_exnl_core=0d0
+engy_exnl_core_ias=0d0
 
 zora=(input%groundstate%ValenceRelativity.eq."zora")
 
@@ -247,13 +248,13 @@ enddo
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 if(hybx_coef.gt.1e-10)then
-
+engy_exnl_core_ias=0d0
 l_n=0
 Do il = 1, lmax+1
   do nn=1,count_l(il)
     l_n=l_n+1
     call integ_v(spnr(is),is,wf(:,l_n,1)*vx_wf(:,l_n,1),t1,atom_integw)
-    engy_exnl_core = engy_exnl_core + occ(l_n, 1)*t1
+    engy_exnl_core_ias = engy_exnl_core_ias + occ(l_n, 1)*t1
    enddo
 enddo
 endif
@@ -334,10 +335,13 @@ endif !new solver solved
                  & is)**2)
                End Do
                done (ia) = .True.
+               engy_exnl_core = engy_exnl_core + engy_exnl_core_ias
 ! copy to equivalent atoms
                Do ja = 1, natoms (is)
                   If (( .Not. done(ja)) .And. (eqatoms(ia, ja, is))) &
                  & Then
+                  write(*,*)"ekvivalenti atomi"
+                     engy_exnl_core = engy_exnl_core + engy_exnl_core_ias
                      jas = idxas (ja, is)
                      Do ist = 1, spnst (is)
                         If (spcore(ist, is)) Then
