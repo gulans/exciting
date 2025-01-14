@@ -91,7 +91,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
 
 ! ! Compute energy for which the wave function becomes 0 at the muffin-tin boundary
       e_hi=600d0
-      e_lo=-100d0
+      e_lo=-200d0
       e_toler=1e-2
       e_try=e_lo
       Call rschroddme2(is,ia,0, l, 0, e_lo, nr, spr, vr, nn_lo, p0, p1, q0, q1)
@@ -137,7 +137,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
       Else
          write(*,'("searching e where u_mt=0 for one node less, nodes=", I2)')nodes-1
          e_hi=600d0
-         e_lo=-100d0
+         e_lo=-200d0
          e_toler=1e-2
          Call rschroddme2(is,ia,0, l, 0, e_lo, nr, spr, vr, nn_lo, p0, p1, q0, q1)
          Call rschroddme2(is,ia,0, l, 0, e_hi, nr, spr, vr, nn_hi, p0, p1, q0, q1)
@@ -172,7 +172,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
 
 ! ! Compute energy for which the wave function becomes 0 at the muffin-tin boundary
       e_hi=600d0
-      e_lo=-100d0
+      e_lo=-200d0
       e_toler=1e-2
       e_try=e_lo
       Call rschroddme2(is,ia,0, l, 0, e_lo, nr, spr, vr, nn_lo, p0, p1, q0, q1)
