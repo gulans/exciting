@@ -1,7 +1,8 @@
 subroutine getu(m,is,ia,nodes,nrmt,v,l,e,u0,u,u1,q0,q1)
 use modinteg
 Use mod_hybrids, only: ex_coef
-use modmain, only: spnr,spr        
+use modmain, only: spnr,spr
+use modinput, only: input        
         implicit none
 integer, intent(in) :: nrmt,l,is,ia,m
 real(8), intent(in) :: v(nrmt),e,u0(nrmt)
@@ -30,7 +31,11 @@ ratom(:)=spr(:spnr(is),is)
 
 original=.true.
 
-rmfactor=0d0 
+if (input%groundstate%ValenceRelativity.eq."zora") then
+  rmfactor=1d0
+else
+  rmfactor=0d0
+endif
 
 rmt=ratom(1:nrmt)
 

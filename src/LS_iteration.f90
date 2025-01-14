@@ -97,16 +97,19 @@ do iscl=1,maxscl
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Convergence check  !!
 !!!!!!!!!!!!!!!!!!!!!!!!
-if (abs(hybx_coef).gt.1d-20) then
-  write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)),"(HYB)"
-else
-  write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp))
+if ((iscl.eq.1).or.(iscl.eq.2)) then
+  if (abs(hybx_coef).gt.1d-20) then
+    write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)),"(HYB)"
+  else
+    write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp))
+  endif
 endif
   !convergence check
 if((maxval(abs((eig-eigp)/(eig-1d0)))).lt.1d-14)then
         iner_loop=iscl-1
 !       write(*,*)"Convergence of internal cycle reached, iteration ",iscl
        !write(*,*)"max(eig-eigp) absolute : ",maxval(abs(eig-eigp))," relative: ",maxval(abs(eig-eigp)/(abs(eig-1d0)))
+        write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)), "### OK ###"
         exit
 endif
 
