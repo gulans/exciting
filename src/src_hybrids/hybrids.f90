@@ -38,6 +38,7 @@ Subroutine hybrids
     logical :: exist
     character(64) :: sp_symb
     Type (apw_lo_basis_type) :: mt_basis
+    integer :: is
 !! TIME - Initialisation segment
     call timesec(tsg0)
     call timesec(ts0)
@@ -209,7 +210,13 @@ Subroutine hybrids
         else
           call gencore()          ! generate the core wavefunctions and densities
         endif
-
+        
+        if(input%groundstate%Hybrid%printdm)then
+          do is =1, nspecies
+            call printdm(is,1)
+          enddo
+          stop
+        endif
         call energykncr()       ! core kinetic energy
         !
         ! Inizialize mixed-product basis

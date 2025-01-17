@@ -97,7 +97,7 @@ do iscl=1,maxscl
 !!!!!!!!!!!!!!!!!!!!!!!!
 !! Convergence check  !!
 !!!!!!!!!!!!!!!!!!!!!!!!
-if ((iscl.eq.1).or.(iscl.eq.2)) then
+if ((iscl.eq.1).or.(iscl.eq.2).or.(iscl.gt.35)) then
   if (abs(hybx_coef).gt.1d-20) then
     write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)),"(HYB)"
   else
