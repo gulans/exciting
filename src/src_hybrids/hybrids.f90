@@ -136,6 +136,15 @@ Subroutine hybrids
         end if
         ex_coef = 0.d0
         ec_coef = 1.d0
+        if (input%groundstate%Hybrid%initlda) then
+          write(*,*)"###############################"
+          write(*,*)"#### Startting LDA not PBE ####"
+          write(*,*)"###############################"
+          xctype(1)=3
+          xctype(0)=0
+          xctype(0)=0
+          xcgrad=0
+        endif
         call scf_cycle(-1)
         ex_coef = input%groundstate%Hybrid%excoeff
         ec_coef = input%groundstate%Hybrid%eccoeff
