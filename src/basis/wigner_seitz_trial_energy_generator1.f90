@@ -64,12 +64,18 @@ contains
       Logical  :: dirac_eq
       ! flag to pick a quick-and-dirty algorithm for integrating the Dirac equation in rdirac
       Logical  :: sloppy
-      real(8) :: e_step, e_toler, e_hi,e_lo,e_try
+      real(8) :: e_step, e_toler, e_hi,e_lo,e_try,e_lo_all
       ! Error message
       character(1024) :: message
       integer :: ie, nn_lo, nn_hi,ir
 
-
+en=0d0
+en_m=0d0 
+en_p=0d0 
+e_p1zerro_m=0d0 
+e_p1zerro_p=0d0 
+e_trial_m=0d0 
+e_trial_p=0d0
 
       if (principal_n < 1) Then
          call terminate("Error(wigner_seitz_trial_energy_generator): principal quantum number < 1")
@@ -88,10 +94,11 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
 !!!!!! u_mt=0 for nodes=nodes
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+e_lo_all=-30d0
 
 ! ! Compute energy for which the wave function becomes 0 at the muffin-tin boundary
       e_hi=600d0
-      e_lo=-200d0
+      e_lo=e_lo_all
       e_toler=1e-2
       e_try=e_lo
       Call rschroddme2(is,ia,0, l, 0, e_lo, nr, spr, vr, nn_lo, p0, p1, q0, q1)
@@ -100,7 +107,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
       write(*,*)e_hi,nn_hi
       if (.not.((nn_lo.le.nodes).and.(nn_hi.gt.nodes)))then
          write(*,*)"error needed nodes ",nodes," are not in the range"
-         stop
+         return
       endif
       do while (e_hi-e_lo.gt.e_toler) 
          !rschroddme2 (is,ia,m, l, k, e, nr, r, vr, nn, p0, p1, q0, q1)
@@ -137,7 +144,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
       Else
          write(*,'("searching e where u_mt=0 for one node less, nodes=", I2)')nodes-1
          e_hi=600d0
-         e_lo=-200d0
+         e_lo=e_lo_all
          e_toler=1e-2
          Call rschroddme2(is,ia,0, l, 0, e_lo, nr, spr, vr, nn_lo, p0, p1, q0, q1)
          Call rschroddme2(is,ia,0, l, 0, e_hi, nr, spr, vr, nn_hi, p0, p1, q0, q1)
@@ -145,7 +152,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
          write(*,*)e_hi,nn_hi
          if (.not.((nn_lo.le.nodes-1).and.(nn_hi.gt.nodes-1)))then
             write(*,*)"error needed nodes ",nodes-1," are not in the range"
-            stop
+            return
          endif
          do while (e_hi-e_lo.gt.e_toler) 
             e_try=0.5d0*(e_hi + e_lo)
@@ -172,7 +179,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
 
 ! ! Compute energy for which the wave function becomes 0 at the muffin-tin boundary
       e_hi=600d0
-      e_lo=-200d0
+      e_lo=e_lo_all
       e_toler=1e-2
       e_try=e_lo
       Call rschroddme2(is,ia,0, l, 0, e_lo, nr, spr, vr, nn_lo, p0, p1, q0, q1)
@@ -181,7 +188,7 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
       write(*,*)e_hi,nn_hi
       if (.not.((nn_lo.le.nodes+1).and.(nn_hi.gt.nodes+1)))then
          write(*,*)"error needed nodes ",nodes+1," are not in the range"
-         stop
+         return
       endif
       do while (e_hi-e_lo.gt.e_toler) 
          !rschroddme2 (is,ia,m, l, k, e, nr, r, vr, nn, p0, p1, q0, q1)

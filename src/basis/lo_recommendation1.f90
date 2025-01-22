@@ -68,7 +68,7 @@ contains
          do l = 0, lmax
             write (fid,*) 
             write (fid, '(" # species: ", A2, ", l : ", I2)') spsymb(is), l
-            write (fid, *) "nodes : n : e_n(u_mt=0) : e_n-1(u_mt=0) : e_n+1(u_mt=0) : e_n-1(du/dr_mt=0) : e_n(du/dr_mt=0) : e_trial(n-1) : e_trial(n+1)"
+            write (fid, '("nodes : n : e_n(u_mt=0) : e_n-1(u_mt=0) :"," e_n+1(u_mt=0) : e_n-1(du/dr_mt=0) : e_n(du/dr_mt=0) :","e_trial(n-1) : e_trial(n+1)")')
             ! looping over numbers of nodes up to maximum number of nodes set in input
             do nodes = 0, nodesmax 
                principal_n = nodes + 1 + l
