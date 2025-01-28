@@ -56,6 +56,8 @@ Subroutine genlofr
       Real (8) energy,energyp,tmp,tmp2,ens(0:20),elo,ehi,flo,fhi,emi,fmi
       integer nodes
       character(len=1024) :: filename
+      Logical :: done (natmmax)
+      integer :: ja,jas
       call stopwatch("exciting:genlofr", 1)
       
       np = Max (maxlorbord+1, 4)
@@ -64,7 +66,9 @@ Subroutine genlofr
       Allocate (a(np, np), b(np))
       Do is = 1, nspecies
          nr = nrmt (is)
+         done (:) = .False.
          Do ia = 1, natoms (is)
+            If ( .Not. done(ia)) Then  
             ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
             Do ilo = 1, nlorb (is)
@@ -126,7 +130,7 @@ Subroutine genlofr
                      a (io1, io2) = polynom (io1-1, np, xa, ya, c, &
                     & rmt(is))
                   End Do
-               End Do
+               End Do !io2
 ! set up the target vector
                b (:) = 0.d0
                b (lorbord(ilo, is)) = 1.d0
@@ -172,9 +176,22 @@ Subroutine genlofr
                  lofr_new (ir, 1, ilo, ias) = t1 * p0s (ir)
                  lofr_new (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
                End Do
-            End Do
-         End Do
-      End Do
+            End Do !ilo
+
+! copy to equivalent atoms
+            Do ja = 1, natoms (is)
+               jas = idxas (ja, is)
+               If (( .Not. done(ja)) .And. (eqatoms(ia, ja, is))) Then
+                  write(*,*)"genlofr ekvivalenti atomi"
+                  lofr_old (:, :, :, jas) = lofr_old (:, :, :, ias)
+                  lofr_new (:, :, :, jas) = lofr_new (:, :, :, ias)
+                  done (ja) = .True.
+               End If
+            End Do !ja
+         endif! if done
+
+         End Do! ia
+      End Do! is
       Deallocate (ipiv, xa, ya, a, b, c)
      
       if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then

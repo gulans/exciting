@@ -94,12 +94,14 @@ else
   endif
 endif
 
-  diff = sum((u-uold)**2)
+  diff = sum((u-uold)**2)/sum(u**2)
 
 !  write(*,*)"izmaiņa:",iter,diff
+!  write(*,'("getu l=",i1,"m=",i1,"e=",F6.2," it:",i2, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
   if (abs(diff).lt.1e-15) exit
  
 enddo
+!write(*,'("getuOK l=",i1,"m=",i1,"e=",F6.2," it:",i2, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
 
 !write(*,*)"gatavs"
 endif !ex_coef.ne.0d0

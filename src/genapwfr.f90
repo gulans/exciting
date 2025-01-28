@@ -42,11 +42,15 @@ Subroutine genapwfr
       Real (8) :: q0 (nrmtmax, apwordmax), q1 (nrmtmax, apwordmax)
       Real (8) :: hp0 (nrmtmax)
       character(len=1024) :: filename
+      Logical :: done (natmmax)
+      integer :: ja,jas
       call stopwatch("exciting:genapwfr", 1)
 
       Do is = 1, nspecies
+         done (:) = .False.
          nr = nrmt (is)
          Do ia = 1, natoms (is)
+            If ( .Not. done(ia)) Then  
             ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
             Do l = 0, input%groundstate%lmaxapw
@@ -133,10 +137,24 @@ Subroutine genapwfr
                      apwfr_new (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
                      apwfr_new (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
                   End Do
-               End Do
-            End Do
-         End Do
-      End Do
+               End Do! io1
+            End Do! l
+
+
+! copy to equivalent atoms
+            Do ja = 1, natoms (is)
+               jas = idxas (ja, is)
+               If (( .Not. done(ja)) .And. (eqatoms(ia, ja, is))) Then
+                  write(*,*)"genapwfr ekvivalenti atomi"
+                  apwfr_old (:, :, :, :, jas) = apwfr_old (:, :, :, :, ias)
+                  apwfr_new (:, :, :, :, jas) = apwfr_new (:, :, :, :, ias)
+                  done (ja) = .True.
+               End If
+            End Do !ja
+         endif! if done
+
+         End Do! ia
+      End Do! is
 
       if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
          apwfr =apwfr_new
