@@ -42,17 +42,18 @@ Subroutine genapwfr
       Real (8) :: q0 (nrmtmax, apwordmax), q1 (nrmtmax, apwordmax)
       Real (8) :: hp0 (nrmtmax)
       character(len=1024) :: filename
-      Logical :: done (natmmax)
+      Logical :: done (natmmax,nspecies)
       integer :: ja,jas
       call stopwatch("exciting:genapwfr", 1)
-
-      Do is = 1, nspecies
-         done (:) = .False.
+      done (:,:) = .False.
+!$OMP PARALLEL DEFAULT(none) PRIVATE(is,nr,ia,ias,vr,l,io1,nn,p0,p1,q0,q1,ir,fr,gr,cf,t1,p1s,io2,ja,jas) SHARED(nspecies,done,nrmt,natoms,idxas,veffmt,input,apword,ex_coef,apwdm,apwe,spr,apwfr_old,apwfr_new,apwfr,eqatoms)
+      Do is = 1, nspecies   
          nr = nrmt (is)
          Do ia = 1, natoms (is)
-            If ( .Not. done(ia)) Then  
+            If ( .Not. done(ia,is)) Then  
             ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
+!$OMP DO
             Do l = 0, input%groundstate%lmaxapw
                Do io1 = 1, apword (l, is)
 ! integrate the radial Schrodinger equation
@@ -131,31 +132,31 @@ Subroutine genapwfr
                   q1 (1:nr, io1) = t1 * q1 (1:nr, io1)
                   Do ir = 1, nr
                      t1 = 1.d0 / spr (ir, is)
+! !$OMP CRITICAL                     
                      apwfr_old (ir, 1, io1, l, ias)=apwfr (ir, 1, io1, l, ias)
                      apwfr_old (ir, 2, io1, l, ias)=apwfr (ir, 2, io1, l, ias)
 
                      apwfr_new (ir, 1, io1, l, ias) = t1 * p0 (ir, io1)
                      apwfr_new (ir, 2, io1, l, ias) = (p1(ir,io1)-p0(ir, io1)*t1) * t1
+! !$OMP END CRITICAL                      
                   End Do
                End Do! io1
             End Do! l
-
-
+!$OMP END DO
+            done (ia,is) = .True.
 ! copy to equivalent atoms
             Do ja = 1, natoms (is)
                jas = idxas (ja, is)
-               If (( .Not. done(ja)) .And. (eqatoms(ia, ja, is))) Then
-                  write(*,*)"genapwfr ekvivalenti atomi"
+               If (( .Not. done(ja,is)) .And. (eqatoms(ia, ja, is))) Then
                   apwfr_old (:, :, :, :, jas) = apwfr_old (:, :, :, :, ias)
                   apwfr_new (:, :, :, :, jas) = apwfr_new (:, :, :, :, ias)
-                  done (ja) = .True.
+                  done (ja,is) = .True.
                End If
             End Do !ja
          endif! if done
-
          End Do! ia
       End Do! is
-
+!$OMP END PARALLEL
       if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
          apwfr =apwfr_new
          !write(*,*)"*** atjaunojam apw"

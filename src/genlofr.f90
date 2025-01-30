@@ -56,21 +56,24 @@ Subroutine genlofr
       Real (8) energy,energyp,tmp,tmp2,ens(0:20),elo,ehi,flo,fhi,emi,fmi
       integer nodes
       character(len=1024) :: filename
-      Logical :: done (natmmax)
+      Logical :: done (natmmax,nspecies)
       integer :: ja,jas
       call stopwatch("exciting:genlofr", 1)
       
       np = Max (maxlorbord+1, 4)
+      done (:,:) = .False.
+!$OMP PARALLEL DEFAULT(PRIVATE) SHARED(input,ex_coef,np,nspecies,nrmt,done,natoms,idxas,veffmt,nlorb,lorbl,lorbord,wfkappa,lorbdm,lorbe,spr,lofr_old,lofr_new,lofr,eqatoms,rmt) !y00 un polynom 
       Allocate (ipiv(np))
       Allocate (xa(np), ya(np), c(np))
       Allocate (a(np, np), b(np))
       Do is = 1, nspecies
          nr = nrmt (is)
-         done (:) = .False.
          Do ia = 1, natoms (is)
-            If ( .Not. done(ia)) Then  
+            If ( .Not. done(ia,is)) Then  
             ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
+            write(*,*)"genlofr nlorb", nlorb (is)
+!$OMP DO
             Do ilo = 1, nlorb (is)
                l = lorbl (ilo, is)
                Do io2 = 1, lorbord (ilo, is)
@@ -104,15 +107,13 @@ Subroutine genlofr
                   p1 (1:nr, io2) = t1 * p1 (1:nr, io2)
                   q0 (1:nr, io2) = t1 * q0 (1:nr, io2)
                   q1 (1:nr, io2) = t1 * q1 (1:nr, io2)
-
-               if (lorbdm(io2, ilo, is).eq.0) then
-
+               if(.false.)then
+               !if (lorbdm(io2, ilo, is).eq.0) then
                   if(ex_coef.gt.0d0)then
                      WRITE(filename, '(a3,A2,a2,i1,F6.2,a6)')'rf-',input%structure%speciesarray(is)%species%chemicalSymbol,"-l",l,lorbe(io2, ilo, ias),'HF.dat'
                   else
                      WRITE(filename, '(a3,A2,a2,i1,F6.2,a7)')'rf-',input%structure%speciesarray(is)%species%chemicalSymbol,"-l",l,lorbe(io2, ilo, ias),'PBE.dat'
                   endif
-                     
                   open (11, file = filename, status = 'replace')
                   Do ir = 1, nr
                   write(11,*)spr(ir, is),",",p0(ir, io2)
@@ -177,15 +178,16 @@ Subroutine genlofr
                  lofr_new (ir, 2, ilo, ias) = (p1s(ir)-p0s(ir)*t1) * t1
                End Do
             End Do !ilo
-
+!$OMP END DO
+            done (ia,is) = .True.
 ! copy to equivalent atoms
             Do ja = 1, natoms (is)
                jas = idxas (ja, is)
-               If (( .Not. done(ja)) .And. (eqatoms(ia, ja, is))) Then
-                  write(*,*)"genlofr ekvivalenti atomi"
+               If (( .Not. done(ja,is)) .And. (eqatoms(ia, ja, is))) Then
+                  !write(*,*)"genlofr ekvivalenti atomi"
                   lofr_old (:, :, :, jas) = lofr_old (:, :, :, ias)
                   lofr_new (:, :, :, jas) = lofr_new (:, :, :, ias)
-                  done (ja) = .True.
+                  done (ja,is) = .True.
                End If
             End Do !ja
          endif! if done
@@ -194,6 +196,7 @@ Subroutine genlofr
       End Do! is
       Deallocate (ipiv, xa, ya, a, b, c)
      
+!$OMP END PARALLEL
       if(.not.(associated(input%groundstate%Hybrid).and.input%groundstate%Hybrid%updateRadial.and.(ex_coef.ne.0d0))) then
          lofr =lofr_new
          !write(*,*)"*** atjaunojam lo"

@@ -28,7 +28,7 @@ Subroutine hybrids
     integer :: ihyb, maxscl
     real(8) :: et
 ! time measurements
-    real(8) :: timetot, ts0, ts1, tsg0, tsg1, tin1, tin0, time_hyb,ts10,ts11
+    real(8) :: timetot, ts0, ts1, tsg0, tsg1, tin1, tin0, time_hyb,ts10,ts11,ts12
     character(80) :: string
 
     ! Charge distance
@@ -354,12 +354,15 @@ Subroutine hybrids
         !call loadapwloe()
         !call linengy1()
         call timesec(ts10)
-        call genapwfr()       
-        call genlofr()
+        call genapwfr()
         call timesec(ts11)
+        write(*,*)"genapwfr time:",ts11-ts10
+        call genlofr()
+        call timesec(ts12)
+        write(*,*)"genlofr time:",ts12-ts11
         apwfr = apwfr_new
         lofr = lofr_new
-        write(*,*)"Radial functions updated, time:", ts11-ts10
+        write(*,*)"Radial functions updated, time:", ts12-ts10
         call storebase()
         !stop
         call olprad  

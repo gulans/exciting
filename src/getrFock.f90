@@ -199,12 +199,7 @@ do ilo1 = 1, nlorb (is)
 enddo
 
 
-open (2, file = 'dm_map.dat', status = 'replace')
-write(2,*)"***********MATMAP***********"
-do l1=0, input%groundstate%lmaxmat
-  write(2,*)l1,".",matmap(1:norb(l1),l1)
-enddo
-close(2)
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! go through the density matrix and and construct vx_psi form valece orbitals !
