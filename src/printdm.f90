@@ -33,7 +33,8 @@ integer :: norb(0:input%groundstate%lmaxmat)
 integer :: tempindex(0:input%groundstate%lmaxmat)
 real(8) :: occ
 
-
+character(len=1024) :: filename
+integer:: fid
 
 ias=idxas (ia, is)
 
@@ -196,17 +197,11 @@ do ilo1 = 1, nlorb (is)
 enddo
 
 
-open (2, file = 'dm_map.dat', status = 'replace')
-write(2,*)"***********MATMAP***********"
-do l1=0, input%groundstate%lmaxmat
-  write(2,*)l1,".",matmap(1:norb(l1),l1)
-enddo
-close(2)
-
-if(.true.)then
-    write(*,'(" is=",i1," ias=",i1)')is,idxas (1, is)
+    write(filename,'("DM",i1,".OUT")')is
+    open (newunit=fid, File=filename, Action='WRITE', Form='FORMATTED')
+    write(fid,'(" is=",i1," ias=",i1)')is,idxas (1, is)
     do l1=0, input%groundstate%lmaxmat
-      write(*,'(" l=",i1)')l1
+      write(fid,'(" l=",i1)')l1
       do io1=1,norb(l1)
         if1=matmap(io1,l1)
         do io2=1,norb(l1)
@@ -216,14 +211,18 @@ if(.true.)then
             t2c=dm_copy(if1+m1,if2+m1,idxas (1, is))
             t1c=t1c+t2c
           enddo
-          write(*,'(ES9.2E2,":")',advance="no")dreal(t1c)
+          write(fid,'(ES9.2E2,":")',advance="no")dreal(t1c)
         enddo !io2
-        write(*,"")
+        write(fid,"")
       Enddo ! io1
     enddo! l1
-endif
+write(fid,*)"***********MATMAP***********"
+do l1=0, input%groundstate%lmaxmat
+  write(fid,*)l1,".",matmap(1:norb(l1),l1)
+enddo
 
-
+    
+close(fid)
 
 
 

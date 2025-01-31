@@ -247,6 +247,7 @@ call timesec(t2)
         
           dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
 
+if(mpiglobal%is_root) then
 
             open (11, file = "DM.OUT", status = 'replace')
             write(11,*)wfsize
@@ -262,7 +263,10 @@ call timesec(t2)
             enddo
             close(11)
 
-
+            do is=1, nspecies
+                call printdm(is,1)
+            enddo
+endif
       deallocate(wf1,wf2prime,wfalpha,wfbeta)
       deallocate(apwi,apwalm)
       deallocate(dm2)

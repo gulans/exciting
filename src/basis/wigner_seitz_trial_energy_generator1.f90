@@ -91,8 +91,8 @@ write(*,'("nodes=", I2 ," l=", I2 ," searching e where u_mt=0")')nodes,l
 !!!!!! u_mt=0 for nodes=nodes
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 e_toler=energy_tolerance
-e_lo_all=-15d0
-e_hi_all=200d0
+e_lo_all=-30d0
+e_hi_all=400d0
 ! ! Compute energy for which the wave function becomes 0 at the muffin-tin boundary
       e_hi=e_hi_all
       e_lo=e_lo_all

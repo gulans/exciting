@@ -59,7 +59,7 @@ Subroutine davidson (system, nst, evecfv, evalfv,ik)
       type(fftmap_type) :: fftmap
 
 
-      if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0))  write(*,*) 'ik=',ik
+      !if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0))  write(*,*) 'ik=',ik
       call timesec(tsa)
 
 ! Initialise block sizes
@@ -303,7 +303,7 @@ call timesec(time1)
       deallocate(zvec)
       deallocate(BlockS,BlockH)
 
-      if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0)) write(*,*) ndiv,maxresid,sum(rd(nstart:nstart+ndiv-1)),calls+1
+      !if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0)) write(*,*) ndiv,maxresid,sum(rd(nstart:nstart+ndiv-1)),calls+1
 
 call timesec(time2)
 
@@ -376,7 +376,7 @@ call timesec(time2)
             enddo  
             deallocate(zvec) 
 
-            if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0))  write(*,*) nadd,maxresid,sum(rd(nstart:nstart-1+ndiv)),calls
+            !if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0))  write(*,*) nadd,maxresid,sum(rd(nstart:nstart-1+ndiv)),calls
 
           elseif (mpiglobal%rank.eq.0) then
             write(*,*) 'Subspace diagonalisation failed in davidson.f90.'
@@ -409,10 +409,10 @@ call timesec(time2)
       call timesec(tsb)
 
       timefv=timefv+tsb-tsa
-      if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0)) then
-        write(*,*) '***** HapwSapw calls=',calls
-        write(*,*) 'iterations',tsb-tsa
-      endif
+      !if ((input%groundstate%outputlevel.eq."high").and.(mpiglobal%rank.eq.0)) then
+      !  write(*,*) '***** HapwSapw calls=',calls
+      !  write(*,*) 'iterations',tsb-tsa
+      !endif
       Return
 End Subroutine davidson 
 

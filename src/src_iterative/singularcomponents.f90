@@ -266,9 +266,9 @@ if (calcsingular) then
 ! Checking the convergence criterion
            keepworking=(abs(res).gt.1d-8)
 
-           if (mpi_env%is_root .and. (input%groundstate%outputlevel == "high")) then
-             write(*,*) sum(rd(1:ndiv)), res, nsize, ii
-           end if
+           !if (mpi_env%is_root .and. (input%groundstate%outputlevel == "high")) then
+           !  write(*,*) sum(rd(1:ndiv)), res, nsize, ii
+           !end if
 
            evals(1:ndiv)=rd(1:ndiv)
            if ((info /= 0) .or. (.not.keepworking)) ii=nblocks
@@ -321,19 +321,19 @@ if (calcsingular) then
        singular(1:n_local,1:nsingular,ik)=ritzvec(1:n_local,1:nsingular)
        evalsingular(1:nsingular,ik)=rd(1:nsingular)
 
-      if (mpi_env%is_root .and. (input%groundstate%outputlevel == "high")) then
-         write(*,*) calls,'S|trialvec> calls'
-         write(*,*) nsingular, 'singular components'
-         write(*,*) '***********'
-         write(*,*) 'highest eigenvalue among singular components',rd(nsingular)
-         write(*,*) rd(1:nsingular)
-       endif
+      !if (mpi_env%is_root .and. (input%groundstate%outputlevel == "high")) then
+      !   write(*,*) calls,'S|trialvec> calls'
+      !   write(*,*) nsingular, 'singular components'
+      !   write(*,*) '***********'
+      !   write(*,*) 'highest eigenvalue among singular components',rd(nsingular)
+      !   write(*,*) rd(1:nsingular)
+      ! endif
 endif
 
       call timesec(tsb)
-      if (mpi_env%is_root .and. (input%groundstate%outputlevel == "high")) then
-          write(*,*) 'time (singular components):',tsb-tsa
-      end if
+      !if (mpi_env%is_root .and. (input%groundstate%outputlevel == "high")) then
+      !    write(*,*) 'time (singular components):',tsb-tsa
+      !end if
       timefv=timefv+tsb-tsa
 
 End Subroutine singularcomponents

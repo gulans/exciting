@@ -3,12 +3,13 @@
 
 Subroutine storebase
     ! !USES:
+    use modmpi, only: mpiglobal
     Use modinput, only: input
     Use modmain, only: nspecies,nrmt,natoms,idxas,apword,apwfr,nlorb,lofr
     implicit none
     integer :: is,ia,ias,l,io1,ir,ilo,io2,nr
 
-
+   if(mpiglobal%is_root) then
     open (11, file = "STATE_BASE.OUT", status = 'replace')
 
     !!!APW functions
@@ -40,4 +41,5 @@ Subroutine storebase
     enddo
 
     close(11)
+   endif
 end Subroutine

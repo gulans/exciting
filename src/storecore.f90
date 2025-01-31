@@ -12,10 +12,10 @@ Subroutine storecore
     use mod_potential_and_density, only: veffmt
     use constants, only: y00, fourpi
     use mod_corestate, only: rhocr, rwfcr, evalcr, engy_exnl_core
-
+    use modmpi, only: mpiglobal
     integer :: is,ia,ias,ir
 
-
+   if(mpiglobal%is_root) then
     open (11, file = "STATE_CORE.OUT", status = 'replace')
 
 
@@ -44,4 +44,5 @@ Subroutine storecore
     enddo
   
     close(11)
+   endif
 end Subroutine

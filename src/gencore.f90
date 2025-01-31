@@ -56,12 +56,28 @@ logical :: zora
 real(8), allocatable :: v_rel(:)
 real(8) :: ftemp1(spnrmax),e_kin,e1,e2,hybx_coef
 real(8) :: engy_exnl_core_ias
+integer :: number_of_cores
 
-
+number_of_cores=0
+do is=1, nspecies
+  do ist = 1, spnst (is)
+    If (spcore(ist, is)) Then
+        number_of_cores=number_of_cores+1
+    endif
+  enddo
+enddo
+!write(*,*)"number_of_cores",number_of_cores
 hybx_coef = ex_coef !mod_hybrids variable
 
-
-
+if((associated(input%groundstate%Hybrid)))then
+  if((hybx_coef.gt.0d0).and.(input%groundstate%Hybrid%updateCore).and.(input%groundstate%CoreSolver.eq."original"))then
+    if (number_of_cores.gt.0)then
+          write(*,*)"gencore.f90 Can't do hyb core with the original solver"
+        stop
+    endif
+  endif
+endif
+        
 e_kin=0d0
 engy_exnl_core=0d0
 engy_exnl_core_ias=0d0
@@ -69,7 +85,7 @@ engy_exnl_core_ias=0d0
 zora=(input%groundstate%ValenceRelativity.eq."zora")
 
       dirac_eq=(input%groundstate%CoreRelativity.eq."dirac")
-write(*,*)"gencore.f90 Zora:",zora, "non-local-coef",hybx_coef
+!write(*,*)"gencore.f90 Zora:",zora, "non-local-coef",hybx_coef
       
 
       Do is = 1, nspecies
@@ -94,7 +110,7 @@ write(*,*)"gencore.f90 Zora:",zora, "non-local-coef",hybx_coef
 
                
 if (input%groundstate%CoreSolver.eq."original") then               
-write(*,*)"gencore original solver, Dirac:",dirac_eq
+!write(*,*)"gencore original solver, Dirac:",dirac_eq
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP PRIVATE(ir,t1)
 !$OMP DO
@@ -129,7 +145,7 @@ write(*,*)"gencore original solver, Dirac:",dirac_eq
 
 
 else !input%groundstate%CoreSolver.eq."atomHF"
-write(*,*)"gencore atomHF solver"
+!write(*,*)"gencore atomHF solver"
         if (dirac_eq) then
                write(*,*) "gencore.f90 atomHF solver can't do CoreRelativity='dirac'"
                stop
@@ -271,7 +287,7 @@ Do il = 1, lmax+1
     l_n=l_n+1
     do ist=1,spnst(is)
       if ( (spcore(ist, is)).and.(spl(ist,is).eq.(il-1)).and.(spn(ist,is).eq.number_n(l_n)) ) then
-              write(*,*)evalcr(ist,ias),"<-",eig(l_n)
+              !write(*,*)evalcr(ist,ias),"<-",eig(l_n)
               evalcr(ist,ias)=eig(l_n) 
 
 
@@ -340,7 +356,6 @@ endif !new solver solved
                Do ja = 1, natoms (is)
                   If (( .Not. done(ja)) .And. (eqatoms(ia, ja, is))) &
                  & Then
-                  write(*,*)"ekvivalenti atomi"
                      engy_exnl_core = engy_exnl_core + engy_exnl_core_ias
                      jas = idxas (ja, is)
                      Do ist = 1, spnst (is)

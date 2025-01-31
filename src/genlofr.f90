@@ -12,6 +12,7 @@
 !
 Subroutine genlofr
 ! !USES:
+      use modmpi, only: mpiglobal
       Use modinput
       Use modmain
 ! !DESCRIPTION:
@@ -72,7 +73,6 @@ Subroutine genlofr
             If ( .Not. done(ia,is)) Then  
             ias = idxas (ia, is)
             vr (1:nr) = veffmt (1, 1:nr, ias) * y00
-            write(*,*)"genlofr nlorb", nlorb (is)
 !$OMP DO
             Do ilo = 1, nlorb (is)
                l = lorbl (ilo, is)
@@ -107,8 +107,11 @@ Subroutine genlofr
                   p1 (1:nr, io2) = t1 * p1 (1:nr, io2)
                   q0 (1:nr, io2) = t1 * q0 (1:nr, io2)
                   q1 (1:nr, io2) = t1 * q1 (1:nr, io2)
-               if(.false.)then
-               !if (lorbdm(io2, ilo, is).eq.0) then
+
+               if (lorbdm(io2, ilo, is).eq.0) then
+!$OMP CRITICAL
+               if(mpiglobal%is_root) then
+
                   if(ex_coef.gt.0d0)then
                      WRITE(filename, '(a3,A2,a2,i1,F6.2,a6)')'rf-',input%structure%speciesarray(is)%species%chemicalSymbol,"-l",l,lorbe(io2, ilo, ias),'HF.dat'
                   else
@@ -120,6 +123,8 @@ Subroutine genlofr
                   enddo
                   close(11)
                endif
+!$OMP END CRITICAL
+          endif
 
 ! set up the matrix of radial derivatives
                   Do j = 1, np
