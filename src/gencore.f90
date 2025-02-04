@@ -12,6 +12,7 @@
 !
 Subroutine gencore
 ! !USES:
+      use modmpi, only: mpiglobal
       use modinput, only: input
       use mod_atoms, only: natoms, idxas, spvr, spnr, nspecies, &
         & spnst, spcore, spn, spr, spk, spl, spocc, natmmax, &

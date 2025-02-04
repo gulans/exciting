@@ -14,9 +14,9 @@ complex(8),allocatable :: interp_exp(:,:,:) !ngrid(1),iax,ais
 contains
 
 subroutine generate_surf_grid(lmax)
+  use modmpi, only: mpiglobal
   use invert, only: zinvert_lapack
   use m_linalg, only: zlsp
-
   use modinput
   use mod_Gvector, only: ngrtot, ngrid, ngvec, cfunir
   use mod_atoms, only: nspecies, natoms, atposc, idxas,natmtot
@@ -225,7 +225,7 @@ deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp,raxis_tmp)
 !   enddo
 ! close(11)
 ! close(12)
-
+if(mpiglobal%is_root) then
 open(11,file='surf_info.dat',status='replace')
 write(11,*)"lmmax:",lmmax
 write(11,*)"is, ia, number_of_ponts_on_MTsurface,lmax_ylm,lmmax, naxis/lmmax"
@@ -236,6 +236,8 @@ do is=1, nspecies
   enddo
 enddo
 close(11)
+endif
+
 deallocate(lmax_ias)
 end subroutine 
 

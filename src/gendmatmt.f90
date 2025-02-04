@@ -241,32 +241,32 @@ call timesec(t2)
       End Do
 
 
-      if (.not.allocated(dm_copy)) then
-            allocate(dm_copy (wfsize,wfsize,natmtot) )
-          endif
+!       if (.not.allocated(dm_copy)) then
+!             allocate(dm_copy (wfsize,wfsize,natmtot) )
+!           endif
         
-          dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
+!           dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
 
-if(mpiglobal%is_root) then
+! if(mpiglobal%is_root) then
 
-            open (11, file = "DM.OUT", status = 'replace')
-            write(11,*)wfsize
-            write(11,*)mt_dm%maxnlo
-            write(11,*)mt_dm%losize
-            write(11,*)mt_dm%maxaa
-            do ias=1, natmtot
-                  Do wfi1 = 1, wfsize
-                        Do wfi2 = 1, wfsize
-                              write(11,*)dm_copy(wfi1,wfi2,ias)
-                        enddo
-                  enddo
-            enddo
-            close(11)
+!             open (11, file = "DM.OUT", status = 'replace')
+!             write(11,*)wfsize
+!             write(11,*)mt_dm%maxnlo
+!             write(11,*)mt_dm%losize
+!             write(11,*)mt_dm%maxaa
+!             do ias=1, natmtot
+!                   Do wfi1 = 1, wfsize
+!                         Do wfi2 = 1, wfsize
+!                               write(11,*)dm_copy(wfi1,wfi2,ias)
+!                         enddo
+!                   enddo
+!             enddo
+!             close(11)
 
-            do is=1, nspecies
-                call printdm(is,1)
-            enddo
-endif
+!             do is=1, nspecies
+!                 call printdm(is,1)
+!             enddo
+! endif
       deallocate(wf1,wf2prime,wfalpha,wfbeta)
       deallocate(apwi,apwalm)
       deallocate(dm2)

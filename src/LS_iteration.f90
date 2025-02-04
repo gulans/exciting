@@ -9,6 +9,7 @@ subroutine LS_iteration(Ngrid,is,ia,hybx_coef,r, vloc,l,shell_l,shell_occ,sp, nm
         ! nummax - size of eigval array
         ! eigval (OUT) - erigval array
         ! eigfun (OUT) - eigfun array
+use modmpi, only: mpiglobal
 use modinteg
 Use mod_hybrids, only: ex_coef
 
@@ -98,18 +99,22 @@ do iscl=1,maxscl
 !! Convergence check  !!
 !!!!!!!!!!!!!!!!!!!!!!!!
 if ((iscl.eq.1).or.(iscl.eq.2).or.(iscl.gt.35)) then
+ if(mpiglobal%is_root) then
   if (abs(hybx_coef).gt.1d-20) then
     write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)),"(HYB)"
   else
     write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp))
   endif
+ endif
 endif
   !convergence check
 if((maxval(abs((eig-eigp)/(eig-1d0)))).lt.1d-14)then
         iner_loop=iscl-1
 !       write(*,*)"Convergence of internal cycle reached, iteration ",iscl
        !write(*,*)"max(eig-eigp) absolute : ",maxval(abs(eig-eigp))," relative: ",maxval(abs(eig-eigp)/(abs(eig-1d0)))
+      if(mpiglobal%is_root) then
         write(*,*)l,iscl,". max(eig-eigp): ",maxval(abs(eig-eigp)), "### OK ###"
+      endif
         exit
 endif
 

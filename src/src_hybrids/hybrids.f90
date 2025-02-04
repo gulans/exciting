@@ -350,19 +350,20 @@ Subroutine hybrids
       endif
 
       if(input%groundstate%Hybrid%updateRadial)then
-        write(*,*)"update radial iter",ihyb
         !call loadapwloe()
         !call linengy1()
         call timesec(ts10)
         call genapwfr()
         call timesec(ts11)
-        write(*,*)"genapwfr time:",ts11-ts10
+        !write(*,*)"genapwfr time:",ts11-ts10
         call genlofr()
         call timesec(ts12)
-        write(*,*)"genlofr time:",ts12-ts11
+        !write(*,*)"genlofr time:",ts12-ts11
         apwfr = apwfr_new
         lofr = lofr_new
-        write(*,*)"Radial functions updated, time:", ts12-ts10
+        if(mpiglobal%is_root) then
+          write(*,*)"Radial functions updated, iter:",ihyb, " time:", ts12-ts10
+        endif
         call storebase()
         !stop
         call olprad  

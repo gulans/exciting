@@ -278,16 +278,19 @@ Contains
      use mod_spin, only: ncmag, nspnfv
      use mod_eigensystem, only: nmatmax
      use mod_eigenvalue_occupancy, only: nstfv, nstsv
-     use modmpi, only : mpi_env_k, distribute_loop
+     use modmpi!, only : mpi_env_k, distribute_loop, mpiglobal,rank,MPI_SUM,ierr,MPI_DOUBLE_COMPLEX
      use mod_timing, only: timerho, timeio
      use precision, only: dp
-     use constants, only: zi
+     use constants, only: zi, zzero
+     use mod_atoms, only: natmtot,nspecies
      implicit none
        !> Muffin-tin basis 
        type (apw_lo_basis_type) :: mt_basis
-       integer :: ik, firstk, lastk
+       integer :: ik, firstk1, lastk1 !renamad firstk to firstk1 (conflicts with a firstk from modmpi)
        complex(dp), allocatable :: evecfv(:, :, :), evecsv(:, :)
        real(dp) :: ts0, ts1
+
+       integer :: maxaa, maxnlo, wfsize, is, ias, wfi1, wfi2
 
        rhomt = 0._dp
        rhoir = 0._dp
@@ -313,8 +316,8 @@ Contains
          end if
          mt_dm%main%ff => mt_dm%alpha%ff
        end if
-       call distribute_loop( mpi_env_k, nkpt, firstk, lastk )
-       do ik = firstk, lastk
+       call distribute_loop( mpi_env_k, nkpt, firstk1, lastk1 )
+       do ik = firstk1, lastk1
          call timesec( ts0 )
          ! get the eigenvectors from file
          call Getevecfv( vkl(:, ik), vgkl(:, :, :, ik), evecfv )
@@ -332,6 +335,43 @@ Contains
          call timesec( ts1 )
          timerho = timerho + ts1 - ts0
        end do ! ik
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!    Sum the DM over all k vec (in MPI case) and store it in variable dm_copy and file DM.OUT  !!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       maxaa=mt_dm%maxaa
+       maxnlo=mt_dm%maxnlo
+       wfsize=maxaa+maxnlo
+      if (.not.allocated(dm_copy)) then
+            allocate(dm_copy (wfsize,wfsize,natmtot) )
+      endif
+      dm_copy=zzero
+#ifdef MPI
+      Call MPI_allreduce (mt_dm%main%ff(:,:,:), dm_copy(:,:,:), wfsize*wfsize*natmtot, &
+         & MPI_DOUBLE_COMPLEX, MPI_SUM, mpi_env_k%comm, ierr)
+#else
+      dm_copy(:,:,:)=mt_dm%main%ff(:,:,:)
+#endif
+
+if(mpiglobal%is_root) then
+      open (11, file = "DM.OUT", status = 'replace')
+      write(11,*)wfsize
+      write(11,*)mt_dm%maxnlo
+      write(11,*)mt_dm%losize
+      write(11,*)mt_dm%maxaa
+      do ias=1, natmtot
+            Do wfi1 = 1, wfsize
+                  Do wfi2 = 1, wfsize
+                        write(11,*)dm_copy(wfi1,wfi2,ias)
+                  enddo
+            enddo
+      enddo
+      close(11)
+
+      do is=1, nspecies
+            call printdm(is,1)
+      enddo
+endif
+
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
