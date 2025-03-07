@@ -113,9 +113,9 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       ik  = kset%ikp2ik(ikp) ! 1d reduced index -> 1d non-reduced k-point index
       call genWF(ik,wf1)
-      call genWFinMT(wf1)
-      call genWFonMesh(wf1)
-      deallocate(wf1%mtrlm)
+!      call genWFinMT(wf1)
+!      call genWFonMesh(wf1)
+!      deallocate(wf1%mtrlm)
 
 
       call WFInit(wf2)
@@ -266,7 +266,7 @@ call timesec(ta)
          call genWF(jk,wf2)
          call genWFinMT(wf2)
          call genWFonMesh(wf2)
-!      deallocate(wf2%mtrlm)
+         deallocate(wf2%mtrlm)
 
 call timesec(tb)
 if (print_times) write(*,*) 'genWFs :',tb-ta
@@ -361,7 +361,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
    ! calculate the complex overlap density
    !-----------------------------------------------------------------------------------
                call timesec(tc)
-               call WFprodrs(ist2,wf2,ist3,wf1,prod)
+               call WFprodrs2(ist2,wf2,ist3,wf1,prod)
                call timesec(td)
                time_rs=time_rs+td-tc
                call timesec(tc)
@@ -529,7 +529,11 @@ endif
 !     valence-core-valence contribution        !
 !----------------------------------------------!
 call timesec(ta)
-            
+   
+      call genWFinMT(wf1)
+      call genWFonMesh(wf1)
+
+         
       Allocate (zrhomt(lmmaxvr, nrcmtmax))
       allocate (rfmt(nrcmtmax))
       Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax),zfmt1(lmmaxvr, nrcmtmax))
@@ -618,7 +622,6 @@ call timesec(ta)
 call timesec(tb)
 if (print_times) write(*,*) 'vcv :',tb-ta
 
-      call genWFinMT(wf1)
 
 
       Allocate (wf1ir(ngrtot))
