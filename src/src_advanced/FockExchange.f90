@@ -61,9 +61,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8), Allocatable :: wf1ir (:)
       Complex (8), Allocatable :: wf2ir (:)
       Complex (8), Allocatable :: potir0 (:)
-      Complex (8), Allocatable :: zvclmt (:, :, :, :)
       Complex (8), Allocatable :: zvcltp (:, :)
-      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :), zrhomt(:,:), potmt0(:,:,:)
+      Complex (8), Allocatable :: zfmt (:, :),zfmt0 (:, :), zfmt1(:,:), zrhomt(:,:), potmt0(:,:,:)
 
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:), rfmt(:)
       
@@ -84,15 +83,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (jlgq0r(0:input%groundstate%lmaxvr, nrcmtmax, nspecies))
       Allocate (ylmgq(lmmaxvr, ngvec))
       Allocate (sfacgq(ngvec, natmtot))
-!      Allocate (vxpsiirtmp(ngrtot))   !dealoc
-!      Allocate (vxpsigktmp(ngkmax))   !dealoc
       Allocate (wfcr1(ntpll, nrcmtmax))
-     ! Allocate (zrhoir(ngrtot))
       Allocate (zvcltp(ntpll, nrcmtmax))
-      Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax))
-      Allocate (zvclmt(lmmaxvr, nrcmtmax, natmtot, nstsv)) !dealoc
-      !Allocate (zwfir(ngkmax))
-
 
 
       !write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
@@ -123,6 +115,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       call genWF(ik,wf1)
       call genWFinMT(wf1)
       call genWFonMesh(wf1)
+      deallocate(wf1%mtrlm)
 
 
       call WFInit(wf2)
@@ -273,14 +266,14 @@ call timesec(ta)
          call genWF(jk,wf2)
          call genWFinMT(wf2)
          call genWFonMesh(wf2)
+!      deallocate(wf2%mtrlm)
+
 call timesec(tb)
 if (print_times) write(*,*) 'genWFs :',tb-ta
 
 
          solver = (input%groundstate%hybrid%singularity.ne."exc")
          
-         zvclmt (:, :, :, :) = 0.d0
-
 
          if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.&
          & ((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")))then 
@@ -471,20 +464,12 @@ endif
                
    call timesec(tc)
                call prodshrs(pot%mtrlm(:,:,:,1),wf2%mtmesh(:,:,:,ist2),prod%mtrlm(:,:,:,1))
-!               call genWFonMeshOne(pot)
-!               pot%mtmesh=conjg(pot%mtmesh)
-!   call timesec(td)
-!   time_misc=time_misc+td-tc
-
-!   call timesec(tc)
-!               call WFprodrs(1,pot,ist2,wf2,prod)
    call timesec(td)
    time_misc=time_misc+td-tc
 !   time_rs=time_rs+td-tc
 
    call timesec(tc)
                vxpsiirtmp(:) = potir(:)*wf2ir(:)*cfunir(:)
-!               vxpsiirtmp(:) = vxpsiirtmp(:)*cfunir(:)
    call timesec(td)
    time_prod=time_prod+td-tc
    ! ----------------------------------------------------------------------------------
@@ -504,7 +489,7 @@ endif
                Do igk=1, Gkqset%ngk (1, ik)
                   vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsigktmp(igk)
                End Do
-               zvclmt(:,:,:,ist3)=zvclmt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+               vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
 !$OMP END CRITICAL
                call timesec(td)
                time_critical=time_critical+td-tc
@@ -524,6 +509,8 @@ endif
          Deallocate (vxpsiirtmp)
          Deallocate (vxpsigktmp)
 !$OMP END PARALLEL
+         call WFRelease(wf2)
+         call WFRelease(prod)
 
 call timesec(ta)
 if (print_times) then
@@ -536,18 +523,17 @@ if (print_times) then
    write(*,*) '  time_critical :', time_critical
    write(*,*) '  time_pw :',time_pw
 endif
-         vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
 !stop
 !----------------------------------------------!
 !     valence-core-valence contribution        !
 !----------------------------------------------!
 call timesec(ta)
-      zvclmt (:, :, :, :) = 0.d0
             
       Allocate (zrhomt(lmmaxvr, nrcmtmax))
       allocate (rfmt(nrcmtmax))
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(nrc,is,ia,ias,ist2,ist3,l,norm,lm,m,ir,uir,wfcr1,zrhomt,zfmt,ifit,zfmt0,zvcltp,rfmt,ipt)
+      Allocate (zfmt(lmmaxvr, nrcmtmax),zfmt0(lmmaxvr, nrcmtmax),zfmt1(lmmaxvr, nrcmtmax))
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(nrc,is,ia,ias,ist2,ist3,l,norm,lm,m,ir,uir,wfcr1,zrhomt,zfmt,ifit,zfmt0,zfmt1,zvcltp,rfmt,ipt)
       Do is = 1, nspecies
         if (spnst (is).ne.0) then
           nrc = nrcmt(is)
@@ -560,6 +546,7 @@ call timesec(ta)
 !$OMP DO SCHEDULE(DYNAMIC)
            ! Begin loop over occupied and empty states
             Do ist3 = 1, nstsv
+              zfmt1=0d0
               Do ist2 = 1, spnst (is) !This is essentially ncore(is)
                 If (spcore(ist2, is)) Then
                   l = spl(ist2, is)
@@ -612,11 +599,15 @@ call timesec(ta)
                      End Do
 
                      Call zgemm ('N', 'N', lmmaxvr, nrcmt(is), ntpll, zone, &
-                      & zfshthf, lmmaxvr, zvcltp, ntpll, zone, zvclmt(1,1,ias,ist3), lmmaxvr)
+                      & zfshthf, lmmaxvr, zvcltp, ntpll, zone, zfmt1, lmmaxvr)
 
                    End Do ! m
                  End If ! spcore(ist2, is)
               End Do ! ist2
+!$OMP CRITICAL
+              vxpsimt(:,:,ias,ist3)=vxpsimt(:,:,ias,ist3)+zfmt1 !rod%mtrlm(:,:,:,1)*wkptnr(jk)
+!$OMP END CRITICAL
+
             End Do ! ist3
 !$OMP END DO
           End Do ! ia
@@ -627,7 +618,9 @@ call timesec(ta)
 call timesec(tb)
 if (print_times) write(*,*) 'vcv :',tb-ta
 
-      vxpsimt=vxpsimt+zvclmt
+      call genWFinMT(wf1)
+
+
       Allocate (wf1ir(ngrtot))
 call timesec(ta)
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist1,ist3,ztir,igk,ztmt)
@@ -694,10 +687,7 @@ end if
       Deallocate (ylmgq, sfacgq)
       Deallocate (wfcr1)
       Deallocate (wf1ir)
-      Deallocate (zvcltp, zfmt, zfmt0)
-!      Deallocate (vxpsiirtmp)   
-!      Deallocate (vxpsigktmp)   
-      Deallocate (zvclmt) 
+      Deallocate (zvcltp, zfmt, zfmt0,zfmt1)
       if (allocated(jlgqsmallr)) then
          deallocate(jlgqsmallr)
       endif
@@ -710,8 +700,6 @@ end if
 
 
       call WFRelease(wf1)
-      call WFRelease(wf2)
-      call WFRelease(prod)
 
 !  write(*,*)"FockExchange.f90 stop"
 !  stop
