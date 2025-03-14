@@ -465,7 +465,9 @@ endif
    !-----------------------------------------------------------------------------------1
                
    call timesec(tc)
-               call prodshrs(pot%mtrlm(:,:,:,1),wf2%mtmesh(:,:,:,ist2),prod%mtrlm(:,:,:,1))
+!               call prodshrs(pot%mtrlm(:,:,:,1),wf2%mtmesh(:,:,:,ist2),prod%mtrlm(:,:,:,1))
+               call prodshrs2(pot%mtrlm(:,:,:,1),wf2%mtmesh(:,:,:,ist2))
+
    call timesec(td)
    time_misc=time_misc+td-tc
 !   time_rs=time_rs+td-tc
@@ -491,7 +493,8 @@ endif
                Do igk=1, Gkqset%ngk (1, ik)
                   vxpsiirgk(igk, ist3)=vxpsiirgk(igk, ist3)+vxpsigktmp(igk)
                End Do
-               vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+!               vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+               vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+pot%mtrlm(:,:,:,1)*wkptnr(jk)
 !$OMP END CRITICAL
                call timesec(td)
                time_critical=time_critical+td-tc
