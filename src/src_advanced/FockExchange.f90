@@ -361,7 +361,9 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
    ! calculate the complex overlap density
    !-----------------------------------------------------------------------------------
                call timesec(tc)
-               call WFprodrs2(ist2,wf2,ist3,wf1,prod)
+               call WFprodrs3(ist3,wf1,ist2,wf2,prod)
+!               call WFprodrs3(ist2,wf2,ist3,wf1,prod)
+!               call WFprodrs(ist2,wf2,ist3,wf1,prod)
                call timesec(td)
                time_rs=time_rs+td-tc
                call timesec(tc)
@@ -529,7 +531,7 @@ endif
 !     valence-core-valence contribution        !
 !----------------------------------------------!
 call timesec(ta)
-   
+
       call genWFinMT(wf1)
       call genWFonMesh(wf1)
 
