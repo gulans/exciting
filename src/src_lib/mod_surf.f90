@@ -30,7 +30,7 @@ subroutine generate_surf_grid(lmax)
   integer, intent(In) :: lmax
   integer :: lmmax
   integer :: is,ia,ias,yi,zi,p1,p2,p3
-  integer :: ir,ir2
+  integer :: ir,ir2,iq
   real(8) :: irf, xx
   integer :: nax,iax
   integer :: tmpsize
@@ -38,7 +38,8 @@ subroutine generate_surf_grid(lmax)
   real(8),allocatable ::  raxis_tmp(:,:,:) !3,iax,ias
   integer,allocatable  :: axisy_tmp(:,:),axisz_tmp(:,:)
   complex(8),allocatable  :: A(:,:),Ainv(:,:),AA(:,:)
-  complex(8) :: ii
+  complex(8), allocatable :: interp_tmp(:,:), zftmat(:,:)
+  complex(8) :: ii,zt1
   integer :: lmax_ylm, lmax_tmp
   integer,allocatable  :: lmax_ias(:)
   complex(8),allocatable :: ylm_mat_large(:,:,:),ylm_tmat_large(:,:,:)
@@ -160,6 +161,7 @@ do is=1, nspecies
       raxis(:,iax,ias)=raxis_tmp(:,iax,ias)+ratom
       Call genylm (lmax_ias(ias), tp_tmp(:, iax,ias), ylm_mat_large(1:(lmax_ias(ias)+1)**2,iax,ias))
     enddo
+    
   enddo
 enddo
 
@@ -175,21 +177,31 @@ enddo!is
 deallocate(ylm_mat_large)
 deallocate(ylm_tmat_large)
 
+allocate(zftmat(ngrid(1),ngrid(1)))
+  do iax=0,ngrid(1)-1
+    do iq=0,ngrid(1)-1 
+      zftmat(iq+1,iax+1)=dcmplx(cos(2*iax*iq*pi/dble(ngrid(1))), -sin(2*iax*iq*pi/dble(ngrid(1))) )
+    enddo
+  enddo
+  zt1=1/dble(ngrid(1))
 
+allocate(interp_tmp(ngrid(1),naxismax))
 allocate(interp_exp(ngrid(1),naxismax,natmtot))
-interp_exp=zzero
+interp_tmp=zzero
 
 do is=1, nspecies
   do ia=1, natoms(is)
     ias=idxas(ia,is)
     
     do iax=1,naxis(ias)
+      write(*,*) axisy(iax,ias),axisz(iax,ias)
+
       xx=axisx_sph(iax,ias)
       do ir=1, ceiling(dble(ngrid(1))/2d0)
         ir2=ir-1
         !write(*,*)ir,",",ir2
         irf=2d0*pi*dble(ir2)/dble(ngrid(1))
-        interp_exp(ir,iax,ias)=exp(ii*irf*xx)
+        interp_tmp(ir,iax)=exp(ii*irf*xx)
       enddo
 
       if (mod(ngrid(1),2).eq.0)then
@@ -197,18 +209,27 @@ do is=1, nspecies
         ir2=ngrid(1)/2
         !write(*,*)"vidus",ir,ir2
         irf=2d0*pi*dble(ir2)/dble(ngrid(1))
-        interp_exp(ir,iax,ias)=cos (irf*xx)
+        interp_tmp(ir,iax)=cos (irf*xx)
       endif
 
       do ir=ceiling((dble(ngrid(1))-1)/2)+2,ngrid(1)
         ir2=ngrid(1)-ir+1
         !write(*,*)ir,",",ir2
         irf=2d0*pi*dble(-ir2)/dble(ngrid(1))
-        interp_exp(ir,iax,ias)=exp(ii*irf*xx)
+        interp_tmp(ir,iax)=exp(ii*irf*xx)
       enddo
     enddo !iax
+    Call zgemm ('N', 'N', ngrid(1), naxismax, ngrid(1), &
+               & zt1, zftmat, ngrid(1), interp_tmp(1,1), ngrid(1), zzero, &
+               & interp_exp(1,1,ias), ngrid(1))
+
   enddo !ia
 enddo !is
+
+deallocate(interp_tmp,zftmat)
+
+
+
 
 deallocate(axisy_tmp,axisz_tmp,axisx_sph_tmp,tp_tmp,raxis_tmp)
 ! open(11,file='surf.dat',status='replace')
@@ -245,7 +266,7 @@ subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
   use mod_Gvector, only: ngrtot, ngrid, ngvec, cfunir,vgc
   use mod_atoms, only: nspecies, natoms, atposc, idxas,natmtot
   use mod_muffin_tin, only: rmt
-  use constants, only: zzero,pi
+  use constants, only: zzero, zone, pi
   implicit none
   integer  , intent(in) :: lmax
   complex(8) ,intent(inout) :: zvclir(:)
@@ -255,17 +276,19 @@ subroutine surf_pot(lmax,zvclir,igfft,qvec,vlm)
   complex(8) :: zvaxft(ngrid(1))
   integer :: ig1,ig2,iax,is,ia,ias,iy,iz 
   complex(8),allocatable :: vmu(:,:),zvaxft_all(:,:,:)
+  complex(8) :: vmu1(naxismax)
   real(8) :: xx, irf,ir2,ta,tb,rv(3)
   complex(8) ::zt1, ii
-  integer :: ir
+  integer :: ir, lmmaxvr
  
   complex(8) :: phase
+  complex(8), external :: zdotu
   ii=cmplx(0d0,1d0,8)
   
 
-  allocate(vmu(naxismax,natmtot))
+!  allocate(vmu(naxismax,natmtot))
  
-
+  lmmaxvr=size(vlm,1)
 
 
 
@@ -291,36 +314,17 @@ call timesec(ta)
         iz=axisz(iax,ias)
         iy=axisy(iax,ias)
 
-        ! ig1 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
-        ! ig2 = iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + ngrid(1)
-        ! zvaxft(:)=zvclir(ig1:ig2)
-        ! !write(*,*)"krustpunkts ar sferu",axisx_sph(iax,ias)
-        ! !zvaxft=zvax
-        ! call cfftnd(1,ngrid(1),-1,zvaxft)
-
-        zt1=zzero
-        do ir=1, ngrid(1)
-          ! zt1 = zt1 + zvaxft(ir) * interp_exp(ir,iax,ias)
-          zt1 = zt1 + zvaxft_all(ir,iy+1,iz+1) * interp_exp(ir,iax,ias)
-        enddo
         rv(:)=raxis(:,iax,ias)
         phase=exp(ii*sum(qvec*rv))
-        vmu(iax,ias)=zt1*phase
+        vmu1(iax)=phase*zdotu(ngrid(1),zvaxft_all(1,iy+1,iz+1),1,interp_exp(1,iax,ias),1)
       enddo !iax
+
+      Call zgemv ('N', lmmaxvr, naxis(ias), zone, ylm_tmat(1,1,ias), lmmaxvr, vmu1, 1, zzero, vlm(1,ias), 1)
+
     enddo !ia
   enddo !is
 
 call timesec(tb)
-!write(*,*)"ft_un_interpolacija:",tb-ta
-call timesec(ta)
-  do is=1, nspecies
-    do ia=1, natoms(is)
-      ias=idxas(ia,is)
-      vlm(:,ias)=matmul(ylm_tmat(:,1:naxis(ias),ias),vmu(1:naxis(ias),ias))
-    enddo !ia
-  enddo !is
-call timesec(tb)
-deallocate(vmu)
 deallocate(zvaxft_all)
 !write(*,*)"lm_komplekts:",tb-ta
 ! open(1, file = 'vlm_new.dat', status = 'replace')
@@ -332,6 +336,171 @@ deallocate(zvaxft_all)
 ! close(1)
 ! stop
 end subroutine
+
+subroutine surf_pot2(lmax,zvclir,igfft,qvec,vlm)
+  use modinput
+  use m_linalg, only:zlsp
+  use mod_Gvector, only: ngrtot, ngrid, ngvec, cfunir,vgc
+  use mod_atoms, only: nspecies, natoms, atposc, idxas,natmtot
+  use mod_muffin_tin, only: rmt
+  use constants, only: zzero, zone, pi
+  implicit none
+  integer  , intent(in) :: lmax
+  complex(8) ,intent(inout) :: zvclir(:)
+  integer, intent(in) :: igfft(:)
+  real(8),intent(in) :: qvec(3)
+  complex(8) ,intent(out) :: vlm(:,:)!lm,ias
+  complex(8) :: zvaxft(ngrid(1))
+  integer :: ig1,ig2,iax,is,ia,ias,iy,iz 
+  complex(8),allocatable :: vmu(:,:),zvaxft_all(:,:,:)
+  complex(8),allocatable :: zftmat(:,:)
+  complex(8) :: vmu1(naxismax)
+  real(8) :: xx, irf,ir2,ta,tb,rv(3)
+  complex(8) ::zt1, ii
+  integer :: ir, lmmaxvr,iq
+ 
+  complex(8) :: phase
+  complex(8), allocatable :: zftvec(:)
+  complex(8), external :: zdotu
+
+  ii=cmplx(0d0,1d0,8)
+  
+
+!  allocate(vmu(naxismax,natmtot))
+ 
+  lmmaxvr=size(vlm,1)
+
+
+
+call timesec(ta)
+   
+  allocate(zftmat(ngrid(1),ngrid(1)))
+  allocate(zftvec(1:ngrid(1)))
+!  do iax=0,ngrid(1)-1
+!    zftvec(iax)=dcmplx(cos(iax*2d0*pi ))
+!  enddo
+
+  do iax=0,ngrid(1)-1
+    do iq=0,ngrid(1)-1 
+      zftmat(iq+1,iax+1)=dcmplx(cos(2*iax*iq*pi/dble(ngrid(1))), -sin(2*iax*iq*pi/dble(ngrid(1))) )
+    enddo
+  enddo
+
+!  Call zgemm ('N', 'N', ngri, nrmt(is), lmmaxvr, 
+!                    & zone, zbshthf, ntpll, wf%mtrlm(1,1,ias,j), lmmaxvr, zzero, &
+!                    & wf%mtmesh(1,1,ias,j), ntpll)
+  zt1=1/dble(ngrid(1))
+!  Call zgemv ('N', ngrid(1), ngrid(1), zt1, zftmat, ngrid(1), zvclir(ngrid(1)+1), 1, zzero, zftvec, 1)
+
+
+
+
+  allocate(zvaxft_all(ngrid(1),ngrid(2),ngrid(3)))
+  zvaxft_all=zzero
+  do iz=0,ngrid(3)-1
+    do iy=0,ngrid(2)-1
+        ig1=iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
+        Call zgemv ('N', ngrid(1), ngrid(1), zt1, zftmat, ngrid(1), zvclir(ig1), 1, zzero, zvaxft_all(1,iy+1,iz+1), 1)       
+    enddo
+  enddo
+
+
+  do is=1, nspecies
+    do ia=1, natoms(is)
+      ias=idxas(ia,is)
+      
+      do iax=1,naxis(ias)
+        iz=axisz(iax,ias)
+        iy=axisy(iax,ias)
+
+        rv(:)=raxis(:,iax,ias)
+        phase=exp(ii*sum(qvec*rv))
+        vmu1(iax)=phase*zdotu(ngrid(1),zvaxft_all(1,iy+1,iz+1),1,interp_exp(1,iax,ias),1)
+      enddo !iax
+
+      Call zgemv ('N', lmmaxvr, naxis(ias), zone, ylm_tmat(1,1,ias), lmmaxvr, vmu1, 1, zzero, vlm(1,ias), 1)
+
+    enddo !ia
+  enddo !is
+
+call timesec(tb)
+deallocate(zvaxft_all)
+!write(*,*)"lm_komplekts:",tb-ta
+! open(1, file = 'vlm_new.dat', status = 'replace')
+! do ias=1, natmtot
+! do ir=1,(lmax+1)**2
+!   write(1,*)dble(vlm(ir,ias)),",",aimag(vlm(ir,ias)),",", ias, ir
+! enddo
+! enddo
+! close(1)
+! stop
+end subroutine
+
+subroutine surf_pot3(lmax,zvclir,igfft,qvec,vlm)
+  use modinput
+  use m_linalg, only:zlsp
+  use mod_Gvector, only: ngrtot, ngrid, ngvec, cfunir,vgc
+  use mod_atoms, only: nspecies, natoms, atposc, idxas,natmtot
+  use mod_muffin_tin, only: rmt
+  use constants, only: zzero, zone, pi
+  implicit none
+  integer  , intent(in) :: lmax
+  complex(8) ,intent(inout) :: zvclir(:)
+  integer, intent(in) :: igfft(:)
+  real(8),intent(in) :: qvec(3)
+  complex(8) ,intent(out) :: vlm(:,:)!lm,ias
+  complex(8) :: zvaxft(ngrid(1))
+  integer :: ig1,ig2,iax,is,ia,ias,iy,iz 
+  complex(8),allocatable :: vmu(:,:),zvaxft_all(:,:,:),interp2(:,:,:)
+  complex(8),allocatable :: zftmat(:,:)
+  complex(8) :: vmu1(naxismax)
+  real(8) :: xx, irf,ir2,ta,tb,rv(3)
+  complex(8) ::zt1, ii
+  integer :: ir, lmmaxvr,iq
+ 
+  complex(8) :: phase
+  complex(8), allocatable :: zftvec(:)
+  complex(8), external :: zdotu
+
+  ii=cmplx(0d0,1d0,8)
+  
+
+
+call timesec(ta)
+  lmmaxvr=size(vlm,1)
+
+  do is=1, nspecies
+    do ia=1, natoms(is)
+      ias=idxas(ia,is)
+      
+      do iax=1,naxis(ias)
+        iz=axisz(iax,ias)
+        iy=axisy(iax,ias)
+        ig1=iz*ngrid(2)*ngrid(1) + iy*ngrid(1) + 1
+
+        rv(:)=raxis(:,iax,ias)
+        phase=exp(ii*sum(qvec*rv))
+        vmu1(iax)=phase*zdotu(ngrid(1),zvclir(ig1),1,interp_exp(1,iax,ias),1)
+      enddo !iax
+
+      Call zgemv ('N', lmmaxvr, naxis(ias), zone, ylm_tmat(1,1,ias), lmmaxvr, vmu1, 1, zzero, vlm(1,ias), 1)
+
+    enddo !ia
+  enddo !is
+
+call timesec(tb)
+!deallocate(zvaxft_all)
+!write(*,*)"lm_komplekts:",tb-ta
+! open(1, file = 'vlm_new.dat', status = 'replace')
+! do ias=1, natmtot
+! do ir=1,(lmax+1)**2
+!   write(1,*)dble(vlm(ir,ias)),",",aimag(vlm(ir,ias)),",", ias, ir
+! enddo
+! enddo
+! close(1)
+! stop
+end subroutine
+
 
 subroutine inv_svd(m,n,A_in,Ainv)
   implicit none

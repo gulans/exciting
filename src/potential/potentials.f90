@@ -34,7 +34,7 @@ module potentials
 
   subroutine coulomb_potential2( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0,qvec, cutoff,&
     & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,rpseudo_in,rpseudomat)
-use modsurf, only: surf_pot
+use modsurf, only: surf_pot,surf_pot2,surf_pot3
 use constants, only: y00,zzero
 use modinput
 use mod_atoms, only: natmtot, nspecies, natoms, idxas
@@ -253,7 +253,7 @@ if (input%groundstate%hybrid%rsurf) then
   enddo
   call zfftifc( 3, ngrid, 1, zvclir)
   
-  call surf_pot(input%groundstate%lmaxvr,zvclir,igfft,qvec,qlmir)
+  call surf_pot3(input%groundstate%lmaxvr,zvclir,igfft,qvec,qlmir)
 else
   call surface_ir3( input%groundstate%lmaxvr, ngp, jlgpr, ylmgp, sfacgp, zvclir, qlmir)
 ! Fourier transform interstitial potential to real space
