@@ -1280,6 +1280,7 @@ end subroutine
       use modrspace, only: rgrid_mt_map, rgrid_nmtpoints
       use mod_atoms, only: nspecies, natoms, natmtot,idxas
       use mod_Gvector, only: ngrtot, ngrid
+      use constants, only: zzero,zone 
       implicit none
       
       integer, intent(in) :: lmax
@@ -1291,8 +1292,8 @@ end subroutine
       real(8) :: ta,tb,tc,td
 
       ! external functions
-      Complex (8) :: zdotc
-      External :: zdotc
+      Complex (8) :: zdotu
+      External :: zdotu
 
       call timesec(ta)
       call zfftifc( 3, ngrid, 1, zvclir)
@@ -1307,31 +1308,13 @@ end subroutine
 ! !$OMP DO SCHEDULE(DYNAMIC)
           do igr=1, rgrid_nmtpoints(ias)
             ig=rgrid_mt_map(igr,ias)
-            zt1=sum(qlm(:,ias)*rpseudomat(:,igr,ias))
-            !zt1=zdotc(lmmax, qlm(:,ias), 1, rpseudomat(:,igr,ias), 1)
-            zvclir(ig)=zvclir(ig)+zt1
+            zvclir(ig)=zvclir(ig)+zdotu(lmmax, qlm(:,ias), 1, rpseudomat(:,igr,ias), 1)
+
           enddo !igr
 ! !$OMP END DO NOWAIT
         enddo !ia
-      enddo !is
+      enddo !is 
 ! !$OMP END PARALLEL 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      ! do is=1, nspecies
-      !   do ia=1, natoms(is)
-      !     ias=idxas(ia,is)
-      !     do igr=1, rgrid_nmtpoints(ias)
-      !       ig=rgrid_mt_map(igr,ias)
-      !       lm=0
-      !       Do l = 0,lmax
-      !         Do m = - l, l
-      !           lm = lm+1
-      !           zvclir(ig)=zvclir(ig) + qlm(lm,ias)*rpseudomat(lm,igr,ias)
-      !         enddo ! m
-      !       enddo
-      !     enddo !igr
-      !   enddo !ia
-      ! enddo !is
-  
         
       call timesec(tc)
       call zfftifc( 3, ngrid, -1, zvclir)
