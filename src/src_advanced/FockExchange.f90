@@ -11,7 +11,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use modmain 
       Use modinput
       Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
-      Use potentials, only: coulomb_potential2
+      Use potentials, only: coulomb_potential2, coulomb_potential3
       use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
       use mod_hybrids, only : gmax_pw_method
       USE OMP_LIB
@@ -67,6 +67,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:), rfmt(:)
       
       complex(8), Allocatable :: rpseudomat(:,:,:,:) ! (ifit,lm,igr,ias)
+      complex(8) :: qmtlm(lmmaxvr,natmtot)
 
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
@@ -145,9 +146,9 @@ call timesec(ta)
          if (rpseudo)then
             if (.not.allocated(rpseudomat)) then
                if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
-                  allocate(rpseudomat(nfit*2-1,(lmaxvr+1)**2,rgrid_max_nmtpoints,natmtot))
+                  allocate(rpseudomat((lmaxvr+1)**2,rgrid_max_nmtpoints,natmtot,nfit*2-1))
                else
-                  allocate(rpseudomat(1,(lmaxvr+1)**2,rgrid_max_nmtpoints,natmtot))
+                  allocate(rpseudomat((lmaxvr+1)**2,rgrid_max_nmtpoints,natmtot,1))
                endif
             endif
             if((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa")) then
@@ -177,11 +178,11 @@ call timesec(ta)
                do ifit2=1,nfit*2-1
                   if (ifit2.le.nfit) then
                      ifit=ifit2
-                     call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+                     call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(:,:,:,ifit2),&
                               & yukawa_in=.true.,zlambda=erfc_fit(ifit,2),zilmt=zilmt(ifit,:,:),zbessi=zbessi(:,ifit,:,:))
                   else
                      ifit=ifit2-nfit+1
-                     call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(ifit2,:,:,:),&
+                     call pseudocharge_rspace_matrix (lmaxvr,input%groundstate%npsden,v,rpseudomat(:,:,:,ifit2),&
                               & yukawa_in=.true.,zlambda=conjg(erfc_fit(ifit,2)),zilmt=conjg(zilmt(ifit,:,:)),zbessi=conjg(zbessi(:,ifit,:,:)))
                   endif
                enddo
@@ -189,7 +190,7 @@ call timesec(ta)
 !$OMP END PARALLEL
 
             else 
-               call pseudocharge_rspace_matrix(lmaxvr,input%groundstate%npsden,v,rpseudomat(1,:,:,:))
+               call pseudocharge_rspace_matrix(lmaxvr,input%groundstate%npsden,v,rpseudomat(:,:,:,1))
             endif !Yukawa
          endif ! rpseudo
 
@@ -361,7 +362,23 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
    ! calculate the complex overlap density
    !-----------------------------------------------------------------------------------
                call timesec(tc)
-               call WFprodrs3(ist3,wf1,ist2,wf2,prod)
+!               call WFprodrs3(ist3,wf1,ist2,wf2,prod)
+               call WFprodcoul(ist3,wf1,ist2,wf2,prod,qmtlm)
+!debug
+if(.false.)then
+ open(11,file='mt_test.dat',status='replace')
+ do ir=1, nrmt(1)
+ write(11,*) spr(ir,1),dble(prod%mtrlm(1,ir,1,1))
+!  write(11,*) spr(ir,is),",",dble(zpot(1,ir))*y00 
+ enddo
+ close(11)
+ stop
+endif
+
+!$OMP CRITICAL
+               vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+!$OMP END CRITICAL
+
 !               call WFprodrs3(ist2,wf2,ist3,wf1,prod)
 !               call WFprodrs(ist2,wf2,ist3,wf1,prod)
                call timesec(td)
@@ -396,7 +413,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                      & prodir(:), potmt0, potir0, zrho02,v, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),&
-                     & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
+                     & rpseudo_in=rpseudo,rpseudomat=rpseudomat(:,:,:,ifit2))
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * erfc_fit(j,1)
                      potir=potir+potir0 * erfc_fit(j,1)
                   enddo
@@ -407,7 +424,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                      & prodir(:), potmt0, potir0, zrho02,v, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),&
-                     & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
+                     & rpseudo_in=rpseudo,rpseudomat=rpseudomat(:,:,:,ifit2))
                      pot%mtrlm(:,:,:,1)=pot%mtrlm(:,:,:,1)+potmt0 * conjg(erfc_fit(j,1))
                      potir=potir+potir0 * conjg(erfc_fit(j,1))
                   enddo
@@ -418,11 +435,11 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                   potmt0=zzero
                   potir0=zzero
 
-                  Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
-                  & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), pot%mtrlm(:,:,:,1), potir, zrho02,v, &
+                  Call coulomb_potential3 (nrcmt, rcmt, ngvec, gqc, igq0, &
+                  & jlgqr, ylmgq, sfacgq, prod%mtrlm(:,:,:,1), &
+                  & prodir(:), pot%mtrlm(:,:,:,1), potir, zrho02,v,qmtlm, &
                   & cutoff=cutoff, hybrid_in=.true.,&
-                  & rpseudo_in=rpseudo,rpseudomat=rpseudomat(1,:,:,:))
+                  & rpseudo_in=rpseudo,rpseudomat=rpseudomat(:,:,:,1))
 
 !                  if (input%groundstate%hybrid%erfcapprox.ne."PW")then 
 !                     pot%mtrlm(:,:,:,1)=potmt0
@@ -463,6 +480,16 @@ endif
                endif
 
    !-----------------------------------------------------------------------------------1
+if(.false.)then
+ write(*,*) 'debug' 
+ open(11,file='mt_test.dat',status='replace')
+ do ir=1, nrmt(1)
+ write(11,*) spr(ir,1),dble(pot%mtrlm(1,ir,1,1))
+!  write(11,*) spr(ir,is),",",dble(zpot(1,ir))*y00 
+ enddo
+ close(11)
+ stop
+endif
                
    call timesec(tc)
 !               call prodshrs(pot%mtrlm(:,:,:,1),wf2%mtmesh(:,:,:,ist2),prod%mtrlm(:,:,:,1))
@@ -470,6 +497,18 @@ endif
 
    call timesec(td)
    time_misc=time_misc+td-tc
+
+if(.false.)then
+ write(*,*) 'debug' 
+ open(11,file='mt_test.dat',status='replace')
+ do ir=1, nrmt(1)
+ write(11,*) spr(ir,1),dble(pot%mtrlm(1,ir,1,1))
+!  write(11,*) spr(ir,is),",",dble(zpot(1,ir))*y00 
+ enddo
+ close(11)
+ stop
+endif
+
 !   time_rs=time_rs+td-tc
 
    call timesec(tc)
