@@ -9,6 +9,7 @@ subroutine calc_vxnl()
     use mod_hybrids
     use modfvsystem
     use modmpi
+    use mod_radial
 !
 ! !DESCRIPTION:
 !   Calculates the non-local exchange potential
@@ -294,6 +295,9 @@ else ! Use oepvnl
       call kintw()
       deallocate(evalfv)
 
+      call init_radial
+!      call release_radial
+!      stop
 
 #ifdef MPI
       Do ik = firstk (rank, nkpt), lastk (rank, nkpt)

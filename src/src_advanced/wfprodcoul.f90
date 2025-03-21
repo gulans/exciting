@@ -9,6 +9,7 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
       use mod_Gvector, only : ngrtot
       use mod_eigensystem, only : WFType
       use weinert, only : poisson_and_multipoles_mt_yukawa2
+      use mod_radial
 ! !USES:
 ! !DESCRIPTION:
 ! Evaluates a product of two WFs in the real space
@@ -23,7 +24,7 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
       complex(8), intent(out) :: qlm(lmmaxvr,natmtot)
 
       integer :: is,ia,ias
-      integer :: l1,l3,m1,m3,lm1,lm3,lm2,io1,io2,if1,if3,if1old,if3old,ilo1,ilo2,lmmaxprod,lm,ir,l,m,ilo,io
+      integer :: l1,l3,m1,m3,lm1,lm3,lm2,io1,io2,if1,if3,if1old,if3old,ilo1,ilo2,lmmaxprod,lm,ir,l,m,ilo,io, irad
       integer :: lmax
       integer :: blkstart,chunksize,iroffset
       integer, parameter :: blksize=64
@@ -55,33 +56,16 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
 !-----------
             mtrlm1=0d0
             ias=idxas(ia,is)
-            if1=0
-! APW part
-            do l=0,input%groundstate%lmaxvr
-              do io = 1, apword (l, is)
-                do m=-l,l
-                  lm=idxlm(l,m)
-                  if1=if1+1
-                  mtrlm1(1:chunksize,lm)=mtrlm1(1:chunksize,lm)+wf1%mt(if1,ist1,ias)*apwfr(iroffset:iroffset+chunksize-1,1,io,l,ias)
-!                  mtrlm2(lm,1:chunksize)=mtrlm2(lm,1:chunksize)+wf1%mt(if1,ist1,ias)*apwfr(iroffset:iroffset+chunksize-1,1,io,l,ias)
-!                  mtrlm2(lm,1:chunksize)=mtrlm2(lm,1:chunksize)+wf1%mt(if1,ist1,ias)*apwfr(iroffset:iroffset+chunksize-1,1,io,l,ias)
-                enddo
-              enddo
-            enddo
 
-! local-orbital functions
-            Do ilo = 1, nlorb (is)
-              l = lorbl (ilo, is)
-              Do m = - l, l
+            if1=0
+            do irad = 1, nradial(is)
+              l = lrad (irad,is)
+              do m = - l, l
                 if1=if1+1
                 lm = idxlm (l, m)
-                 mtrlm1(1:chunksize,lm)=mtrlm1(1:chunksize,lm)+wf1%mt(if1,ist1,ias)*lofr(iroffset:iroffset+chunksize-1,1,ilo,ias)
-!                mtrlm2(lm,1:chunksize)=mtrlm2(lm,1:chunksize)+wf1%mt(if1,ist1,ias)*lofr(iroffset:iroffset+chunksize-1,1,ilo,ias)
-!                 mtrlm2(lm,1:chunksize)=mtrlm2(lm,1:chunksize)+wf1%mt(if1,ist1,ias)*lofr(iroffset:iroffset+chunksize-1,1,ilo,ias)
-              End Do
-            End Do
-
-
+                mtrlm1(1:chunksize,lm)=mtrlm1(1:chunksize,lm)+wf1%mt(if1,ist1,ias)*radial(iroffset:iroffset+chunksize-1,irad,ias)
+              enddo
+            enddo
 
 
 !            Call zgemm ('N', 'N', ntpll, chunksize, lmmaxvr, zone, zbshthf, ntpll,  &
