@@ -298,6 +298,7 @@ else ! Use oepvnl
       call gengntyyy
       call init_radial
       call init_radial_products
+      call init_vcoulradial
 !      call release_radial
 !      stop
 
@@ -330,8 +331,10 @@ else ! Use oepvnl
 #ifdef MPI
       call MPI_ALLREDUCE(MPI_IN_PLACE, vxnl , nstsv*nstsv*nkpt, MPI_DOUBLE_COMPLEX,  MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
+    call release_vcoulradial
     call release_radial_products
     call release_radial
+    
 
     deallocate(vxpsiir)
     deallocate(vxpsimt)

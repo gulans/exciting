@@ -34,7 +34,7 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
       integer, parameter :: blksize=64
       complex(8), allocatable :: factors(:), rho(:,:), fr(:)
       complex(8) :: mtmesh(ntpll,blksize), mtmesh1(ntpll,blksize), mtrlm1(blksize,lmmaxvr)
-      complex(8) :: zfmt(lmmaxvr,nrmtmax),zfmttr(nrmtmax,lmmaxvr),zpot(lmmaxvr,nrmtmax)
+      complex(8) :: zfmt(lmmaxvr,nrmtmax),zfmttr(nrmtmax,lmmaxvr),zpot(lmmaxvr,nrmtmax),qlm2(lmmaxvr)
       complex(8) :: zt
       real(8) :: ta,tb
       complex(8),allocatable :: H(:,:,:)
@@ -44,6 +44,7 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
       if (.not.allocated(prod%mtrlm)) allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
  
 ! call timesec(ta)
+qlm=0d0 !(:,ias)
       lmax= input%groundstate%lmaxvr
 
       allocate(H(lmmaxvr,maxradial,maxradial))
@@ -52,8 +53,10 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
         do ia=1,natoms(is)
           ias=idxas(ia,is)
 
-          H=0d0
 if (.true.) then 
+          H=0d0
+          zpot=0d0
+          
           if2=0
           do irad2=1,nradial(is)
             l2=lrad(irad2,is)
@@ -64,28 +67,18 @@ if (.true.) then
 
               do irad1=1,nradial(is)
                 l1=lrad(irad1,is)
-!                write(*,*) 'L:',abs(l1-l2),min(lmax,l1+l2)
                 do m1=-l1,l1
                   lm1=idxlm(l1,m1)
                   if1=if1+1
  
-!                  do L=0,lmax           
                   do L=abs(l1-l2),min(lmax,l1+l2),2
-!                    do M=-L,L
                     M=m1-m2
                     if ((M.le.L).and.(M.ge.-L)) then
                       LM=idxlm(L,M)
                       H(LM,irad1,irad2)=H(LM,irad1,irad2)+gntyyy(LM,lm2,lm1)*wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))!conjg(wf1%mt(if1,ist1,ias))*wf2%mt(if2,ist2,ias)
                  
-!                     write(*,*) L,M,l1,m1,l2,m2,gntyyy(LM,lm1,lm2),oldgaunt(l2, l1, L, m2, m1, M),oldwigner3j (l1, l2, L, m1, -m2, M)  !gaunt_yyy (L, l2, l1, M, m2, m1) !gntyyy(LM,lm1,lm2)
                     endif 
-!                    enddo
-!                    do M=-L,L
-!                      write(*,*) L,M,gntyyy(LM,lm1,lm2), oldwigner3j (l2, L, l1, -m2, M, m1) !oldwigner3j (l1, l2, L, m1, -m2, M)
-!                      write(*,*) L,M,oldgaunt(l2, l1, L, m2, m1, M), oldwigner3j (l2, L, l1, -m2, M, m1) !oldwigner3j (l1, l2, L, m1, -m2, M)
-!                    enddo
                   enddo
-!                 read(*,*)
 
 
                 enddo
@@ -97,24 +90,21 @@ if (.true.) then
           zfmttr=0d0
           do irad2=1,nradial(is)
             do irad1=1,nradial(is)
-!              do ir= 1,nrmt(is) !nrmt(is), nrmt(is) ! 1,nrmt(is)
-!                zfmt(1:lmmaxvr,ir)=zfmt(1:lmmaxvr,ir)+H(1:lmmaxvr,irad1,irad2)*radialproducts(ir,irad1,irad2,ias)
-!              enddo
-
-              do lm=1,lmmaxvr !nrmt(is), nrmt(is) ! 1,nrmt(is)
-                if (abs(H(lm,irad1,irad2)).gt.1d-10) then
-!                  zfmttr(1:nrmt(is),lm)=zfmttr(1:nrmt(is),lm)+H(lm,irad1,irad2)*radial(1:nrmt(is),irad1,ias)*radial(1:nrmt(is),irad2,ias)
-                   zfmttr(1:nrmt(is),lm)=zfmttr(1:nrmt(is),lm)+H(lm,irad1,irad2)*radialproducts(1:nrmt(is),irad1,irad2,ias)
-
-!radialproducts(1:nrmt(is),irad1,irad2,ias)
-                endif
+              do l=0,lmax
+                do m=-l,l
+                  lm=idxlm(l,m)
+                   if (abs(H(lm,irad1,irad2)).gt.1d-10) then
+                     zfmttr(1:nrmt(is),lm)=zfmttr(1:nrmt(is),lm)+H(lm,irad1,irad2)*radialpotential(1:nrmt(is),l,irad1,irad2,ias)
+                     qlm(lm,ias)=qlm(lm,ias)+H(lm,irad1,irad2)*radialmultipoles(l,irad1,irad2,ias)
+                   endif
+                enddo
               enddo
 
             enddo
           enddo
   
           do ir= 1,nrmt(is) 
-            zfmt(1:lmmaxvr,ir)= zfmttr(ir,1:lmmaxvr)
+            zpot(1:lmmaxvr,ir)= zfmttr(ir,1:lmmaxvr)
           enddo
 
 !H(1:lmmaxvr,irad1,irad2)*radialproducts(ir,irad1,irad2,ias)
@@ -154,20 +144,10 @@ else
             enddo
             Call zgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, zfshthf, lmmaxvr, mtmesh, ntpll, zzero, zfmt(1,iroffset),lmmaxvr) 
           enddo
-endif
-!          do lm=1,16 !lmmaxvr
-!            write(*,*) dble(zfmt(lm,nrmt(is)))
-!          enddo
-!read(*,*)
           zpot=0d0
           call poisson_and_multipoles_mt_yukawa2( lmax, nrmt(is), spr(1:nrmt(is),is), zfmt, zpot, qlm(:,ias), is)
-!          write(*,*) "poisson_mt"
 
-!debug
-!do lm=1,lmmaxvr
-!  write(*,*) qlm(lm,ias)
-!enddo
-!stop
+endif
 
 
 if(.false.)then
@@ -191,7 +171,6 @@ endif
             Call zgemm ('N', 'N', lmmaxvr, chunksize, ntpll, zone, zfshthf, lmmaxvr, mtmesh, ntpll, zzero, prod%mtrlm(1,iroffset,ias,1),lmmaxvr)
           enddo          
           
-!prod%mtrlm(:,:,ias,1)
 if(.false.)then
 write(*,*) 'debug'
  open(11,file='mt_test.dat',status='replace')
