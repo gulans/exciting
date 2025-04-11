@@ -299,6 +299,10 @@ else ! Use oepvnl
       call init_radial
       call init_radial_products
       call init_vcoulradial
+      call init_productbasis
+      call init_uproducts
+      call init_pbfpotential
+
 !      call release_radial
 !      stop
 
