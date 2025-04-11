@@ -35,6 +35,7 @@ subroutine WFprodcoul(ist1,wf1,ist2,wf2,prod,qlm)
       complex(8), allocatable :: factors(:), rho(:,:), fr(:)
       complex(8) :: mtmesh(ntpll,blksize), mtmesh1(ntpll,blksize), mtrlm1(blksize,lmmaxvr)
       complex(8) :: zfmt(lmmaxvr,nrmtmax),zfmttr(nrmtmax,lmmaxvr),zpot(lmmaxvr,nrmtmax),qlm2(lmmaxvr)
+      real(8) :: refmttr(nrmtmax,lmmaxvr),imfmttr(nrmtmax,lmmaxvr)
       complex(8) :: zt
       real(8) :: ta,tb
       complex(8),allocatable :: H(:,:,:), F(:,:)
@@ -101,23 +102,29 @@ if (.true.) then
             enddo
           enddo
 
-          zfmttr=0d0
+          qlm(:,ias)=0d0
+!          zfmttr=0d0
+          refmttr=0d0
+          imfmttr=0d0
           do l=0,lmax
             do m=-l,l
               lm=idxlm(l,m)
               zt=0d0
               do ipbf=1,npbf(l,ias)
-                zt=zt+pbfmultipoles(ipbf,l,ias)*F(ipbf,lm)
+                qlm(lm,ias)=qlm(lm,ias)+pbfmultipoles(ipbf,l,ias)*F(ipbf,lm)
               enddo
               do ipbf=1,npbf(l,ias)
-                zfmttr(1:nrmt(is),lm)=zfmttr(1:nrmt(is),lm)+pbfpotential(1:nrmt(is),ipbf,l,ias)*F(ipbf,lm) 
+                call daxpy(nrmt(is), dble(F(ipbf,lm)),pbfpotential(1,ipbf,l,ias),1,refmttr(1,lm),1)
+                call daxpy(nrmt(is),dimag(F(ipbf,lm)),pbfpotential(1,ipbf,l,ias),1,imfmttr(1,lm),1)
+!                zfmttr(1:nrmt(is),lm)=zfmttr(1:nrmt(is),lm)+pbfpotential(1:nrmt(is),ipbf,l,ias)*F(ipbf,lm) 
               enddo
-              qlm(lm,ias)=zt
+!              qlm(lm,ias)=zt
             enddo
           enddo
  
           do ir= 1,nrmt(is) 
-            zpot(1:lmmaxvr,ir)= zfmttr(ir,1:lmmaxvr)
+!            zpot(1:lmmaxvr,ir)= zfmttr(ir,1:lmmaxvr)
+            zpot(1:lmmaxvr,ir)=dcmplx(refmttr(ir,1:lmmaxvr),imfmttr(ir,1:lmmaxvr))
           enddo
 
           

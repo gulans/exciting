@@ -255,7 +255,7 @@ Contains
    real(8), allocatable :: rl(:,:,:), ril1(:,:,:)
    real(8), allocatable :: pool(:,:,:), useful(:,:), norms(:,:), overlap(:,:)
    type :: arrtype
-     integer, allocatable :: chi(:,:,:)
+     real(8), allocatable :: chi(:,:,:)
    end type arrtype
    type(arrtype) :: pbf(natmtot)
 
@@ -266,7 +266,7 @@ Contains
    real(8) :: norm, dotp
    real(8) :: ta,tb
  
-   real(8), parameter :: usefulness_thr=1d-16
+   real(8), parameter :: usefulness_thr=1d-8
    integer :: maxuseful,nuseful
 
    real(8), allocatable :: eval(:)
@@ -308,7 +308,7 @@ Contains
    allocate(iwork(liwork))
    
    call release_productbasis
-   allocate(productbasis(nrmtmax,maxpbf,0:lmax,natmtot))
+!   allocate(productbasis(nrmtmax,maxpbf,0:lmax,natmtot))
    allocate(npbf(0:lmax,natmtot))
    npbf=0
    maxuseful=0
@@ -404,7 +404,8 @@ Contains
 !         
 !         read(*,*)
          
-         productbasis(1:nrmt(is),1:npbf(l,ias),l,ias)=pool(1:nrmt(is),1:npbf(l,ias),l)
+!         productbasis(1:nrmt(is),1:npbf(l,ias),l,ias)=pool(1:nrmt(is),1:npbf(l,ias),l)
+!         write(*,*) 'productbasis',l,ias,sum(productbasis(1:nrmt(is),1:npbf(l,ias),l,ias))
        enddo
        maxuseful=npbf(0,ias)
        do l=1,lmax
@@ -416,20 +417,38 @@ Contains
        
        do l=0,lmax
          pbf(ias)%chi(1:nrmt(is),1:npbf(l,ias),l)=pool(1:nrmt(is),1:npbf(l,ias),l)
+!         write(*,*) 'pbf',l,ias,sum(pbf(ias)%chi(1:nrmt(is),1:npbf(l,ias),l))
        enddo
 !       write(*,*)
 
      enddo
    enddo
+
    write(*,*) "maxpbf, maxpbfused", maxpbf,maxpbfused
+   maxpbf=maxpbfused
+   allocate(productbasis(nrmtmax,maxpbf,0:lmax,natmtot))
+   write(*,*) 'productbasis', nrmtmax*maxpbf*(lmax+1)*natmtot*8/1d6,' Mb allocated'
+
+   do is=1,nspecies
+     do ia=1,natoms(is)
+       ias=idxas(ia,is)
+       do l=0,lmax
+         productbasis(1:nrmt(is),1:npbf(l,ias),l,ias)=pbf(ias)%chi(1:nrmt(is),1:npbf(l,ias),l)
+       enddo       
+     enddo
+   enddo
 !   stop
  
    do ias=1,natmtot
+!     do l=0,lmax
+!       productbasis(1:nrmtmax,1:npbf(l,ias),l,ias)=pbf(ias)%chi(1:nrmtmax,1:npbf(l,ias),l)
+!     enddo
      deallocate(pbf(ias)%chi)
    enddo  
    deallocate(pool)
    call timesec(tb)
    write(*,*) "init_productbasis:",tb-ta
+!   stop
    end subroutine init_productbasis
 
    subroutine release_productbasis
@@ -606,7 +625,7 @@ Contains
 !       write(*,*) '-------------'
 !       endif
 
-
+if (.false.) then       
        write(*,*) ias
        do jrad=1,nradial(is)
          do irad=1,nradial(is)
@@ -618,11 +637,11 @@ Contains
 !             if (abs(t1-radialmultipoles(l,irad,jrad,ias)).gt.1d-10) then
 !               write(*,*) l,irad,jrad,t1,radialmultipoles(l,irad,jrad,ias)
 !             endif
-             radialmultipoles(l,irad,jrad,ias)=t1            
+             radialmultipoles(l,irad,jrad,ias)=t1
            enddo 
          enddo
        enddo
-
+endif
 !radialmultipoles(l,irad,irad,ias)
      enddo
    enddo
