@@ -73,12 +73,14 @@ if (.true.) then
                 do m1=-l1,l1
                   lm1=idxlm(l1,m1)
                   if1=if1+1
- 
+                  zt=wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))
+
                   do L=abs(l1-l2),min(lmax,l1+l2),2
                     M=m1-m2
                     if ((M.le.L).and.(M.ge.-L)) then
                       LM=idxlm(L,M)
-                      H(LM,irad1,irad2)=H(LM,irad1,irad2)+gntyyy(LM,lm2,lm1)*wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))                
+                      H(LM,irad1,irad2)=H(LM,irad1,irad2)+gntyyy(LM,lm2,lm1)*zt !wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))                
+!                      H(LM,irad1,irad2)=H(LM,irad1,irad2)+gntyyy(LM,lm2,lm1)*wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))                
                     endif 
                   enddo
 
