@@ -28,6 +28,12 @@ Subroutine gengntyyy !(gntyyy)
 ! allocate and generate complex Gaunt coefficient array
 !      If (allocated(gntyry)) deallocate (gntyry)
       Allocate (gntyyy(lmmaxvr, lmmaxapw, lmmaxapw))
+      Allocate (gntyyyT(lmmaxapw, lmmaxapw, lmmaxvr))
+      Allocate (gntlyy(0:input%groundstate%lmaxvr, lmmaxapw, lmmaxapw))
+      Allocate (gntyyl(0:input%groundstate%lmaxvr, lmmaxapw, lmmaxapw))
+      gntlyy=0d0
+      gntyyl=0d0
+!      Allocate (gntyyl(lmmaxapw, lmmaxapw,0:input%groundstate%lmaxvr))
       Do l1 = 0, input%groundstate%lmaxapw
          Do m1 = - l1, l1
             lm1 = idxlm (l1, m1)
@@ -38,6 +44,9 @@ Subroutine gengntyyy !(gntyyy)
                      Do m3 = - l3, l3
                         lm3 = idxlm (l3, m3)
                         gntyyy (lm2, lm3, lm1) = oldgaunt (l1, l2, l3, m1, m2, m3)
+                        gntyyyT(lm1, lm2, lm3) = gntyyy (lm2, lm3, lm1) 
+                        if (m1.eq.m2+m3) gntlyy (l1, lm2, lm3)=gntyyy (lm2, lm3, lm1)
+                        if (m1.eq.m2+m3) gntyyl (l2, lm3, lm1)=gntyyy (lm2, lm3, lm1)
                      End Do
                   End Do
                End Do

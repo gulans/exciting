@@ -302,6 +302,9 @@ else ! Use oepvnl
       call init_productbasis
       call init_uproducts
       call init_pbfpotential
+      call init_radial_v2
+      call init_productbasis_v2
+      call init_uproducts_v2
 
 !      call release_radial
 !      stop
@@ -343,6 +346,9 @@ else ! Use oepvnl
     deallocate(vxpsiir)
     deallocate(vxpsimt)
     deallocate(gntyyy)
+    deallocate(gntyyyT)
+    deallocate(gntlyy)
+
 
     if (rank==0) write(*,*) '-----------------'
 
