@@ -28,6 +28,7 @@ Module mod_radial
 
    real(8), allocatable :: uproducts(:,:,:,:,:) ! expansion coefficients for u-times-u in terms of product basis
    real(8), allocatable :: uproducts2(:,:,:,:,:) ! expansion coefficients for u-times-u in terms of product basis
+   real(8), allocatable :: uproducts3(:,:,:,:) ! expansion coefficients for u-times-u in terms of product basis
 
 
    real(8), allocatable :: pbfpotential(:,:,:,:) ! radial Coulomb potential corresponding to productbasis
@@ -1292,6 +1293,13 @@ endif
 
    end subroutine release_uproducts_v2
 
+   subroutine release_uproducts_v3
+   implicit none
+   
+   if (allocated(uproducts3)) deallocate(uproducts3)
+
+   end subroutine release_uproducts_v3
+
    subroutine init_uproducts_v3
    use modinput
 !   use mod_apw_lo, only: apwfr, lofr, apword, nlorb, lorbl
@@ -1324,9 +1332,9 @@ endif
    real(8) :: ta,tb
 
    lmax=input%groundstate%lmaxapw 
-   call release_uproducts_v2
-   allocate(uproducts2(maxpbfused2,0:0,maxradial2,maxradial,natmtot))
-   write(*,*) 'uproducts2', maxpbfused2*maxradial2*maxradial*1*natmtot*8/1d6,' Mb allocated'
+   call release_uproducts_v3
+   allocate(uproducts3(maxpbfused2,maxradial2,maxradial,natmtot))
+   write(*,*) 'uproducts3', maxpbfused2*maxradial2*maxradial*natmtot*8/1d6,' Mb allocated'
    uproducts2=0d0
 
    do is=1,nspecies
@@ -1340,7 +1348,7 @@ endif
              do ipbf=1,npbf2(0,ias)
                f1(1:nrmt(is))=productbasis2(1:nrmt(is),ipbf,0,ias)*f2(1:nrmt(is))
                call integ_v(nrmt(is), is, f1, integ, mt_integw) 
-               uproducts2(ipbf,0,irad,jrad,ias)=integ
+               uproducts3(ipbf,irad,jrad,ias)=integ
              enddo
  !          enddo
 

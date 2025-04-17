@@ -363,7 +363,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
    !-----------------------------------------------------------------------------------
                call timesec(tc)
 !               call WFprodrs3(ist3,wf1,ist2,wf2,prod)
-               call WFprodcoul2(ist3,wf1,ist2,wf2,prod,qmtlm)
+               call WFprodcoul3(ist3,wf1,ist2,wf2,prod,qmtlm)
 !debug
 if(.false.)then
  open(11,file='mt_test.dat',status='replace')
