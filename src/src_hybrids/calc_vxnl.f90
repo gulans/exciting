@@ -347,9 +347,10 @@ else ! Use oepvnl
 
     deallocate(vxpsiir)
     deallocate(vxpsimt)
-    deallocate(gntyyy)
-    deallocate(gntyyyT)
+!    deallocate(gntyyy)
+!    deallocate(gntyyyT)
     deallocate(gntlyy)
+    deallocate(gntyyl)
 
 
     if (rank==0) write(*,*) '-----------------'

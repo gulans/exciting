@@ -89,7 +89,7 @@ Subroutine init0
         ntpll = 434
       endif
 !      ntpll = 770
-       ntpll = 146
+       ntpll = 86
 
 ! 
       lmmaxhf = (2*input%groundstate%lmaxvr+1) ** 2
