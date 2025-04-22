@@ -1,5 +1,5 @@
-!subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
-subroutine WFprodcoul3(ist1,wf1,ist2,wf2,FF,qlm)
+subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
+!subroutine WFprodcoul3(ist1,wf1,ist2,wf2,FF,qlm)
       use modinput
       use mod_APW_LO
       use mod_atoms
@@ -24,8 +24,8 @@ subroutine WFprodcoul3(ist1,wf1,ist2,wf2,FF,qlm)
       implicit none
       integer, intent(in) :: ist1,ist2 !,ia,is
       type (WFType) :: wf1,wf2
-      complex(8), intent(out) :: qlm(lmmaxvr,natmtot)
-      complex(8), intent(out) :: FF(maxpbf2,lmmaxvr,natmtot)
+      complex(8), intent(out) :: qlm(lmmaxvr) !,natmtot)
+      complex(8), intent(out) :: FF(maxpbf2,lmmaxvr) !,natmtot)
     
 
       integer :: is,ia
@@ -42,25 +42,20 @@ subroutine WFprodcoul3(ist1,wf1,ist2,wf2,FF,qlm)
       real(8) :: refmttr(nrmtmax,lmmaxvr),imfmttr(nrmtmax,lmmaxvr)
       complex(8) :: zt,zt2
       real(8) :: ta,tb
-      complex(8),allocatable :: H(:,:,:), HH(:,:,:)! , FF(:,:)! , F(:,:), H2(:,:)
-      complex(8),allocatable :: T(:,:,:)! , FF(:,:)! , F(:,:), H2(:,:)
-!      complex(8) :: F(maxpbf,lmmaxvr),H2(maxpbf,lmmaxvr)
-      complex(8) :: F(maxpbf,lmmaxvr),U(maxpbf2,lmmaxvr)!, FF(maxpbf2,lmmaxvr)
-!      real(8),allocatable :: reFF(:,:),imFF(:,:)
-!      real(8),external :: oldgaunt,oldwigner3j
+      complex(8),allocatable :: H(:,:,:), HH(:,:,:)
+      complex(8),allocatable :: T(:,:,:)
+      complex(8) :: F(maxpbf,lmmaxvr),U(maxpbf2,lmmaxvr)
  
-!      if (.not.allocated(prod%ir)) allocate(prod%ir(ngrtot,1))
-!      if (.not.allocated(prod%mtrlm)) allocate(prod%mtrlm(lmmaxvr,nrmtmax,natmtot,1))
  
 ! call timesec(ta)
-qlm=0d0 !(:,ias)
+!qlm=0d0 !(:,ias)
       lmax= input%groundstate%lmaxvr
 
       allocate(H(lmmaxvr,maxradial,maxradial))
       allocate(T(maxpbf2,lmmaxvr,lmmaxvr))
 
-      do is=1,nspecies
-        do ia=1,natoms(is)
+!      do is=1,nspecies
+!        do ia=1,natoms(is)
           ias=idxas(ia,is)
 
           H=0d0
@@ -108,13 +103,14 @@ qlm=0d0 !(:,ias)
 
 !-----------------
 
-          qlm(:,ias)=0d0
+!          qlm(:,ias)=0d0
+          qlm=0d0
           do l=0,lmax
             do m=-l,l
               lm=idxlm(l,m)
               zt=0d0
               do ipbf=1,npbf(l,ias)
-                qlm(lm,ias)=qlm(lm,ias)+pbfmultipoles(ipbf,l,ias)*F(ipbf,lm)
+                qlm(lm)=qlm(lm)+pbfmultipoles(ipbf,l,ias)*F(ipbf,lm)
               enddo
             enddo
           enddo
@@ -123,7 +119,6 @@ qlm=0d0 !(:,ias)
 
 
           T=0d0
-!          FF(:,:,ias)=0d0
           if2=0
           do irad2=1,nradial(is)
             U=0d0
@@ -159,7 +154,7 @@ qlm=0d0 !(:,ias)
                     M=m1+m2 
                     if ((M.le.L).and.(M.ge.-L)) then
                       LM=idxlm(L,M)
-                      FF(1:npbf2(0,ias),LM,ias)=FF(1:npbf2(0,ias),LM,ias)+T(1:npbf2(0,ias),lm1,lm2)*gntlyy(L,lm1,lm2)
+                      FF(1:npbf2(0,ias),LM)=FF(1:npbf2(0,ias),LM)+T(1:npbf2(0,ias),lm1,lm2)*gntlyy(L,lm1,lm2)
                     endif
                   enddo
                 enddo
@@ -168,37 +163,12 @@ qlm=0d0 !(:,ias)
           enddo
 
 
-
-!-----------------
-! if (.false.) then
-!          refmttr=0d0
-!          imfmttr=0d0
-
-!          do L=0,lmax
-!            do M=-L,L
-!              LM=idxlm(L,M)
-!              do ipbf=1,npbf2(0,ias)
-!                call daxpy(nrmt(is), dble(FF(ipbf,LM)),productbasis2(1,ipbf,0,ias),1,refmttr(1,LM),1)
-!                call daxpy(nrmt(is),dimag(FF(ipbf,LM)),productbasis2(1,ipbf,0,ias),1,imfmttr(1,LM),1)
-!              enddo
-!            enddo
-!          enddo
-
-!          do ir= 1,nrmt(is)
-!            prod%mtrlm(1:lmmaxvr,ir,ias,1)=dcmplx(refmttr(ir,1:lmmaxvr),imfmttr(ir,1:lmmaxvr))
-!          enddo
-!endif
-
-!-----------------
-
           
  
-        enddo
-      enddo
+!        enddo
+!      enddo
       
-deallocate(H)
-!deallocate(FF)
-!deallocate(H2,F)
+deallocate(H,T)
 
 
 ! call timesec(tb)

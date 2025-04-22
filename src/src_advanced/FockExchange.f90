@@ -343,16 +343,18 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
            call timesec(tc)
 
            vxpb=0d0
-!           do is=1,nspecies
-!             do ia=1,natoms(is)
-!               ias=idxas(ia,is)
-!$OMP DO SCHEDULE(DYNAMIC)
+
+           do is=1,nspecies
+             do ia=1,natoms(is)
+               ias=idxas(ia,is)
+!$OMP DO 
                do ist2 = 1, nomax
-                 call WFprodcoul3(ist3,wf1,ist2,wf2,vxpb,qmtlm(:,:,ist2))
+                 call WFprodcoul3(ia,is,ist3,wf1,ist2,wf2,vxpb(:,:,ias),qmtlm(:,ias,ist2))
                enddo
-!$OMP END DO
-!             enddo
-!           end Do
+!$OMP END DO NOWAIT
+             enddo
+           end Do
+
 
 
 
