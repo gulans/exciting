@@ -15,6 +15,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
       use mod_hybrids, only : gmax_pw_method
       USE OMP_LIB
+      use mod_radial
 
       use poterf
 
@@ -67,7 +68,9 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       real(8), allocatable :: jlgqsmallr(:,:,:,:),jlgrtmp(:), rfmt(:)
       
       complex(8), Allocatable :: rpseudomat(:,:,:,:) ! (ifit,lm,igr,ias)
-      complex(8) :: qmtlm(lmmaxvr,natmtot)
+      complex(8), Allocatable :: qmtlm(:,:,:)   !lmmaxvr,natmtot,nomax
+      complex(8), Allocatable :: vxpb(:,:,:) !lmmaxvr,maxpbf2,natmtot
+      complex(8), Allocatable :: vxpbtot(:,:,:,:) !lmmaxvr,maxpbf2,natmtot,nstsv
 
       type (WFType) :: wf1,wf2,prod,pot
 ! external functions
@@ -86,7 +89,8 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Allocate (sfacgq(ngvec, natmtot))
       Allocate (wfcr1(ntpll, nrcmtmax))
       Allocate (zvcltp(ntpll, nrcmtmax))
-
+      Allocate (qmtlm(lmmaxvr,natmtot,nomax))
+      Allocate (vxpbtot(maxpbf2,lmmaxvr,natmtot,nstsv))
 
       !write(*,*) "erfcapprox=",input%groundstate%hybrid%erfcapprox
       !write(*,*) "rpseudo=",input%groundstate%hybrid%rpseudo
@@ -296,6 +300,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
 
          !write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
 
+         vxpbtot=0d0
 
          time_coul=0d0
          time_fft=0d0
@@ -307,7 +312,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          
 !write(*,*)"pirms", OMP_GET_THREAD_NUM()
 !write(*,*)"nomax",nomax,"nstfv",nstfv
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(qmtlm,ist3, wf1ir,wf2ir,prodir,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0, igk,ifg,prod,zrho01,pot,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical) REDUCTION(max: time_pw)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ia,is,ias,vxpb,ist3, wf1ir,wf2ir,prodir,potir,vxpsiirtmp,vxpsigktmp,potmt0,potir0, igk,ifg,prod,zrho01,pot,j,ifit2,rhoG0,tc,td,ist2)REDUCTION(max: time_coul) REDUCTION(max: time_fft) REDUCTION(max: time_prod) REDUCTION(max: time_rs) REDUCTION(max: time_misc) REDUCTION(max: time_critical) REDUCTION(max: time_pw)
       !ist2 
 
          !write(*,*)"pēc", OMP_GET_THREAD_NUM()
@@ -332,57 +337,61 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          Allocate (potir0(ngrtot))
          Allocate (vxpsiirtmp(ngrtot))
          Allocate (vxpsigktmp(ngkmax))
+         Allocate (vxpb(maxpbf2,lmmaxvr,natmtot))
 
-         Do ist2 = 1, nomax
+         Do ist3 = 1, nstfv
+           call timesec(tc)
 
-            call timesec(tc)
-            wf2ir(:) = 0.d0
-            Do igk = 1, Gkqset%ngk (1, jk)
-               ifg = igfft (Gkqset%igkig(igk, 1, jk))
-               wf2ir(ifg) = t1*wf2%gk(igk, ist2)
+           vxpb=0d0
+!           do is=1,nspecies
+!             do ia=1,natoms(is)
+!               ias=idxas(ia,is)
+!$OMP DO SCHEDULE(DYNAMIC)
+               do ist2 = 1, nomax
+                 call WFprodcoul3(ist3,wf1,ist2,wf2,vxpb,qmtlm(:,:,ist2))
+               enddo
+!$OMP END DO
+!             enddo
+!           end Do
+
+
+
+!$OMP CRITICAL
+               vxpbtot(:,:,:,ist3)=vxpbtot(:,:,:,ist3)+vxpb(:,:,:)
+!$OMP END CRITICAL
+!$OMP BARRIER
+
+           call timesec(td)
+           time_rs=time_rs+td-tc
+
+            call timesec(tc)          
+            wf1ir(:) = 0.d0 
+            Do igk = 1, Gkqset%ngk (1, ik)
+               ifg = igfft (Gkqset%igkig(igk, 1, ik))
+               wf1ir(ifg) = t1*wf1%gk(igk, ist3)
             End Do
-            Call zfftifc (3, ngrid, 1, wf2ir(:))
-
+            Call zfftifc (3, ngrid, 1, wf1ir(:))
             call timesec(td)
             time_fft=time_fft+td-tc
 !$OMP DO SCHEDULE(DYNAMIC)
-            Do ist3 = 1, nstfv
 
-               vxpsiirtmp(:) = 0.d0
-               call timesec(tc)          
-               wf1ir(:) = 0.d0 
-               Do igk = 1, Gkqset%ngk (1, ik)
-                  ifg = igfft (Gkqset%igkig(igk, 1, ik))
-                  wf1ir(ifg) = t1*wf1%gk(igk, ist3)
+            Do ist2 = 1, nomax
+
+               call timesec(tc)
+               wf2ir(:) = 0.d0
+               Do igk = 1, Gkqset%ngk (1, jk)
+                 ifg = igfft (Gkqset%igkig(igk, 1, jk))
+                 wf2ir(ifg) = t1*wf2%gk(igk, ist2)
                End Do
-               Call zfftifc (3, ngrid, 1, wf1ir(:))
+               Call zfftifc (3, ngrid, 1, wf2ir(:))
+
                call timesec(td)
                time_fft=time_fft+td-tc
 
+               vxpsiirtmp(:) = 0.d0
+
    ! calculate the complex overlap density
    !-----------------------------------------------------------------------------------
-               call timesec(tc)
-!               call WFprodrs3(ist3,wf1,ist2,wf2,prod)
-               call WFprodcoul3(ist3,wf1,ist2,wf2,prod,qmtlm)
-!debug
-if(.false.)then
- open(11,file='mt_test.dat',status='replace')
- do ir=1, nrmt(1)
- write(11,*) spr(ir,1),dble(prod%mtrlm(1,ir,1,1))
-!  write(11,*) spr(ir,is),",",dble(zpot(1,ir))*y00 
- enddo
- close(11)
- stop
-endif
-
-!$OMP CRITICAL
-               vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
-!$OMP END CRITICAL
-
-!               call WFprodrs3(ist2,wf2,ist3,wf1,prod)
-!               call WFprodrs(ist2,wf2,ist3,wf1,prod)
-               call timesec(td)
-               time_rs=time_rs+td-tc
                call timesec(tc)
                prodir(:)=conjg(wf2ir(:))*wf1ir(:)
                call timesec(td)
@@ -437,7 +446,7 @@ endif
 
                   Call coulomb_potential3 (nrcmt, rcmt, ngvec, gqc, igq0, &
                   & jlgqr, ylmgq, sfacgq, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), pot%mtrlm(:,:,:,1), potir, zrho02,v,qmtlm, &
+                  & prodir(:), pot%mtrlm(:,:,:,1), potir, zrho02,v,qmtlm(:,:,ist2), &
                   & cutoff=cutoff, hybrid_in=.true.,&
                   & rpseudo_in=rpseudo,rpseudomat=rpseudomat(:,:,:,1))
 
@@ -538,9 +547,20 @@ endif
                call timesec(td)
                time_critical=time_critical+td-tc
 !write(*,*) ist2,ist3               
-            End Do ! ist3
+            End Do ! ist2
 !$OMP END DO NOWAIT
-         End Do ! ist2
+         End Do ! ist3
+
+
+         call timesec(tc)
+!$OMP DO
+         do ist3=1,nstsv
+           call expandinpb(vxpbtot(:,:,:,ist3),prod)
+           vxpsimt(:,:,:,ist3)=vxpsimt(:,:,:,ist3)+prod%mtrlm(:,:,:,1)*wkptnr(jk)
+         enddo
+!$OMP END DO NOWAIT
+         call timesec(td)
+         time_rs=time_rs+td-tc
 
          call WFRelease(prod)
          call WFRelease(pot)
