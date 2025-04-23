@@ -118,6 +118,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
 
       ik  = kset%ikp2ik(ikp) ! 1d reduced index -> 1d non-reduced k-point index
       call genWF(ik,wf1)
+      call orderWF(wf1)
 !      call genWFinMT(wf1)
 !      call genWFonMesh(wf1)
 !      deallocate(wf1%mtrlm)
@@ -269,6 +270,7 @@ if (print_times) write(*,*) 'qpt_init :', tb-ta
 call timesec(ta)
 
          call genWF(jk,wf2)
+         call orderWF(wf2)
          call genWFinMT(wf2)
          call genWFonMesh(wf2)
          deallocate(wf2%mtrlm)

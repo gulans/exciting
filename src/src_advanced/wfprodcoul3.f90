@@ -30,9 +30,10 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
 
       integer :: is,ia
       integer :: ias
-      integer :: l1,l2,m1,m2,lm1,lm2,io1,io2,if1,if2,ilo1,ilo2,lmmaxprod,lm,ir,l,m,ilo,io,if2offset
-      integer :: if1offset
+      integer :: l1,l2,m1,m2,lm1,lm2,io1,io2,ilo1,ilo2,lmmaxprod,lm,ir,l,m,ilo,io
       integer :: irad,jrad,irad1,irad2,ipbf,radoffset
+      integer :: if1,if2,ifoffset1,ifoffset2
+      integer :: radoffset1, radoffset2
       integer :: lmax,llow,lhi
       integer :: blkstart,chunksize,iroffset,LMoffset
       integer, parameter :: blksize=64
@@ -54,38 +55,41 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       allocate(H(lmmaxvr,maxradial,maxradial))
       allocate(T(maxpbf2,lmmaxvr,lmmaxvr))
 
-!      do is=1,nspecies
-!        do ia=1,natoms(is)
           ias=idxas(ia,is)
 
           H=0d0
           F=0d0
-          
-          if2=0
+          if2=1
           do irad2=1,nradial(is)
             l2=lrad(irad2,is)
+!            radoffset2=radialmap(irad2,is)+l2
+            ifoffset2=if2+l2            
+
             do m2=-l2,l2
               lm2=idxlm(l2,m2)
-              if2=if2+1
-              if1=0
 
+              if1=1
               do irad1=1,nradial(is)
                 l1=lrad(irad1,is)
+                ifoffset1=if1+l1
+!                radoffset1=radialmap(irad1,is)+l1
                 do m1=-l1,l1
                   lm1=idxlm(l1,m1)
-                  if1=if1+1
-                  zt=wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))
-
+!                  zt=wf1%mt(radoffset1+m1,ist1,ias)*conjg(wf2%mt(radoffset2+m2,ist2,ias))
+!                  zt=wf1%mt(radoffset1+m1,ist1,ias)*conjg(wf2%mtordered(ifoffset2+m2,ist2,ias))
+                  zt=wf1%mtordered(ifoffset1+m1,ist1,ias)*conjg(wf2%mtordered(ifoffset2+m2,ist2,ias))
                   do L=abs(l1-l2),min(lmax,l1+l2),2
                     M=m1-m2
                     if ((M.le.L).and.(M.ge.-L)) then
                       LM=idxlm(L,M)
-                      H(LM,irad1,irad2)=H(LM,irad1,irad2)+gntyyl(L,lm2,lm1)*zt !wf1%mt(if1,ist1,ias)*conjg(wf2%mt(if2,ist2,ias))                
+                      H(LM,irad1,irad2)=H(LM,irad1,irad2)+gntyyl(L,lm2,lm1)*zt 
                     endif 
                   enddo
                 enddo
+                if1=if1+2*l1+1
               enddo
             enddo
+            if2=if2+2*l2+1
           enddo
 
           do irad2=1,nradial(is)
@@ -119,10 +123,12 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
 
 
           T=0d0
-          if2=0
+          if2=1
           do irad2=1,nradial(is)
             U=0d0
             l2=lrad(irad2,is)
+            ifoffset2=if2+l2
+!            radoffset2=radialmap(irad2,is)+l2
             radoffset=0
             do l1=0,lmax
               do m1=-l1,l1
@@ -135,13 +141,10 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
             enddo
             do m2=-l2,l2
               lm2=idxlm(l2,m2)
-              if2=if2+1
-              call zaxpy(npbf2(0,ias)*lmmaxvr, wf2%mt(if2,ist2,ias),U(1,1),1,T(1,1,lm2),1)
-!              do lm1=1,lmmaxvr
-!                T(1:npbf2(0,ias),lm1,lm2)=T(1:npbf2(0,ias),lm1,lm2)+U(1:npbf2(0,ias),lm1)*wf2%mt(if2,ist2,ias)
-!              enddo
+!              call zaxpy(npbf2(0,ias)*lmmaxvr, wf2%mt(radoffset2+m2,ist2,ias),U(1,1),1,T(1,1,lm2),1)
+              call zaxpy(npbf2(0,ias)*lmmaxvr, wf2%mtordered(ifoffset2+m2,ist2,ias), U(1,1),1,T(1,1,lm2),1)
             enddo
-
+            if2=if2+2*l2+1
           enddo
 
           do l2=0,lmax
@@ -162,11 +165,6 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
             enddo
           enddo
 
-
-          
- 
-!        enddo
-!      enddo
       
 deallocate(H,T)
 

@@ -90,6 +90,7 @@ Module mod_eigensystem
 ! Wave functions in different representations
       Type WFType
         complex(8), allocatable :: mt(:,:,:)      ! coefficients of MT functions
+        complex(8), allocatable :: mtordered(:,:,:) ! coefficients of MT functions ordered wrt l
         complex(8), allocatable :: mtrlm(:,:,:,:) ! expansion in spherical harmonics
         complex(8), allocatable :: mtmesh(:,:,:,:)! values on a real-space mesh
         complex(8), allocatable :: gk(:,:)        ! coefficients of PWs
@@ -529,6 +530,9 @@ Contains
 
      if (allocated(wf%mt)) then
        deallocate(wf%mt)
+     endif
+     if (allocated(wf%mtordered)) then
+       deallocate(wf%mtordered)
      endif
 !     nullify(wf%mt)
      if (allocated(wf%gk)) then
