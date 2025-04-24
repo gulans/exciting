@@ -7,7 +7,7 @@ Module mod_radial
    integer :: maxradial                   ! maximum number radial functions among all species
    integer, allocatable :: nradial(:)     ! number of radial functions for each species
    integer, allocatable :: lrad(:,:)      ! angular momentum corresponding to each radial function
-   integer, allocatable :: radialmap(:,:) ! irad,ias -> offset for lm for a given radial function
+   integer, allocatable :: nlradial(:,:)     ! number of radial functions for each species for each l and each species
  
    real(8), allocatable :: radial2(:,:,:)  
    integer :: maxradial2                   ! maximum number radial functions among all species
@@ -63,14 +63,21 @@ Contains
 ! find the maximum number of radial functions per atom
    maxradial=0
    allocate(nradial(nspecies))
+   allocate(nlradial(0:lmax,nspecies))
 
+   nlradial=0
    do is=1, nspecies
      napw(is)=0
      do l=0,lmax
        napw(is)=napw(is)+apword(l,is)
+       nlradial(l,is)=nlradial(l,is)+apword(l,is)
      enddo
      nradial(is) = nlorb(is)+napw(is)
      maxradial = max(maxradial,nradial(is))
+     Do ilo = 1, nlorb (is)
+       nlradial(lorbl (ilo, is),is)=nlradial(lorbl (ilo, is),is)+1
+     End Do
+
 !     write(*,*) napw,nlorb(is),nradial(is)
    enddo 
 !   write(*,*) maxradial
@@ -78,102 +85,34 @@ Contains
    allocate(radial(nrmtmax,maxradial,natmtot))
    write(*,*) 'radial', nrmtmax*maxradial*natmtot*8/1d6,' Mb allocated'
    allocate(lrad(maxradial,nspecies))
-   allocate(radialmap(maxradial,nspecies))
    
    lrad(:,:)=-1 ! for debugging purposes
 
    allocate(tmpmap(maxradial))
 !sequence is ordered w.r.t. l
-if (.true.) then
    do is=1, nspecies
      
-     irad=0
-     ifun=1
-     do l=0,lmax
-       do io = 1, apword (l, is)
-         irad=irad+1
-         tmpmap(irad)=ifun
-         ifun=ifun+2*l+1
-       enddo
-     enddo
-     Do ilo = 1, nlorb (is)
-       l = lorbl (ilo, is)
-       irad=irad+1
-       tmpmap(irad)=ifun
-       ifun=ifun+2*l+1
-     End Do
-
-
 
      do ia=1,natoms(is)
        ias=idxas(ia,is)
        irad=0
-       iapw=0
        do l=0,lmax
          do io = 1, apword (l, is)
            irad=irad+1
-           iapw=iapw+1
            lrad(irad,is)=l          
            radial(1:nrmt(is),irad,ias)=apwfr(1:nrmt(is),1,io,l,ias) 
-           radialmap(irad,is)=tmpmap(iapw)
          enddo
          Do ilo = 1, nlorb (is)
            if (l.eq.lorbl (ilo, is)) then
              irad=irad+1
              lrad(irad,is)=l
              radial(1:nrmt(is),irad,ias)=lofr(1:nrmt(is),1,ilo,ias)
-             radialmap(irad,is)=tmpmap(napw(is)+ilo)
            endif
          
          End Do
        enddo
      enddo
    enddo
-
-else
-   do is=1, nspecies
-     do ia=1,natoms(is)
-       ias=idxas(ia,is)
-       irad=0
-       ifun=1
-       do l=0,lmax
-         do io = 1, apword (l, is)
-           irad=irad+1
-           lrad(irad,is)=l
-           radial(1:nrmt(is),irad,ias)=apwfr(1:nrmt(is),1,io,l,ias)
-           radialmap(irad,is)=ifun
-           ifun=ifun+2*l+1
-         enddo
-       enddo
-       Do ilo = 1, nlorb (is)
-         l = lorbl (ilo, is)
-         irad=irad+1
-         lrad(irad,is)=l
-         radial(1:nrmt(is),irad,ias)=lofr(1:nrmt(is),1,ilo,ias)
-         radialmap(irad,is)=ifun
-         ifun=ifun+2*l+1
-       End Do
-     enddo
-   enddo
-endif
-
-!----
-
-   do is=1, nspecies
-!     do ia=1,natoms(is)
-     write(*,*) 'is=',is
-     do l=0,lmax
-       jrad=0
-       do irad=1,nradial(is) 
-         if (l.eq.lrad(irad,is)) jrad=jrad+1
-       enddo
-       write(*,*) is,l,jrad
-     enddo
-   enddo
-
-! ----
-
-
 
 
 !stop
@@ -186,7 +125,7 @@ endif
      if (allocated(radial)) deallocate(radial)
      if (allocated(nradial)) deallocate(nradial)
      if (allocated(lrad)) deallocate(lrad)
-     if (allocated(radialmap)) deallocate(radialmap)
+     if (allocated(nlradial)) deallocate(nlradial)
 
    end subroutine release_radial
 
