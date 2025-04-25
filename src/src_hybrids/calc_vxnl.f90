@@ -351,6 +351,7 @@ else ! Use oepvnl
 !    deallocate(gntyyyT)
     deallocate(gntlyy)
     deallocate(gntyyl)
+    deallocate(gntyly)
 
 
     if (rank==0) write(*,*) '-----------------'

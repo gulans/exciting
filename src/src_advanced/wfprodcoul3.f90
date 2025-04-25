@@ -31,7 +31,7 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       integer :: ias
       integer :: l1,l2,m1,m2,lm1,lm2,io1,io2,ilo1,ilo2,lmmaxprod,lm,ir,l,m,ilo,io
       integer :: irad,jrad,irad1,irad2,ipbf,radoffset
-      integer :: if1,if2,ifoffset1,ifoffset2
+      integer :: if1,if2,ifoffset1,ifoffset2,ifl2
       integer :: radoffset1, radoffset2
       integer :: lmax
       integer :: blkstart,chunksize,iroffset,LMoffset
@@ -45,7 +45,7 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
 !qlm=0d0 !(:,ias)
       lmax= input%groundstate%lmaxvr
 
-      allocate(T(maxpbf2,lmmaxvr,2*lmax+1))
+      allocate(T(maxpbf2,2*lmax+1,2*lmax+1))
 
           ias=idxas(ia,is)
 
@@ -82,9 +82,9 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
             do irad1=1,nradial(is)
               l1=lrad(irad1,is)
               do L=abs(l1-l2),min(lmax,l1+l2),2
-                LM=idxlm(L,-L)+L
+!                LM=idxlm(L,-L)+L
+                LM=L*(L+1)+1
                 do M=-L,L
-!                  LM=idxlm(L,M)
                   F(1:npbf(L,ias),LM+m)=F(1:npbf(L,ias),LM+M)+H(LM+M,irad1)*uproducts(1:npbf(L,ias),L,irad1,irad2,ias) 
                 enddo
               enddo
@@ -107,44 +107,49 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
 !-----------------
 
 
-          if2=1
+          ifl2=1
           radoffset2=0
           do l2=0,lmax 
-            T(:,:,1:2*l2+1)=0d0
-            do irad2=1,nlradial(l2,is)
-              U=0d0
+            lm2=idxlm(l2,-l2)+l2
+            radoffset1=0
+            do l1=0,lmax
+              lm1=idxlm(l1,-l1)+l1
+              T(:,1:2*l2+1,1:2*l1+1)=0d0
 
-              ifoffset2=if2+l2
-              radoffset1=0
-              do l1=0,lmax
-                lm1=idxlm(l1,-l1)+l1
+              if2=ifl2
+              do irad2=1,nlradial(l2,is)
+                ifoffset2=if2+l2
+
                 do m1=-l1,l1
                   G=0d0
                   do irad1=1,npbf(l1,ias)
                     G(1:npbf2(0,ias))=G(1:npbf2(0,ias))+F(irad1,lm1+m1)*uproducts3(1:npbf2(0,ias),radoffset1+irad1,radoffset2+irad2,ias)
                   enddo
                   do m2=-l2,l2
-                    T(1:npbf2(0,ias),lm1+m1,l2+m2+1)=T(1:npbf2(0,ias),lm1+m1,l2+m2+1)+G(1:npbf2(0,ias))*wf2%mtordered(ifoffset2+m2,ist2,ias)
+                    T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)=T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)+G(1:npbf2(0,ias))*wf2%mtordered(ifoffset2+m2,ist2,ias)
                   enddo
                 enddo
-                radoffset1=radoffset1+npbf(l1,ias)
+                if2=if2+2*l2+1
               enddo
-              if2=if2+2*l2+1
+
+
+              radoffset1=radoffset1+npbf(l1,ias)
+
+              do L=abs(l1-l2),min(lmax,l1+l2),2
+                do m1=-l1,l1
+                  LM=L*(L+1)+m1+1
+                  do m2=max(-l2,-m1-L),min(l2,-m1+L)
+                    FF(1:npbf2(0,ias),LM+m2)=FF(1:npbf2(0,ias),LM+m2)+T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)*gntlyy(lm2+m2,lm1+m1,L)
+                  enddo
+                enddo
+              enddo
+
             enddo
+
             radoffset2=radoffset2+nlradial(l2,is)
 
-            do m2=-l2,l2
-              lm2=idxlm(l2,m2)
-              do l1=0,lmax
-                lm1=idxlm(l1,-l1)+l1
-                do L=abs(l1-l2),min(lmax,l1+l2),2
-                  LM=idxlm(L,-L)+L+m2
-                  do m1=max(-l1,-m2-L),min(l1,-m2+L)
-                    FF(1:npbf2(0,ias),LM+m1)=FF(1:npbf2(0,ias),LM+m1)+T(1:npbf2(0,ias),lm1+m1,l2+m2+1)*gntlyy(lm1+m1,L,lm2)
-                  enddo
-                enddo
-              enddo 
-            enddo
+            ifl2=if2
+
           enddo
 
       
