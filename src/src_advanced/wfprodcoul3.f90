@@ -38,7 +38,7 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       complex(8) :: zt,zt2
       real(8) :: ta,tb
       complex(8),allocatable :: T(:,:,:)
-      complex(8) :: F(maxpbf,lmmaxvr),U(maxpbf2,lmmaxvr), H(lmmaxvr,maxradial) !,G(lmmaxvr,maxradial)
+      complex(8) :: F(maxpbf,lmmaxvr),U(maxpbf2,lmmaxvr), H(lmmaxvr,maxradial) ,G(maxpbf2)
  
  
 ! call timesec(ta)
@@ -119,16 +119,15 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
               do l1=0,lmax
                 lm1=idxlm(l1,-l1)+l1
                 do m1=-l1,l1
+                  G=0d0
                   do irad1=1,npbf(l1,ias)
-                    U(1:npbf2(0,ias),lm1+m1)=U(1:npbf2(0,ias),lm1+m1)+F(irad1,lm1+m1)*uproducts3(1:npbf2(0,ias),radoffset1+irad1,radoffset2+irad2,ias)
+                    G(1:npbf2(0,ias))=G(1:npbf2(0,ias))+F(irad1,lm1+m1)*uproducts3(1:npbf2(0,ias),radoffset1+irad1,radoffset2+irad2,ias)
+                  enddo
+                  do m2=-l2,l2
+                    T(1:npbf2(0,ias),lm1+m1,l2+m2+1)=T(1:npbf2(0,ias),lm1+m1,l2+m2+1)+G(1:npbf2(0,ias))*wf2%mtordered(ifoffset2+m2,ist2,ias)
                   enddo
                 enddo
                 radoffset1=radoffset1+npbf(l1,ias)
-              enddo
-              do m2=-l2,l2
-                do lm1=1,lmmaxvr
-                  T(1:npbf2(0,ias),lm1,l2+m2+1)=T(1:npbf2(0,ias),lm1,l2+m2+1)+U(1:npbf2(0,ias),lm1)*wf2%mtordered(ifoffset2+m2,ist2,ias)
-                enddo
               enddo
               if2=if2+2*l2+1
             enddo

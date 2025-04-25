@@ -29,6 +29,7 @@ Module mod_radial
 
    real(8), allocatable :: uproducts(:,:,:,:,:) ! expansion coefficients for u-times-u in terms of product basis
    real(8), allocatable :: uproducts2(:,:,:,:,:) ! expansion coefficients for u-times-u in terms of product basis
+!DIR$ ATTRIBUTES ALIGN : 64 :: uproducts3
    real(8), allocatable :: uproducts3(:,:,:,:) ! expansion coefficients for u-times-u in terms of product basis
 
 
@@ -74,6 +75,7 @@ Contains
      enddo
      nradial(is) = nlorb(is)+napw(is)
      maxradial = max(maxradial,nradial(is))
+     if ((maxradial/4)*4.lt.maxradial) maxradial=(maxradial/4+1)*4
      Do ilo = 1, nlorb (is)
        nlradial(lorbl (ilo, is),is)=nlradial(lorbl (ilo, is),is)+1
      End Do
@@ -1191,6 +1193,7 @@ endif
      enddo
      maxradial2=max(maxradial2,nradial2(ias))
    enddo
+   if ((maxradial2/4)*4.lt.maxradial2) maxradial2=(maxradial2/4+1)*4
 
    allocate(radial2(nrmtmax,maxradial2,natmtot))
 
