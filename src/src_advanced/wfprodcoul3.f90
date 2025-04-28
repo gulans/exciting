@@ -30,7 +30,7 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       integer :: is,ia
       integer :: ias
       integer :: l1,l2,m1,m2,lm1,lm2,io1,io2,ilo1,ilo2,lmmaxprod,lm,ir,l,m,ilo,io
-      integer :: irad,jrad,irad1,irad2,ipbf,radoffset
+      integer :: irad,jrad,irad1,irad2,ipbf,radoffset, padpbf2
       integer :: if1,if2,ifoffset1,ifoffset2,ifl2
       integer :: radoffset1, radoffset2
       integer :: lmax
@@ -39,15 +39,20 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       real(8) :: ta,tb
       complex(8),allocatable :: T(:,:,:)
       complex(8) :: F(maxpbf,lmmaxvr),U(maxpbf2,lmmaxvr), H(lmmaxvr,maxradial) ,G(maxpbf2)
+      real(8) :: reG(maxpbf2),imG(maxpbf2)
  
  
 ! call timesec(ta)
 !qlm=0d0 !(:,ias)
+      
       lmax= input%groundstate%lmaxvr
+
 
       allocate(T(maxpbf2,2*lmax+1,2*lmax+1))
 
           ias=idxas(ia,is)
+          padpbf2=npbf2(0,ias)
+          if ((padpbf2/4)*4.lt.padpbf2) padpbf2=(padpbf2/4+1)*4
 
           F=0d0
 
@@ -121,12 +126,15 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
                 ifoffset2=if2+l2
 
                 do m1=-l1,l1
-                  G=0d0
+                  reG=0d0
+                  imG=0d0
                   do irad1=1,npbf(l1,ias)
-                    G(1:npbf2(0,ias))=G(1:npbf2(0,ias))+F(irad1,lm1+m1)*uproducts3(1:npbf2(0,ias),radoffset1+irad1,radoffset2+irad2,ias)
+                    ReG(1:padpbf2)=ReG(1:padpbf2)+dble(F(irad1,lm1+m1))*uproducts3(1:padpbf2,radoffset1+irad1,radoffset2+irad2,ias)
+                    ImG(1:padpbf2)=ImG(1:padpbf2)+dimag(F(irad1,lm1+m1))*uproducts3(1:padpbf2,radoffset1+irad1,radoffset2+irad2,ias)
                   enddo
+                  G(1:padpbf2)=dcmplx(ReG(1:padpbf2),ImG(1:padpbf2))
                   do m2=-l2,l2
-                    T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)=T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)+G(1:npbf2(0,ias))*wf2%mtordered(ifoffset2+m2,ist2,ias)
+                    T(1:padpbf2,l2+m2+1,l1+m1+1)=T(1:padpbf2,l2+m2+1,l1+m1+1)+G(1:padpbf2)*wf2%mtordered(ifoffset2+m2,ist2,ias)
                   enddo
                 enddo
                 if2=if2+2*l2+1

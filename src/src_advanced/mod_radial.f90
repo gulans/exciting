@@ -1352,7 +1352,7 @@ endif
    call release_uproducts_v3
    allocate(uproducts3(maxpbfused2,maxradial2,maxradial,natmtot))
    write(*,*) 'uproducts3', maxpbfused2*maxradial2*maxradial*natmtot*8/1d6,' Mb allocated'
-   uproducts2=0d0
+   uproducts3=0d0
 
    do is=1,nspecies
      r2(1:nrmt(is))=spr(1:nrmt(is),is)*spr(1:nrmt(is),is)
