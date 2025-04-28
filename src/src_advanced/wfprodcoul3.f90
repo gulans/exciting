@@ -37,7 +37,8 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       integer :: blkstart,chunksize,iroffset,LMoffset
       complex(8) :: zt,zt2
       real(8) :: ta,tb
-      complex(8),allocatable :: T(:,:,:)
+!      complex(8),allocatable :: T(:,:,:)
+      complex(8),allocatable :: T2(:,:)
       complex(8) :: F(maxpbf,lmmaxvr),U(maxpbf2,lmmaxvr), H(lmmaxvr,maxradial) ,G(maxpbf2)
       real(8) :: reG(maxpbf2),imG(maxpbf2)
  
@@ -48,7 +49,8 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
       lmax= input%groundstate%lmaxvr
 
 
-      allocate(T(maxpbf2,2*lmax+1,2*lmax+1))
+!      allocate(T(maxpbf2,2*lmax+1,2*lmax+1))
+      allocate(T2(maxpbf2,(2*lmax+1)*(2*lmax+1)))
 
           ias=idxas(ia,is)
           padpbf2=npbf2(0,ias)
@@ -119,7 +121,8 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
             radoffset1=0
             do l1=0,lmax
               lm1=idxlm(l1,-l1)+l1
-              T(:,1:2*l2+1,1:2*l1+1)=0d0
+!              T(:,1:2*l2+1,1:2*l1+1)=0d0
+              T2(:,1:(2*l1+1)*(2*l2+1))=0d0
 
               if2=ifl2
               do irad2=1,nlradial(l2,is)
@@ -134,7 +137,9 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
                   enddo
                   G(1:padpbf2)=dcmplx(ReG(1:padpbf2),ImG(1:padpbf2))
                   do m2=-l2,l2
-                    T(1:padpbf2,l2+m2+1,l1+m1+1)=T(1:padpbf2,l2+m2+1,l1+m1+1)+G(1:padpbf2)*wf2%mtordered(ifoffset2+m2,ist2,ias)
+!                    T(1:padpbf2,l2+m2+1,l1+m1+1)=T(1:padpbf2,l2+m2+1,l1+m1+1)+G(1:padpbf2)*wf2%mtordered(ifoffset2+m2,ist2,ias)
+                    T2(1:padpbf2,l2+1+(l1+m1)*(2*l2+1)+m2)=T2(1:padpbf2,l2+1+(l1+m1)*(2*l2+1)+m2)+G(1:padpbf2)*wf2%mtordered(ifoffset2+m2,ist2,ias)
+!                    T2(1:npbf2(0,ias),l2+1+(l1+m1)*(2*l2+1)+m2)=T2(1:npbf2(0,ias),l2+1+(l1+m1)*(2*l2+1)+m2)+G(1:npbf2(0,ias))*wf2%mtordered(ifoffset2+m2,ist2,ias)
                   enddo
                 enddo
                 if2=if2+2*l2+1
@@ -147,7 +152,9 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
                 do m1=-l1,l1
                   LM=L*(L+1)+m1+1
                   do m2=max(-l2,-m1-L),min(l2,-m1+L)
-                    FF(1:npbf2(0,ias),LM+m2)=FF(1:npbf2(0,ias),LM+m2)+T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)*gntlyy(lm2+m2,lm1+m1,L)
+!                    FF(1:npbf2(0,ias),LM+m2)=FF(1:npbf2(0,ias),LM+m2)+T(1:npbf2(0,ias),l2+m2+1,l1+m1+1)*gntlyy(lm2+m2,lm1+m1,L)
+!                    FF(1:npbf2(0,ias),LM+m2)=FF(1:npbf2(0,ias),LM+m2)+T2(1:npbf2(0,ias),l2+1+(l1+m1)*(2*l2+1)+m2)*gntlyy(lm2+m2,lm1+m1,L)
+                    FF(1:padpbf2,LM+m2)=FF(1:padpbf2,LM+m2)+T2(1:padpbf2,l2+1+(l1+m1)*(2*l2+1)+m2)*gntlyy(lm2+m2,lm1+m1,L)
                   enddo
                 enddo
               enddo
@@ -161,7 +168,8 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
           enddo
 
       
-deallocate(T)
+!deallocate(T)
+deallocate(T2)
 
 
 ! call timesec(tb)

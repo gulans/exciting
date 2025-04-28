@@ -349,7 +349,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
            do is=1,nspecies
              do ia=1,natoms(is)
                ias=idxas(ia,is)
-!$OMP DO 
+!$OMP DO SCHEDULE(DYNAMIC)
                do ist2 = 1, nomax
                  call WFprodcoul3(ia,is,ist3,wf1,ist2,wf2,vxpb(:,:,ias),qmtlm(:,ias,ist2))
                enddo
