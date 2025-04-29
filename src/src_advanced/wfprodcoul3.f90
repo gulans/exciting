@@ -50,11 +50,11 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
 
 
 !      allocate(T(maxpbf2,2*lmax+1,2*lmax+1))
-      allocate(T2(maxpbf2,(2*lmax+1)*(2*lmax+1)))
 
           ias=idxas(ia,is)
           padpbf2=npbf2(0,ias)
           if ((padpbf2/4)*4.lt.padpbf2) padpbf2=(padpbf2/4+1)*4
+          allocate(T2(padpbf2,(2*lmax+1)*(2*lmax+1)))
 
           F=0d0
 
@@ -72,12 +72,16 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
               do irad1=1,nradial(is)
                 l1=lrad(irad1,is)
                 ifoffset1=if1+l1
-                lm1=idxlm(l1,-l1)+l1
+!                lm1=idxlm(l1,-l1)+l1
+                lm1=l1*(l1+1)+1
 
                 do L=abs(l1-l2),min(lmax,l1+l2),2
-                  LM=idxlm(L,-L)+L-m2
+!                  LM=idxlm(L,-L)+L-m2
+!                  LM=L*(L+1)+1-m2
                   do m1=max(-l1,m2-L),min(l1,m2+L)
-                    H(LM+m1,irad1)=H(LM+m1,irad1)+gntyly(lm1+m1,L,lm2)*wf1%mtordered(ifoffset1+m1,ist1,ias)*zt
+!                    H(LM+m1,irad1)=H(LM+m1,irad1)+gntyly(lm1+m1,L,lm2)*wf1%mtordered(ifoffset1+m1,ist1,ias)*zt
+!                    H(L*(L+1)+1-m2+m1,irad1)=H(L*(L+1)+1-m2+m1,irad1)+gntyly(lm1+m1,L,lm2)*wf1%mtordered(ifoffset1+m1,ist1,ias)*zt
+                    H(L*(L+1)+1-m2+m1,irad1)=H(L*(L+1)+1-m2+m1,irad1)+gntyly(lm1+m1,L,lm2)*wf1%mtordered(ifoffset1+m1,ist1,ias)*zt
                   enddo
                 enddo
                 if1=if1+2*l1+1
@@ -90,9 +94,9 @@ subroutine WFprodcoul3(ia,is,ist1,wf1,ist2,wf2,FF,qlm)
               l1=lrad(irad1,is)
               do L=abs(l1-l2),min(lmax,l1+l2),2
 !                LM=idxlm(L,-L)+L
-                LM=L*(L+1)+1
+!               LM=L*(L+1)+1
                 do M=-L,L
-                  F(1:npbf(L,ias),LM+m)=F(1:npbf(L,ias),LM+M)+H(LM+M,irad1)*uproducts(1:npbf(L,ias),L,irad1,irad2,ias) 
+                  F(1:npbf(L,ias),L*(L+1)+1+M)=F(1:npbf(L,ias),L*(L+1)+1+M)+H(L*(L+1)+1+M,irad1)*uproducts(1:npbf(L,ias),L,irad1,irad2,ias) 
                 enddo
               enddo
             enddo
