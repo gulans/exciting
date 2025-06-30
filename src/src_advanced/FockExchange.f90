@@ -629,33 +629,34 @@ if (print_times) write(*,*) 'vcv :',tb-ta
 
       vxpsimt=vxpsimt+zvclmt
       Allocate (wf1ir(ngrtot))
+      Allocate (vxpsiirtmp(ngrtot))
 call timesec(ta)
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist1,ist3,ztir,igk,ztmt)
-!$OMP DO collapse(2)
+! !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(ist1,ist3,ztir,igk,ztmt)
+! !$OMP DO collapse(2)
       Do ist1 = 1, nstsv
 
 !!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method
-!          if(.false.)then
-!          !write(*,*)"q0corr",q0corr
-!          !If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
-!             ! Evaluate wavefunction in real space
-!             wf1ir(:) = 0.d0
-!             Do igk = 1, Gkqset%ngk (1, ik)
-!                ifg = igfft (Gkqset%igkig(igk, 1, ik))
-!                wf1ir(ifg) = t1*wf1%gk(igk, ist1)
-!             End Do
-!             Call zfftifc (3, ngrid, 1, wf1ir(:))
-! !write(*,*)"FockExchange korekcija notiek"
-!             ! Apply q=0 correction to MT part
-!             vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
+         if(input%groundstate%hybrid%singularity.eq."exc")then
+            write(*,*)"q0corr",q0corr
+            If ((ist1.le.nomax).and.(q0corr.ne.0.d0)) Then
+               ! Evaluate wavefunction in real space
+               wf1ir(:) = 0.d0
+               Do igk = 1, Gkqset%ngk (1, ik)
+                  ifg = igfft (Gkqset%igkig(igk, 1, ik))
+                  wf1ir(ifg) = t1*wf1%gk(igk, ist1)
+               End Do
+               Call zfftifc (3, ngrid, 1, wf1ir(:))
 
-!             ! Apply correction to IR part and roll back correction to momentum space
-!             vxpsiirtmp(:) = q0corr*wf1ir(:)*cfunir(:)
-!             Call zfftifc (3, ngrid,-1,vxpsiirtmp)
-!             Do igk=1, Gkqset%ngk (1, ik)
-!                vxpsiirgk(igk, ist1)=vxpsiirgk(igk, ist1)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
-!             End Do
-!          End If 
+               vxpsimt(:,:,:,ist1) = vxpsimt(:,:,:,ist1) + q0corr*wf1%mtrlm(:,:,:,ist1)
+
+               ! Apply correction to IR part and roll back correction to momentum space
+               vxpsiirtmp(:) = q0corr*wf1ir(:)*cfunir(:)
+               Call zfftifc (3, ngrid,-1,vxpsiirtmp)
+               Do igk=1, Gkqset%ngk (1, ik)
+                  vxpsiirgk(igk, ist1)=vxpsiirgk(igk, ist1)+vxpsiirtmp(igfft(Gkqset%igkig(igk, 1, ik)))*sqrt(Omega) ! pace IR
+               End Do
+            endif ! (ist1.le.nomax).and.(q0corr.ne.0.d0)
+         End If ! singularity.eq.exc
 ! !!!!!!!!!!!!!!!!!!!!!!!!!! KOREKCIJA ko vajadzētu atslēgt Aux funct method//
          ! Write(*,*) 'ist1=',ist1
          Do ist3 = 1, nstsv
@@ -671,7 +672,7 @@ call timesec(ta)
 
          End Do ! ist3
       End Do ! ist1
-!$OMP END PARALLEL
+! !$OMP END PARALLEL
 call timesec(tb)
 
 if (print_times) write(*,*) 'Matrix :',tb-ta
@@ -695,6 +696,7 @@ end if
       Deallocate (wfcr1)
       Deallocate (wf1ir)
       Deallocate (zvcltp, zfmt, zfmt0)
+      Deallocate (vxpsiirtmp)
 !      Deallocate (vxpsiirtmp)   
 !      Deallocate (vxpsigktmp)   
       Deallocate (zvclmt) 
