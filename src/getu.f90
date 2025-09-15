@@ -25,7 +25,7 @@ logical :: original
 
 integer :: nratom
 real(8) :: ratom(spnr(is))
-
+integer :: maxit
 nratom=spnr(is)
 ratom(:)=spr(:spnr(is),is)
 
@@ -69,8 +69,8 @@ endif
 
 
 if( ex_coef.ne.0d0) then
-
-do iter=1, 40
+maxit=200
+do iter=1, maxit
   uold=u
   uatom=0d0
   uatom(1:nrmt)=u
@@ -96,12 +96,12 @@ endif
 
   diff = sum((u-uold)**2)/sum(u**2)
 
-!  write(*,*)"izmaiņa:",iter,diff
-!  write(*,'("getu l=",i1,"m=",i1,"e=",F6.2," it:",i2, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
   if (abs(diff).lt.1e-15) exit
- 
+  if (iter.ge.maxit)then
+    write(*,'("WARNING!! getu l=",i1,"m=",i1,"e=",F6.2," it:",i3, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
+  endif 
 enddo
-!write(*,'("getuOK l=",i1,"m=",i1,"e=",F6.2," it:",i2, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
+!write(*,'("getuOK l=",i1,"m=",i1,"e=",F6.2," it:",i3, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
 
 !write(*,*)"gatavs"
 endif !ex_coef.ne.0d0

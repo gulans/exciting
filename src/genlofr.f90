@@ -110,7 +110,7 @@ Subroutine genlofr
 
                if (lorbdm(io2, ilo, is).eq.0) then
 !$OMP CRITICAL
-               if(mpiglobal%is_root) then
+               if(.false.) then
 
                   if(ex_coef.gt.0d0)then
                      WRITE(filename, '(a3,A2,a2,i1,F6.2,a6)')'rf-',input%structure%speciesarray(is)%species%chemicalSymbol,"-l",l,lorbe(io2, ilo, ias),'HF.dat'
