@@ -166,7 +166,6 @@ write(*,*)"expand evec"
             !for mp2 purposes
             !allocate(minmmat(mbsiz,ndim,mstart:mend))mbsiz,1:nunocc,1:nocc
             allocate(minmmat(mbsiz,ndim,mstart:mend))
-            allocate(minmmat2(mbsiz,1:mend, ndim))
             msize = sizeof(minmmat)*b2mb
             !write(*,*)"mstart", mstart, "mend", mend, "mbsiz", mbsiz, "nomax", nomax
             !write(*,*)"ndim", ndim , "nocc", nocc, "nunocc", nunocc, "nstdf", nstdf
@@ -177,16 +176,24 @@ write(*,*)"expand evec"
 call timesec(ta)
 write(*,*) 'expand_products',nstdf
             call expand_products(ik, iq, 1,  ndim, ndim, mstart, mend, -1, minmmat)
-!            call expand_products(ik, iq, 1,  nstdf, nstdf, 1, ndim, -1, minmmat2)                   
-            do ie1 = 1, nocc
-                do ie2 = mstart, mend
-                        minmmat2(:,ie2, ie1) = minmmat(:, ie1, ie2)!conjg(minmmat(:, ie1, ie2))
-                 enddo
+
+            allocate(minm2(mbsiz,1:nocc,1:nunocc))
+            do ie1=1,nunocc
+              do ie2=1,nocc
+                minm2(:,ie2,ie1)=minmmat(:,ie2,ie1+nocc)
+              enddo
             enddo
+            deallocate(minmmat)
+            allocate(minmmat2(mbsiz,1:mend, ndim))
+
+call timesec(tb)
+write(*,*) 'expand_products - halfway there',tb-ta
+
+            call expand_products(ik, iq, 1,  nstdf, nstdf, 1, ndim, -1, minmmat2)                   
 call timesec(tb)
 
-write(*,*) 'expand_products done, time = ',tb-ta 
-write(*,*)"done woth expand products"
+write(*,*) 'expand_products done, total time = ',tb-ta 
+!write(*,*)"done woth expand products"
 write(*,*)"size of minmmat", size(minmmat,2), size(minmmat,3)
 
 
@@ -196,51 +203,23 @@ if (.true.) then
   !complex(dp), intent(in) :: gamma_ph(:, :, :) ! N_basis x N_virt x N_occ
   !complex(dp), intent(in) :: gamma_hp(:, :, :) ! N_basis x N_occ x N_virt
             allocate(minm(mbsiz,1:nunocc,1:nocc))
-            allocate(minm2(mbsiz,1:nocc,1:nunocc))
+!            allocate(minm2(mbsiz,1:nocc,1:nunocc))
             write(*,*)"done allocate"
 call timesec(ta)
-!!$omp parallel default(shared), private(ie2)
             do ie1=1,nocc
-           ! !$omp do
               do ie2=1,nunocc
-                !minm(:,ie2,ie1)=minmmat(:,ie1,ie2+nocc)
                 minm(:,ie2,ie1)=minmmat2(:,ie2+nocc,ie1)
-                !write(*,*)minmmat(1,ie1,ie2+nocc), "+nocc"
-                !write(*,*)minmmat(1,ie1,ie2), "without"
               enddo
-              !write(*,*)minmmat(1,ie1,6)
-             !!$omp end do
             enddo
             
-!!!$omp end parallel
-!!$omp parallel default(shared), private(ie1, ie2)
-  !          !$omp do
-            do ie1=1,nunocc
-              do ie2=1,nocc
-                minm2(:,ie2,ie1)=minmmat(:,ie2,ie1+nocc)
-              enddo
-            enddo
-            !do ie1=1,nocc
-            !  do ie2=1,nunocc
-            !    minm2(:,ie1,ie2)=minmmat(:,ie1,ie2+nocc)
-            !  enddo
-            !enddo
-
-           
-
-
-
- !           !$omp end do
-!!$omp end parallel
 call timesec(tb)
-write(*,*)"time for omp loop = ", tb-ta
             write(*,*)"done do, before entering mp2 procedure"
             call calculate_mp2_energy(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
 
             write(*,*)"separate procedures for each component"
-            call calculate_mp2_cc(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
-            call calculate_mp2_cv(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
-            call calculate_mp2_vv(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
+            !call calculate_mp2_cc(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
+            !call calculate_mp2_cv(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
+            !call calculate_mp2_vv(minm, minm2, evalfv(1:nocc,ik), evalfv(nocc+1:nocc+nunocc,ik))
             write(*,*)"stop"
             stop
 endif

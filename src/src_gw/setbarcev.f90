@@ -110,6 +110,8 @@ subroutine setbarcev(evtol)
     end do
     deallocate(im_kept)
 
+! reduce memory footprint
+    if (allocated(mpwipw)) deallocate(mpwipw)
     return
 end subroutine
 !EOC

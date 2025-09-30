@@ -44,6 +44,7 @@ subroutine calcmpwipw(iq)
     ngq = Gqset%ngk(1,iq)
         
     if (allocated(mpwipw)) deallocate(mpwipw)
+    write(*,*) 'mpwipw',ngq,npw
     allocate(mpwipw(ngq,npw))
     mpwipw(:,:) = zzero
 
@@ -91,7 +92,7 @@ subroutine calcmpwipw(iq)
     !  call zfftifc(3,ngrid,1,sgi_fft(:,igq))
     !end do
 
-    deallocate(sgi)
+!    deallocate(sgi)
         
     if (input%gw%debug) then
       write(fdebug,*) 'CALCMPWIPW, iq = ', iq
@@ -114,6 +115,7 @@ subroutine calcmpwipw(iq)
 
     call timesec(tend)
     time_mpwipw = time_mpwipw+tend-tstart
+    write(*,*) 'calcmpwipw',time_mpwipw
 
     return
 end subroutine

@@ -74,9 +74,33 @@ subroutine diagsgi(iq)
     allocate(epsipw(ngq))
     
     lwork = 2 * ngq - 1
-    allocate(work(lwork),rwork(3 * ngq - 2))
-    call zheev('V','U', ngq, sgi, ngq, epsipw, work, lwork, rwork, info)
-    if (info.ne.0) stop "diagsgi: Fail in calling zheev"
+
+
+! diagonalisation with zheevd
+    lrwork = -1
+    liwork = -1
+    lwork = -1
+    
+    allocate(work(1),rwork(1),iwork(1))
+    call zheevd('V', 'U', ngq, sgi, ngq, epsipw, work, lwork, rwork, lrwork, iwork, liwork, info)
+    call errmsg(info.ne.0, 'CALCBARCMB', "Fail to diag. barc by zheevd !!!")
+
+    lrwork=int(rwork(1))
+    liwork=int(iwork(1))
+    lwork=int(work(1))
+    ! write(*,*) lrwork,liwork,lwork
+    deallocate(work,rwork,iwork)
+
+    allocate(work(lwork),rwork(lrwork),iwork(liwork))
+    call zheevd('V', 'U', ngq, sgi, ngq, epsipw, work, lwork, rwork, lrwork, iwork, liwork, info)
+    call errmsg(info.ne.0, 'CALCBARCMB', "Fail to diag. barc by zheevd !!!")
+    deallocate(work,rwork,iwork)
+
+! diagonalisation with zheev
+! 
+!    allocate(work(lwork),rwork(3 * ngq - 2))
+!    call zheev('V','U', ngq, sgi, ngq, epsipw, work, lwork, rwork, info)
+!    if (info.ne.0) stop "diagsgi: Fail in calling zheev"
 
     if (input%gw%debug) then
       write(fdebug,*) "### sgi-1 ###"
@@ -102,5 +126,6 @@ subroutine diagsgi(iq)
 
     call timesec(tend)
     time_diagsgi = time_diagsgi+tend-tstart
+    write(*,*) 'diagsgi', time_diagsgi
       
 end subroutine

@@ -106,7 +106,7 @@ subroutine calcbarcmb_ipw_mt(iq)
     npw = Gqbarc%ngk(1,iq)
     ngq = Gqset%ngk(1,iq)
     
-    const = 16.0*pi*pi*sqrt(vi)
+    const = 16.0d0*pi*pi*sqrt(vi)
     
     ! local array
     allocate(tmat1(npw,locmatsiz))

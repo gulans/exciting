@@ -143,7 +143,7 @@ subroutine calcmp2_frozen(iq,iomstart,iomend)
   !
   !  Coulomb vertex dimensions 
   !  mixed basis size  X  number of all bands  X  number of all bands 
-n_start_frozen = 8
+n_start_frozen = 2
               allocate(minmmat(mbsiz+1,nstdf,nstdf))
               allocate(minmmat2(mbsiz,n_start_frozen:nstdf,n_start_frozen:nstdf))
               msize = sizeof(minmmat)*b2mb
