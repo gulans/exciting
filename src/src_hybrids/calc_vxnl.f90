@@ -9,7 +9,7 @@ subroutine calc_vxnl()
     use mod_hybrids
     use modfvsystem
     use modmpi
-!
+    use modinteg 
 ! !DESCRIPTION:
 !   Calculates the non-local exchange potential
 !   and the non-local exchange energy for Hartree-Fock based hybrid functionals.
@@ -38,6 +38,9 @@ subroutine calc_vxnl()
     logical :: hybrid
 ! allocatables for ACE
     complex(8), allocatable :: vxpsimt (:, :, :, :), vxpsiir(:, :)
+    integer :: lcore
+    real(8) ,allocatable :: psi_core(:),vxpsi_core(:)
+    real(8) :: t1
 
     call cpu_time(tstart)
 
@@ -350,6 +353,35 @@ else ! Use oepvnl
         exnl = exnl + kset%wkpt(ikp)*vxnl(ie1,ie1,ikp)
       end do
     end do ! ikp
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!Calculate non-local exchange energy for core orbitals !
+! <psi_core|vx_nl|psi_core>          store it in engy_exnl_core  !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    allocate(psi_core(spnrmax),vxpsi_core(spnrmax))
+    psi_core=0d0
+    vxpsi_core=0d0
+    engy_exnl_core=0d0
+    do is=1, nspecies
+      do ist = 1, spnst (is)
+        If (spcore(ist, is)) Then
+          lcore=spl(ist,is)
+          do ia=1 ,natoms(is)
+            ias=idxas(ia,is)
+            psi_core(:spnr(is))=rwfcr(:spnr(is),1,ist,ias)
+            call getrFock(spnr(is), spr(:spnr(is),is), is, ia, lcore, psi_core(:spnr(is)), vxpsi_core(:spnr(is)) )
+            call integ_v(spnr(is) ,is , psi_core(:spnr(is))*vxpsi_core(:spnr(is)) ,t1 ,atom_integw)
+            engy_exnl_core = engy_exnl_core + spocc (ist, is)*t1
+          enddo
+        endif
+      enddo
+    enddo
+    deallocate(psi_core,vxpsi_core)
+    write(*,*)"vxnl engy_exnl_core=",engy_exnl_core
+
+
+
 
 endif
 

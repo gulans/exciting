@@ -337,8 +337,7 @@ if (allocated(mt_integw%fintw)) then
   call gen_icoef(nspecies,spnrmax,nrmt,spnr,spr)
   endif
 
-
-
+engy_exnl_core=0d0
 
 !--------------------------------------!
 !     charges and number of states     !

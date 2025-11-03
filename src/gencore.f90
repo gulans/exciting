@@ -373,7 +373,7 @@ endif !new solver solved
             End If
          End Do!ia
       End Do!is
-
+write(*,*)"gencore engy_exnl_core=",engy_exnl_core
       call storecore
       Return
 End Subroutine

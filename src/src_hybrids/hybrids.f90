@@ -141,8 +141,8 @@ Subroutine hybrids
           write(*,*)"#### Startting LDA not PBE ####"
           write(*,*)"###############################"
           xctype(1)=3
-          xctype(0)=0
-          xctype(0)=0
+          xctype(2)=0
+          xctype(3)=0
           xcgrad=0
         endif
         call scf_cycle(-1)

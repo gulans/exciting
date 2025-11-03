@@ -69,7 +69,7 @@ endif
 
 
 if( ex_coef.ne.0d0) then
-maxit=200
+maxit=2000
 do iter=1, maxit
   uold=u
   uatom=0d0
@@ -98,12 +98,15 @@ endif
 
   if (abs(diff).lt.1e-15) exit
   if (iter.ge.maxit)then
-    write(*,'("WARNING!! getu l=",i1,"m=",i1,"e=",F6.2," it:",i3, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
+    write(*,'("WARNING!! getu l=",i1,"m=",i1,"e=",F6.2," it:",i4, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
   endif 
 enddo
-!write(*,'("getuOK l=",i1,"m=",i1,"e=",F6.2," it:",i3, "sum:", ES10.1E3," diff:", ES10.1E3)')l,m,e,iter,sum(u**2),diff
 
-!write(*,*)"gatavs"
+if (iter.gt.40)then
+  write(*,'("getuOK l=",i1,"m=",i1,"e=",F6.2," it:",i4, "sum:", ES10.1E3," diff:", ES10.1E3,"n:",i1)')l,m,e,iter,sum(u**2),diff,nodes
+endif
+
+
 endif !ex_coef.ne.0d0
 
 
