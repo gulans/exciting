@@ -32,14 +32,14 @@ module potentials
     !> [[match_bound_mt(subroutine)]] and [[surface_ir(subroutine)]].
 
 
-  subroutine coulomb_potential2( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0,qvec, cutoff,&
+  subroutine coulomb_potential2( nr, r, ngp, gpc, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir,qvec, cutoff,&
     & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,rpseudo_in,rpseudomat)
 use modsurf, only: surf_pot
 use constants, only: y00,zzero
 use modinput
 use mod_atoms, only: natmtot, nspecies, natoms, idxas
 use mod_muffin_tin, only: lmmaxvr, rmt, nrmtmax
-use mod_Gvector, only: ngrtot, ngrid, ivg, intgv, igfft, ivgig
+use mod_Gvector, only: ngrtot, ngrid, igfft!, ivgig, intgv, ivg
 use mod_potential_and_density, only: vmad
 use mod_convergence, only: iscl
 use weinert
@@ -52,7 +52,7 @@ integer, intent(in) :: ngp
 !> lengths of \({\bf G+p}\) vectors
 real(dp), intent(in) :: gpc(:)
 !> index of shortest \({\bf G+p}\) vector
-integer, intent(in) :: igp0
+!integer, optional, intent(in) :: igp0 !PS. (iznemts no subroutines arguments un ari no fock exchange)
 !> spherical Bessel functions \(j_l(|{\bf G+p}| R_\alpha)\)
 real(dp), intent(in) :: jlgpr(0:,:,:)
 !> spherical harmonics \(Y_{lm}(\widehat{\bf G+p})\)
@@ -65,12 +65,12 @@ real(dp), intent(in) :: zn(:)
 complex(dp), intent(in) :: zrhomt(:,:,:)
 !> complex interstitial charge density
 complex(dp), intent(In) :: zrhoir(:)
-!> complex muffin-tin Coulomb potential
+!> complex muffin-tin Coulomb potential   
 complex(dp), intent(out) :: zvclmt(:,:,:) ! lm, nrmax, natoms
 !> complex interstitial Coulomb potential
 complex(dp), intent(out) :: zvclir(:)
 !> Fourier component of pseudocharge density for shortest \({\bf G+p}\) vector
-complex(dp), intent(out) :: zrho0
+!complex(dp),optional, intent(in) :: zrho0 !PS. (iznemts no subroutines arguments un ari no fock exchange)
 real(8), intent(in) :: qvec(3)
 !> option for using coulomb cutoff for solving Poisson's equation
 logical, optional, intent(in) :: cutoff
@@ -91,10 +91,10 @@ logical :: yukawa
 logical :: hybrid, rpseudo
 complex(dp) :: zlambda
 
-integer :: is, ia, ias, ir,j
+integer :: is, ia, ias, ir!,j
 integer :: ig, ifg, lm
 
-real(dp) :: t1, ta, tb,tc,td,te,tf
+real(dp) :: t1, ta, tb,td!,tc,te,tf
 
 complex(dp), allocatable :: zrhoig_sort(:)
 real(dp) :: maxrhog
@@ -354,14 +354,26 @@ end subroutine coulomb_potential2
 
 
 
-    subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
+        subroutine coulomb_potential( nr, r, ngp, gpc, igp0, jlgpr, ylmgp, sfacgp, zn, zrhomt, zrhoir, zvclmt, zvclir, zrho0, cutoff,&
                                 & hybrid_in, yukawa_in,zlambda_in,zbessi,zbessk,zilmt,rpseudo_in,rpseudomat)
-
       use constants, only: y00,zzero
       use modinput
       use mod_atoms, only: natmtot, nspecies, natoms, idxas
       use mod_muffin_tin, only: lmmaxvr, rmt, nrmtmax
       use mod_Gvector, only: ngrtot, ngrid, ivg, intgv, igfft, ivgig
+      ! Add modules needed for slab coulomb initialization
+      use mod_lattice, only: bvec!, omega
+      !use mod_kpoint, only: nkptnr
+      !for 2D slab cutoff and finite cyllindrical cutoff
+      use mod_slab_coulomb, only: init_slab_coulomb_factor, slab_coulomb_initialized
+      ! for finite cylindrical cutoff
+      !use mod_cyl_coulomb, only: init_cyl_coulomb_factor, cyl_coulomb_initialized
+      !use mod_cyl_coulomb_u, only: init_cyl_coulomb_factor, cyl_coulomb_initialized
+      !use mod_cyl_coulomb_FT, only: init_cyl_coulomb_factor, cyl_coulomb_initialized
+      !use mod_cyl_convergence, only: init_cyl_coulomb_factor, cyl_coulomb_initialized
+      use mod_cyl_apprx, only: init_cyl_apprx_factor, cyl_apprx_initialized
+      !use method_table, only: save_table, save_table_initialized
+      
       use mod_potential_and_density, only: vmad
       use mod_convergence, only: iscl
       use weinert
@@ -411,9 +423,10 @@ end subroutine coulomb_potential2
       logical :: yukawa
       logical :: hybrid, rpseudo
       complex(dp) :: zlambda
-     
-      integer :: is, ia, ias, ir,j
-      integer :: ig, ifg, lm
+      real(dp) :: r_c
+
+      integer :: is, ia, ias, ir
+      integer :: ig, lm!, ifg
     
       real(dp) :: t1
 
@@ -474,83 +487,68 @@ endif
         end do
       end do
     
-      ! Fourier transform interstitial density to reciprocal space
+      ! Fourier transform interstitial density to real space
       zrhoig = zrhoir
-     
       call zfftifc( 3, ngrid, -1, zrhoig)
-      ! find multipole moments of interstitial density
-      ! extended into the muffin-tin spheres
-      
 
-
-
-
+      !----------------------------------------------------------------------------------------------------
       if (yukawa) then
-
-        !Do ig = ngp+1, ngrtot
-        !  ifg = igfft (ig)
-        !  zrhoig(ifg)=zzero
-        !End Do
-
+        ! This is the Yukawa branch, which is left unchanged for now
         call multipoles_ir_yukawa( input%groundstate%lmaxvr, ngp, gpc, &
             & jlgpr, ylmgp, sfacgp, igfft, &
             zrhoig, qlmir,zlambda,zilmt)
-!write(*,*)"qlmir"
+        
+        qlm = qlm - qlmir
 
-      !stop
-      else
-
-
-
-      call multipoles_ir( input%groundstate%lmaxvr, ngp, gpc, &
-                          ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                          zrhoig, qlmir)
-      endif
-      ! take difference of muffin-tin and interstitial multipole moments
-
-
-      qlm = qlm - qlmir
-    
-
-     
-      ! solve Poisson's equation in interstitial region
-
-      if (yukawa) then
         if (rpseudo) then
           call pseudocharge_rspace_new(input%groundstate%lmaxvr,qlm,rpseudomat,zrhoig)
-         
         else
           call pseudocharge_gspace_yukawa(input%groundstate%lmaxvr, ngp, gpc, &
                         & jlgpr, ylmgp, sfacgp, igfft, zrhoig, qlm,zlambda,zilmt)
         endif
-        ! open(11,file='is_pseudo_r.dat',status='replace')
-        ! Do ig = 1, ngrtot
-        !     t1 = gpc (ig)
-        !     ifg = igfft (ig)
-        !     write(11,*)t1,",",dble(zrhoig(ifg))
-        ! End Do
-        ! close(11)
-        !stop
-
-
-
-        !zrho0 = zrhoig( igfft( igp0))
-
         call poisson_ir_yukawa(input%groundstate%lmaxvr, ngp, gpc, igfft, zrhoig, zlambda,zvclir,cutoff)
 
-
       else
-        if (rpseudo) then
-          call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=rpseudo,rpseudomat=rpseudomat)
-        else
-          call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
-                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
-                        zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=.false.)
+        
+        ! find multipole moments of interstitial density extended into the muffin-tin spheres
+        call multipoles_ir( input%groundstate%lmaxvr, ngp, gpc, &
+                          ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+                          zrhoig, qlmir)
+        
+        ! take difference of muffin-tin and interstitial multipole moments
+        qlm = qlm - qlmir
+      
+        ! Initialize slab factor if needed 
+        ! r_c is the half-heigth between identical surfaces
+        ! This assumes a 2D surface on the xy-plane
+        ! and that same exact surfaces lie along the z-axis.
+        ! To use different orientation change r_c accodingly
+        if (input%groundstate%vha.eq."exciting2d") then
+           if (.not.slab_coulomb_initialized) then
+             write(*,*) 'Initializing slab coulomb factor'
+             r_c = input%structure%crystal%basevect(3, 3) * 0.50d0
+             call init_slab_coulomb_factor(ngp, ivg, bvec, r_c, input%structure%epslat)
+           endif
         endif
+
+        if (input%groundstate%vha.eq."exciting_cyl") then
+           if (.not.cyl_apprx_initialized) then
+             write(*,*) 'Initializing cylinder approximate coulomb factor'
+              r_c = input%structure%crystal%basevect(3, 3) * 0.5d0
+             call init_cyl_apprx_factor(ngp, ivg, bvec, input%structure%crystal%basevect, r_c, &
+                                        input%structure%epslat)
+           endif
+        endif
+        
+        
+        ! solve Poisson's equation in interstitial region using the original workflow
+        call poisson_ir( input%groundstate%lmaxvr, input%groundstate%npsden, ngp, gpc, &
+                      ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
+                      zrhoig, qlm, zvclir, cutoff,hybrid_in=hybrid,rpseudo_in=rpseudo,rpseudomat=rpseudomat)
+        
         zrho0 = zrhoig( igfft( igp0))
       endif
+      !----------------------------------------------------------------------------------------------------
       ! evaluate interstitial potential on muffin-tin surface
       call surface_ir( input%groundstate%lmaxvr, ngp, gpc, &
                        ivg, jlgpr, ylmgp, sfacgp, intgv, ivgig, igfft, &
@@ -568,18 +566,6 @@ endif
           vmad(ias) = vmad(ias) + dble( qlmir(1,ias) ) * y00 - vion(nr(is),is)
         end do
       end do
-!if(yukawa)then    
-!do ig=1, 10
-!  ifg = igfft (ig)
-!write(*,*)"gatavs ,",zvclir(ifg)
-!enddo
-!stop
-!endif
-
-      
-
-
-
 
       ! Fourier transform interstitial potential to real space
       call zfftifc( 3, ngrid, 1, zvclir)

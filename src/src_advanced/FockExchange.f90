@@ -36,7 +36,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Logical :: solver, cutoff, handleG0, rpseudo
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x
-      Complex (8) zrho01, zrho02, ztmt,zt1,zt2,zt3,zt4, ztir
+      Complex (8) zrho01, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr, ipt
 
       Complex (8) :: rhoG0,potG0
@@ -386,7 +386,6 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                   prod%mtrlm(1,:,:,1)=prod%mtrlm(1,:,:,1)-rhoG0/y00
                endif
 
-
                call timesec(tc)
                pot%mtrlm(:,:,:,1)=zzero
                potir=zzero
@@ -396,9 +395,9 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                   ifit2=0
                   do j=1, nfit
                      ifit2=ifit2+1
-                     Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
+                     Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                     & prodir(:), potmt0, potir0, zrho02,v, &
+                     & prodir(:), potmt0, potir0,v, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=erfc_fit(j,2),zbessi=zbessi(:,j,:,:),zbessk=zbessk(:,j,:,:),zilmt=zilmt(j,:,:),&
                      & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
@@ -407,9 +406,9 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                   enddo
                   do j=2, nfit
                      ifit2=ifit2+1
-                     Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
+                     Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, &
                      & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                     & prodir(:), potmt0, potir0, zrho02,v, &
+                     & prodir(:), potmt0, potir0,v, &
                      & cutoff=cutoff,hybrid_in=.true.,yukawa_in=.true., &
                      & zlambda_in=conjg(erfc_fit(j,2)),zbessi=conjg(zbessi(:,j,:,:)),zbessk=conjg(zbessk(:,j,:,:)),zilmt=conjg(zilmt(j,:,:)),&
                      & rpseudo_in=rpseudo,rpseudomat=rpseudomat(ifit2,:,:,:))
@@ -423,9 +422,9 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
                   potmt0=zzero
                   potir0=zzero
 
-                  Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, igq0, &
+                  Call coulomb_potential2 (nrcmt, rcmt, ngvec, gqc, &
                   & jlgqr, ylmgq, sfacgq, zn, prod%mtrlm(:,:,:,1), &
-                  & prodir(:), pot%mtrlm(:,:,:,1), potir, zrho02,v, &
+                  & prodir(:), pot%mtrlm(:,:,:,1), potir,v, &
                   & cutoff=cutoff, hybrid_in=.true.,&
                   & rpseudo_in=rpseudo,rpseudomat=rpseudomat(1,:,:,:))
 

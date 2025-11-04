@@ -461,14 +461,14 @@ endif
 !------------------------!
 !initialize rspace module!
 !------------------------!
-if (associated(input%groundstate%Hybrid).and.(input%groundstate%hybrid%rpseudo)) then
-      if (.not.allocated(rgrid_mt_rv)) then
+if (associated(input%groundstate%Hybrid)) then
+      if (.not.allocated(rgrid_mt_rv) .and. (input%groundstate%hybrid%rpseudo)) then
             call generate_rgrid_mt_data(input%groundstate%lmaxvr)
       endif
 endif
 
-if (associated(input%groundstate%Hybrid).and.(input%groundstate%hybrid%rsurf)) then
-      if (.not.allocated(naxis)) then
+if (associated(input%groundstate%Hybrid)) then
+      if (.not.allocated(naxis) .and.(input%groundstate%hybrid%rsurf)) then
             call generate_surf_grid(input%groundstate%lmaxvr)
       endif
 endif

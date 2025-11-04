@@ -378,6 +378,8 @@ module weinert
       use mod_muffin_tin, only: rmt
       use constants, only: zzero, fourpi, twopi
       use mod_Gvector, only: ngrid
+      use mod_slab_coulomb, only: slab_coulomb_factor ! Added for 2D cutoff
+      use mod_cyl_apprx, only: cyl_apprx_factor ! Added for finite cylinder cutoff
       !> maximum angular momentum \(l\)
       integer, intent(in) :: lmax
       !> pseudodensity expansion order
@@ -412,12 +414,14 @@ module weinert
       !> Fourier components \(\hat{V}({\bf G+p})\) of the interstitial electrostatic potential on the FFT grid
       complex(dp), intent(out) :: zvclig(:)
       complex(dp),optional, intent(in) :: rpseudomat(:,:,:)
-      integer :: i, is, ia, ias, igp, ngpf, ifg, ig(3),ii
+      integer :: i, is, ia, ias, ifg, ig(3),ii
       real(8) :: r_c
-      integer, allocatable :: igp_finite(:)
       
-      logical :: cutoff, hybrid, rpseudo
+      logical :: hybrid, rpseudo
 
+      integer :: ix, iy, iz
+      integer :: g_index      
+      
   if (present(hybrid_in)) then 
         hybrid=hybrid_in
   else
@@ -425,10 +429,8 @@ module weinert
   endif
 
   if (present(cutoff_in)) then 
-    cutoff=cutoff_in
-else
-    cutoff=.false.
-endif
+    ! The cutoff_in argument is now ignored in favor of input%groundstate%vha
+  endif
 
 if (present(rpseudo_in)) then
   rpseudo=rpseudo_in
@@ -437,10 +439,8 @@ else
 endif
 
     if (rpseudo) then
-
           call pseudocharge_rspace_new(lmax,qlm,rpseudomat,zrhoig) 
     else
-
       ! add Fourier components of pseudodensity from multipole moments
       do is = 1, nspecies
         do ia = 1, natoms(is)
@@ -460,46 +460,50 @@ endif
         close(11)
       stop
       endif
-
-
-
     endif
 
-      ! solve Poisson's equation in reciprocal space
-!      zvclig = zzero
-      igp_finite = pack( [(i, i=1, ngp)], [(gpc(i) > input%structure%epslat, i=1, ngp)])
-      ngpf = size( igp_finite)
+    !-----------------------------------------------------------------------------------------------
+      !write (*,*) "Poisson_ir:", input%groundstate%vha
+      zvclig = zzero
+      r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0 ! For 0D cutoff
 
-
-
-      if (cutoff) then
-        r_c = (omega*nkptnr)**(1d0/3d0)*0.50d0
-        zvclig = zrhoig*twopi*r_c**2
-!$omp parallel default(shared) private(i,igp,ig,ifg)
-!$omp do
-      ! cutoff correction for > epslat
-        do i = 1, ngpf
-          igp = igp_finite(i)
-          ig = modulo( ivgp(:,igp)-intgv(:,1), intgv(:,2)-intgv(:,1)+1) + intgv(:,1)
-          ifg = igfft( ivgig( ig(1), ig(2), ig(3)))
-          zvclig(ifg) = fourpi*zrhoig(ifg)*(1d0-cos(gpc(igp)*r_c))/(gpc(igp)**2)
-        end do
-!$omp end do
-!$omp end parallel
-      else
-        zvclig = zzero
-      ! without cutoff correction
-!$omp parallel default(shared) private(i,igp,ig,ifg)
-!$omp do
-        do i = 1, ngpf
-          igp = igp_finite(i)
-          ig = modulo( ivgp(:,igp)-intgv(:,1), intgv(:,2)-intgv(:,1)+1) + intgv(:,1)
-          ifg = igfft( ivgig( ig(1), ig(2), ig(3)))
-          zvclig(ifg) = fourpi*zrhoig(ifg)/(gpc(igp)**2)
-        end do
-!$omp end do
-!$omp end parallel
-      end if
+      ! Loop over all G-vectors in the provided list
+      do i = 1, ngp
+                    
+          ix = ivgp(1, i)
+          iy = ivgp(2, i)
+          iz = ivgp(3, i)
+          
+          ix = modulo(ix - intgv(1,1), intgv(1,2) - intgv(1,1) + 1) + intgv(1,1)
+          iy = modulo(iy - intgv(2,1), intgv(2,2) - intgv(2,1) + 1) + intgv(2,1)
+          iz = modulo(iz - intgv(3,1), intgv(3,2) - intgv(3,1) + 1) + intgv(3,1)
+          
+          g_index = ivgig(ix, iy, iz)
+          
+          ifg = igfft(g_index)
+          
+          if (input%groundstate%vha.eq."exciting") then ! No cutoff
+            if (gpc(i) > input%structure%epslat) then
+              zvclig(ifg) = fourpi * zrhoig(ifg) / (gpc(i)**2)
+            endif
+          else if (input%groundstate%vha.eq."exciting0d") then ! 0D Spherical cutoff
+            if (gpc(i) > input%structure%epslat) then
+              zvclig(ifg) = fourpi * zrhoig(ifg) * (1d0 - cos(gpc(i) * r_c )) / (gpc(i)**2)
+            else
+              zvclig(ifg) = zrhoig(ifg) * (fourpi * 0.5d0) * r_c**2
+            endif
+          else if (input%groundstate%vha.eq."exciting2d") then ! 2D Slab Cutoff
+            zvclig(ifg) = zrhoig(ifg) * slab_coulomb_factor(i)
+          else if (input%groundstate%vha.eq."exciting_cyl") then ! finite cylindrical cutoff
+            zvclig(ifg) = zrhoig(ifg) * cyl_apprx_factor(i)
+          else
+            !dafault, no cutoff
+            if (gpc(i) > input%structure%epslat) then
+              zvclig(ifg) = fourpi * zrhoig(ifg) / (gpc(i)**2)
+            endif
+          endif
+      end do
+      !-----------------------------------------------------------------------------------------------
     end subroutine
 
     !> This subroutine computes the Fourier components of a quickly converging pseudodensity with multipole moments \(q_{lm}\)
