@@ -91,6 +91,15 @@
    3   1.267949192      0.8038475773    
    4   4.732050808       11.19615242    
 
+
+--------------------------------------------------------------------------------
+-            Checking for possible degenerate subspace truncation              -
+--------------------------------------------------------------------------------
+
+    -Initial band truncation was           77
+    -Final band truncation has been adjusted to prevent the cutting of the degenerate subspaces to           75
+
+
 --------------------------------------------------------------------------------
 -                       Kohn-Sham eigenstates summary                          -
 --------------------------------------------------------------------------------
@@ -101,8 +110,8 @@
      - total KS                                       77
      - occupied                                       26
      - unoccupied                                     50
-     - dielectric function                            77
-     - self energy                                    77
+     - dielectric function                            75
+     - self energy                                    75
  Energy of the highest unoccupied state:        2.047337
  Number of valence electrons:                         52
  Number of valence electrons treated in GW:            8
@@ -132,44 +141,44 @@
 -                            G0W0 band structure                               -
 --------------------------------------------------------------------------------
 
- Fermi energy:     0.0189
- Energy range:    -0.1357    0.5792
+ Fermi energy:     0.0195
+ Energy range:    -0.1352    0.5801
  Band index of VBM:  26
  Band index of CBm:  27
 
- Direct BandGap (eV):                      1.9383
+ Direct BandGap (eV):                      1.9486
  at k      =    0.000   0.000   0.000 ik =     1
 
 ================================================================================
 =                          GW timing info (seconds)                            =
 ================================================================================
 
- Initialization                             :         3.58
-     - init_scf                             :         1.77
+ Initialization                             :         1.31
+     - init_scf                             :         0.75
      - init_kpt                             :         0.01
      - init_eval                            :         0.00
      - init_freq                            :         0.00
-     - init_mb                              :         0.90
+     - init_mb                              :         0.33
  Subroutines                                : 
-     - calcpmat                             :         4.27
-     - calcbarcmb                           :        19.86
+     - calcpmat                             :         0.79
+     - calcbarcmb                           :         7.96
      - BZ integration weights               :         0.00
-     Dielectric function                    :        17.87
+     Dielectric function                    :        16.10
      - head                                 :         0.00
      - wings                                :         0.00
      - body                                 :         0.00
-     - inversion                            :         2.11
-     WF products expansion                  :         0.67
-     - diagsgi                              :         0.55
+     - inversion                            :         2.23
+     WF products expansion                  :         0.64
+     - diagsgi                              :         0.52
      - calcmpwipw                           :         0.12
      - calcmicm                             :         0.00
      - calcminc                             :         0.01
      - calcminm                             :         0.00
-     Self-energy                            :        15.67
-     - calcselfx                            :         2.68
-     - calcselfc                            :        12.99
-     - calcvxcnn                            :         0.98
+     Self-energy                            :        10.15
+     - calcselfx                            :         2.36
+     - calcselfc                            :         7.79
+     - calcvxcnn                            :         0.42
      - input/output                         :         0.00
  _________________________________________________________
- Total                                      :        66.76
+ Total                                      :        40.49
 

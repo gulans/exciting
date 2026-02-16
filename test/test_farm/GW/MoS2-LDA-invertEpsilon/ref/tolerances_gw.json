@@ -1,0 +1,44 @@
+{
+  "INVERSE-EPSH.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  },
+  "INVERSE-EPSW1.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  },
+  "INVERSE-EPSW2.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  },
+  "INVERSE-EPSILON_Q1.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  },
+  "INVERSE-EPSILON_Q2.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  },
+  "INVERSE-EPSILON_Q3.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  },
+  "INVERSE-EPSILON_Q4.OUT": {
+    "epsilon_tensor": {
+      "tol": 1e-6,
+      "unit": "null"
+    }
+  }
+}

@@ -10,8 +10,9 @@
 ! !INTERFACE:
 !
 !
-Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
-  ! !USES:
+Subroutine seceqnfv(ik, ispn, nmatp, ngp, igpig, vgpc, apwalm, sfacgp, tpgpc, cdft_maximum_overlap, evalfv, evecfv)
+      Use cdft,                      only: set_overlap_times_psi_gs
+      Use constants,                 only: zzero, zone
       Use modmpi,                    only: mpiglobal
       Use modinput,                  only: input
       Use mod_Gkvector,              only: ngkmax
@@ -24,8 +25,10 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
       Use modfvsystem,               only: evsystem, newsystem, deletesystem, solvewithlapack
       Use mod_hybrids,               only: vnlmat
       use mod_misc,                  only: task
-      !use m_plotmat
-      Use constants, only: zzero, zone
+      use mGGA_eigensystem, 				 only: gen_mGGA_H_and_S, mGGA_H, mGGA_S
+      use mod_secular_equation_inversion_symmetry, only: transform_eigenvectors_inversion_symmetry, &
+                                                         get_lo_transformation_matrix_inv_sym, &
+                                                         solve_secular_equation_inversion_symmetry
 
   ! !INPUT/OUTPUT PARAMETERS:
   !   nmatp  : order of overlap and Hamiltonian matrices (in,integer)
@@ -34,6 +37,8 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
   !   vgpc   : G+k-vectors in Cartesian coordinates (in,real(3,ngkmax))
   !   apwalm : APW matching coefficients
   !            (in,complex(ngkmax,apwordmax,lmmaxapw,natmtot))
+  !   sfacgp : structure factors of G+p-vectors (out,complex(ld,natmtot))
+  !   tpgpc  : (theta, phi) coordinates of G+p-vectors (out,real(2,ngkmax))
   !   evalfv : first-variational eigenvalues (out,real(nstfv))
   !   evecfv : first-variational eigenvectors (out,complex(nmatmax,nstfv))
   ! !DESCRIPTION:
@@ -43,19 +48,25 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
   !
   ! !REVISION HISTORY:
   !   Created March 2004 (JKD)
-  !   Revised Aug 2020 (Ronaldo)
+  !   Revised Oct 2024 (Ronaldo)
   !EOP
   !BOC
       Implicit None
   ! arguments
-      Integer, Intent (In) :: ispn
       Integer, Intent (In) :: ik
+      Integer, Intent (In) :: ispn
       Integer, Intent (In) :: nmatp
       Integer, Intent (In) :: ngp
       Integer, Intent (In) :: igpig (ngkmax)
       Real (8), Intent (In) :: vgpc (3, ngkmax)
       Complex (8), Intent (In) :: apwalm (ngkmax, apwordmax, lmmaxapw, &
      & natmtot)
+      Complex (8), Intent (In) :: sfacgp (ngkmax, natmtot)
+      Real (8), Intent (In) :: tpgpc (2, ngkmax)
+      !> If .true., then a constrained DFT calculation with the maximum overlap method
+      !> is performed. In this case, the product of the overlap matrix with the GS wavefunctions
+      !> must be evaluated and saved
+      logical, intent(in) :: cdft_maximum_overlap
       Real (8), Intent (Out) :: evalfv (nstfv)
       Complex (8), Intent (Out) :: evecfv (nmatmax, nstfv)
   ! local variables
@@ -63,6 +74,8 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
       Logical :: packed
       Integer :: ist
       Complex (8), allocatable :: zm(:,:),zm2(:,:)
+      Complex (8), allocatable :: lo_transformation_matrix_inv_sym(:,:)
+      Real (8), allocatable :: evec_real(:,:)
       !character( len=64) :: fname
   ! apwi related variables for storing matching coefficients in a more convenient way
       Integer :: is,ia,ias,l,io,m,ifun,lm
@@ -72,14 +85,19 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
 
       packed = input%groundstate%solver%packedmatrixstorage
 
+      if ( associated(input%groundstate%mgga)) then
+          Call newsystem (system, packed, nmatp)
+          call gen_mGGA_H_and_S( ik, system%hamilton%za, system%overlap%za )
 
-
-      if ((input%groundstate%solver%type.ne.'Davidson').or.(input%groundstate%solver%constructHS)) then
+      else if ((input%groundstate%solver%type.ne.'Davidson').or.(input%groundstate%solver%constructHS)) then
         Call newsystem (system, packed, nmatp)
         h1on=(input%groundstate%ValenceRelativity.eq.'iora*')
         call MTRedirect(mt_hscf%main,mt_hscf%spinless)
         Call hamiltonsetup (system, ngp, apwalm, igpig, vgpc)
         Call overlapsetup (system, ngp, apwalm, igpig, vgpc)
+
+        ! If the maximum overlap method is used in a CDFT calculation
+        if( cdft_maximum_overlap ) call set_overlap_times_psi_gs( ik, system%overlap%za )
 
   !------------------------------------------------------------------------!
   !   If Hybrid potential is used apply the non-local exchange potential !
@@ -134,6 +152,11 @@ Subroutine seceqnfv(ispn, ik, nmatp, ngp, igpig, vgpc, apwalm, evalfv, evecfv)
         call davidson(system,nstfv,evecfv,evalfv,ik)
         Call deletesystem (system)
         deallocate(system%apwi)
+       elseif (input%groundstate%solver%type == 'inversionsymmetry') then
+        lo_transformation_matrix_inv_sym = get_lo_transformation_matrix_inv_sym(ispn,ik)
+        Call solve_secular_equation_inversion_symmetry(system, nmatp, ngp, nstfv, nmatmax, &
+                lo_transformation_matrix_inv_sym, evalfv, evec_real)
+        Call transform_eigenvectors_inversion_symmetry(ngp, lo_transformation_matrix_inv_sym, evec_real, evecfv)
       endif
 
       if (task == 7) call kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)

@@ -3,11 +3,13 @@ subroutine init_kqpoint_set()
 
     use modinput
     use modmain ,   only : gkmax, bvec, intgv, nspnfv
-    use modgw,      only : kset, Gset, Gkset, kqset, Gkqset, Gqset, Gqbarc, fgw
+    use modgw,      only : kset, Gset, Gkset, kqset, Gkqset, Gqset, Gqbarc
     use mod_kpointset
     use mod_frequency
     use modmpi,     only : rank
     use m_getunit
+#include "offload.fpp"
+
     implicit none
 
     ! local variables
@@ -26,10 +28,11 @@ subroutine init_kqpoint_set()
     &                       input%gw%vqloff, &
     &                       input%groundstate%reducek)
 
-    if ((input%gw%debug).and.(rank==0)) then
+    if ((input%gw%printKpoints).and.(rank==0)) then
       call getunit(fid)
       open(fid,file='GW_KPOINTS.OUT',action='Write',status='Unknown')
       call print_k_vectors(kset,fid)
+      close(fid)
     end if
 
     !========================
@@ -99,8 +102,7 @@ subroutine init_kqpoint_set()
                     input%groundstate%gmaxvr)
     if ((input%gw%debug).and.(rank==0)) then
       write(fid,*)
-      write(fid,*) 'Plane-wave cutoff for the bare Coulomb potential &
-      &<gqmaxbarc>: ', gqmaxbarc
+      write(fid,*) 'Plane-wave cutoff for the bare Coulomb potential <gqmaxbarc>: ', gqmaxbarc
     end if
 
 
@@ -115,6 +117,9 @@ subroutine init_kqpoint_set()
     call delete_k_vectors(ksetnr)
     ! close the k-point info file
     if ((input%gw%debug).and.(rank==0)) close(fid)
+
+    ! Upload the meshes to the devices
+    OMP_OFFLOAD target enter data map(always, to: kset, Gset, Gkset, Gkqset, Gqset, Gqbarc, kqset)
 
 contains
 

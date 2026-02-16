@@ -16,21 +16,23 @@ Subroutine writeinfo (fnum)
       use mod_misc, only: filext, versionname, version, compiler_version, githash, &
                           notelns, notes
       use mod_muffin_tin, only: idx_species_fixed_rmt
+      use mgga_init, only: xcdescr_mgga
+      use precision, only: i32, dp, str_1024
 #ifdef TETRA
       Use modtetra
 #endif
 
       Implicit None
       !>  Unit specifier for INFO.OUT file
-      Integer, intent(in) :: fnum
+      integer(i32), intent(in) :: fnum
 
-      Integer :: i, is, ia
+      Integer(i32) :: i, is, ia
 #ifdef TETRA
       logical :: tetocc
 #endif
       Character (10) :: dat, tim, acoord
-      character*(77) :: string
-      real(8) :: dumsum 
+      character(len=str_1024) :: string
+      real(dp) :: dumsum
 
       acoord = "lattice"
       if (input%structure%cartesian) acoord = "cartesian"
@@ -328,6 +330,11 @@ Subroutine writeinfo (fnum)
          Write (fnum, '(" Optimised effective potential (OEP) and exact exchange (EXX)")')
          Write (fnum, '("     Phys. Rev. B 53, 7024 (1996)")')
          Write (fnum, '("     Correlation type ", T45, ": ", I7)') Abs(input%groundstate%xctypenumber)
+         Write (fnum, '("     ", A)') trim (xcdescr)
+      Else if (associated(input%groundstate%mgga)) Then
+         Write (fnum, '(" Exchange-correlation type ", T45, ": ", I7)') input%groundstate%xctypenumber
+         Write (fnum, '("     ", A)') trim (xcdescr_mgga)
+         Write (fnum, '(" GGA functional to construct the basis ", T45, ": ", I7)') 
          Write (fnum, '("     ", A)') trim (xcdescr)
       Else
          Write (fnum, '(" Exchange-correlation type ", T45, ": ", I7)') input%groundstate%xctypenumber

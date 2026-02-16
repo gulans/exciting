@@ -10,6 +10,7 @@ Subroutine init2
       Use modxs
 #endif
       use mod_hybrids, only: hybridhf
+      use mod_gen_lo, only: genlofr
       Implicit None
 ! local variables
       logical :: redq, fremapq
@@ -362,8 +363,10 @@ Subroutine init2
             filext='_PBE.OUT'
             Call readstate
             filext=filex
-      Else If (input%xs%dogroundstate .Ne. "fromscratch") Then 
-         Call readstate
+      Else If (input%xs%dogroundstate .Ne. "fromscratch") Then
+         If ((task .ne. 446) .or. input%xs%BSE%readstatetask446) Then
+           Call readstate
+         End If
       Else
          If(task .Ne. 301) Then
             isreadstate0 = .False.

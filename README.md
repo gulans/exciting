@@ -67,7 +67,7 @@ calculations. Phys. Rev. B **94**, 235141
 
 \[3\]: [Time-dependent density functional theory versus Bethe--Salpeter
 equation: an all-electron study. ***Phys. Chem. Chem. Phys.***, 2009,
-**11**, 4451-4457.](https://doi.org/10.1039/%20B903676H)
+**11**, 4451-4457.](https://doi.org/10.1039/B903676H)
 
 \[4\]: [All-electron full-potential implementation of real-time TDDFT in
 exciting. Electron. Struct. **3**, 
@@ -75,9 +75,9 @@ exciting. Electron. Struct. **3**,
 
 \[5\]: [Accurate all-electron G0W0 quasiparticle energies employing the
 full-potential augmented plane-wave method. Phys. Rev. B **94**, 035118
-(2016).](https://doi.org/10.1103/PhysRevB.%2094.035118)
+(2016).](https://doi.org/10.1103/PhysRevB.94.035118)
 
 \[6\]: [Addressing electron-hole correlation in core excitations of
 solids: An all-electron many- body approach from first principles. Phys.
 Rev. B **95**, 155121
-(2017).](https://doi.org/%2010.1103/PhysRevB.95.155121)
+(2017).](https://doi.org/10.1103/PhysRevB.95.155121)

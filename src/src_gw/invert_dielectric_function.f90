@@ -1,6 +1,10 @@
 module invert_dielectric_function
+   use asserts, only: assert
    use precision, only: dp, i32
    use constants, only: zone
+   use exciting_idiel_interface, only: set_head_wings_idiel, get_head_wings_idiel, invert_body, &
+                                       idiel_2d_anisotropic_average_idiel, free_memory_idiel, &
+                                       idiel_3d_anisotropic_average_idiel, get_body_idiel
    implicit none
    private
    public :: calcinveps
@@ -18,82 +22,90 @@ contains
       !>Is true if gamma point is present
       logical, intent(in) :: gamma
       !>Input scrcoul element 
-      type(scrcoul_type), intent(in) :: scrcoul
+      type(scrcoul_type), optional, intent(in) :: scrcoul
       !>Select whether frequencies are real or imaginary
       character(6), intent(in) :: freqtype
       !>Symmetrization tensor
-      real(dp), intent(in) :: symt2(3, 3, 3, 3)
+      real(dp), optional, intent(in) :: symt2(3, 3, 3, 3)
       !>In: Body of the dielectric function. Out: Body of the inverse dielectric function
-      complex(dp), intent(inout) :: epsilon(:, :, :)
+      complex(dp), target, intent(inout) :: epsilon(:, :, :)
       !>In: 1st wing of the dielectric function. Out: 1st wing of the inverse dielectric function
-      complex(dp), intent(inout) :: epsw1(:, :, :)
+      complex(dp), optional, intent(inout) :: epsw1(:, :, :)
       !>In: 2nd wing of the dielectric function. Out: 2nd wing of the inverse dielectric function
-      complex(dp), intent(inout) :: epsw2(:, :, :)
+      complex(dp), optional, intent(inout) :: epsw2(:, :, :)
       !>In: Head of the dielectric function. Out: Head of the inverse dielectric function
-      complex(dp), intent(inout) :: epsh(:, :, :)
+      complex(dp), optional, intent(inout) :: epsh(:, :, :)
       !>Symmetrized dielectric tensor
-      complex(dp), intent(out) :: eps00(:, :, :)
+      complex(dp), optional, intent(out) :: eps00(:, :, :)
       !>Timing
       real(dp), intent(inout) :: time_dfinv
 
 
-      integer(i32) :: iom, mbsiz
+      integer(i32) :: iom, mbsiz, i, j
       integer(i32) :: im
       integer(i32) :: info, lwork
       real(dp)    :: tstart, tend
-      complex(dp), allocatable :: eps(:,:)
-      integer(i32), allocatable :: ipiv(:)
-      complex(dp), allocatable :: work(:)
+      complex(dp), pointer, contiguous :: eps(:,:)
 
       character(len=10), parameter :: sname="calcinveps"
 
-      external zgetrf, zgetri
-
       call timesec(tstart)
+      if( gamma ) then
+        call assert( present(scrcoul) .and. present(symt2) .and. present(epsw1) .and. &
+          present(epsw2) .and. present(epsh) .and. present(eps00), &
+          'Optional arguments must be present when gamma is true' )
+      end if
       mbsiz = size(epsilon, 1)
-      ! local arrays for body
-      allocate(eps(mbsiz,mbsiz))
-
-      ! LAPACK working arrays
-      lwork = 64*mbsiz
-      allocate(ipiv(mbsiz))
-      allocate(work(lwork))
 
       ! lopp over frequencies
       do iom = iomstart, iomend
 
          ! array for body and its inverse
-         eps(1:mbsiz,1:mbsiz) = epsilon(1:mbsiz,1:mbsiz,iom)
+         eps => epsilon(1:mbsiz,1:mbsiz,iom)
 
-         select case (freqtype)
-            case('refreq')
-               ! Compute the inverse of a matrix using the LU factorization and return whole matrix in eps
-               call invert_LU(eps)
-
-            ! TODO(Alex) Issue #132. Test replacing LU factorisation with Cholesky, for inversion
-            ! It should be faster.  
-            case('imfreq')
-               call invert_LU(eps)
-         end select
+         ! We invert the body; if IDieL is available
+         ! we use it as it allows device offload
+         ! If using IDieL this reassociates the pointer
+         ! to the interal buffer holding of IDieL holding
+         ! the actual inverse of the body.
+         call invert_body(eps)
 
          !averaging of eps for q->0
          if (Gamma) then
+            call set_head_wings_idiel(epsh, epsw1, epsw2, iom, Gamma)
             call angular_averaging(iom, symt2, scrcoul, eps, epsw1, epsw2, epsh, eps00)
-            epsh(1,1,iom) = epsh(1,1,iom)-zone !\epsilon^{-1}_{00}-1
-         endif 
+            call get_head_wings_idiel(epsh, epsw1, epsw2, iom, Gamma)
+            call get_body_idiel(eps, Gamma)
+            epsh(1,1,iom) = epsh(1,1,iom) - zone !\epsilon^{-1}_{00}-1
+         endif
 
-         ! Overwrite epsilon with its inverse 
-         epsilon(1:mbsiz,1:mbsiz,iom) = eps(1:mbsiz,1:mbsiz)
+         ! If using IDieL `eps` has been reassociated to
+         ! internal buffers of IDieL, thus is not associated
+         ! anymore with the global `epsilon`. Therefore
+         ! we need to update it back.
+         ! Some compilers create for some reason a temporary to make the 
+         ! copy if one writes epsilon(1:mbsiz,1:mbsiz,iom) = eps(1:mbsiz,1:mbsiz)
+         ! The same does not happen with the explicit do copy.
+         !$omp parallel do collapse(2) default(none) private(i,j) shared(epsilon,eps,mbsiz,iom)
+         do i = 1, mbsiz
+           do j = 1, mbsiz
+             epsilon(j,i,iom) = eps(j,i)
+           end do
+         end do
+         !$omp end parallel do
 
          ! Update diagonal: epsilon^{-1}_{ij} - \delta_{ij}
          do im = 1, mbsiz
             epsilon(im,im,iom) = epsilon(im,im,iom)-zone
          end do
 
-      enddo
+         ! Nullify the pointer
+         nullify(eps)
 
-      deallocate(ipiv, work)
-      deallocate(eps)
+         ! If using IDieL free memory
+         call free_memory_idiel()
+
+      end do
 
       call timesec(tend)
       time_dfinv = time_dfinv+tend-tstart
@@ -111,6 +123,11 @@ contains
    !>where \( \hat{\mathbf{q}}\) is the direction in which the limit is taken, \( L \) a 3x3 tensor and \( \mathbf{s}_\mu, \mathbf{t}_\mu \) are vectors.
    subroutine angular_averaging(iom, symt2, scrcoul, eps, epsw1, epsw2, epsh, eps00)
       use modinput, only: scrcoul_type
+      use scrcoul_low_dim, only: apply_2d_limit
+      use mod_lattice, only: bvec
+      use mod_coulomb_potential, only: rcut
+      use modmpi, only: terminate
+      use ieee_arithmetic, only: ieee_value, ieee_signaling_nan
       !>Frequency index
       integer(i32), intent(in) :: iom
       !>Symmetrization tensor
@@ -128,14 +145,43 @@ contains
       !>Symmetrized dielectric tensor
       complex(dp), intent(out) :: eps00(:, :, :)
 
-      ! TODO(Alex). Issue  141. Restore epsilon anisotropic averaging from exciting nitrogen in GW
       select case(trim(scrcoul%averaging))
          case("isotropic")
             call isotropic_averaging(iom, symt2, scrcoul%q0eps, eps, epsw1, epsw2, epsh, eps00)
-   
+         case("2d")
+            call apply_2d_limit(bvec, rcut, symt2, eps(:, :), epsh(:, :, iom), epsw1(:, :, iom), epsw2(:, :, iom))
+            !Warning Hack:
+            epsh(1,1,iom) = epsh(1,1,iom)+zone
+         case("anisotropic-2d")
+            call idiel_2d_anisotropic_average_idiel()
+         case("anisotropic")
+            call idiel_3d_anisotropic_average_idiel()
+         case default
+            call terminate("FATAL ERROR(angular_averaging): scrcoul%averaging is in an invalid state. " // &
+                           "This condition should be unreachable under correct program logic. " // &
+                           "Reaching this point indicates a critical internal failure.")
       end select
 
-      end subroutine
+      ! After averaging, the head is no longer a tensor but a scalar. However, the global array is still reused, with only the (1,1)
+      ! element being updated - the rest of the elements keep their previous values.
+      ! For task-based GW, where all elements of the head are printed in the inverse epsilon file.
+      ! This can be confusing, since only the (1,1) element is actually meaningful after averaging.
+      ! To make this clear, we set the unused elements to signaling NaNs.
+      ! That way, if anyone tries to use them in arithmetic operations, it will raise an error;
+      ! making it obvious that those parts of the array are now garbage and should not be used.
+      ! The same logic applies to the wings.
+      associate ( complex_nan => cmplx(ieee_value(0.0_dp, ieee_signaling_nan), &
+                                       ieee_value(0.0_dp, ieee_signaling_nan), kind=dp))
+
+          epsh(2:3, 2:3, iom) = complex_nan
+          epsh(2:3, 1,   iom) = complex_nan
+          epsh(1,   2:3, iom) = complex_nan
+          epsw1(:, 2:3, iom)  = complex_nan
+          epsw2(:, 2:3, iom)  = complex_nan
+
+      end associate
+
+   end subroutine
 
 
    !>Calculates the symmetrised dielectric tensor, and inverse of wings 1 and 2.
@@ -225,7 +271,7 @@ contains
       complex(dp) :: L(3,3), L_diag(3), dtns(3,3)
       complex(dp), allocatable :: s(:,:), t(:,:)
       !> Tolerance for zero
-      real(dp), parameter :: tol = 1.e-8
+      real(dp), parameter :: tol = 1.e-8_dp
 
       call assert(.not. all_zero(q0eps), "q0eps should not be zero")
 

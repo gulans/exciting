@@ -7,6 +7,7 @@ subroutine calcselfc_freqconv(ikp,iq,mdim)
     use modmain, only : zzero, idxas, evalcr, efermi
     use constants, only : pi
     use modgw
+    use mod_bands, only: nstse, evalfv
     ! input variables
     implicit none
     integer(4), intent(in) :: ikp
@@ -45,7 +46,7 @@ subroutine calcselfc_freqconv(ikp,iq,mdim)
             !============================= 
             ! Valence electron contribution
             !============================= 
-            enk = evalfv(ie2,jkp)-efermi
+            enk = evalfv(ie2,jkp) 
             xnm(1:freq%nomeg) = mwm(ie1,ie2,1:freq%nomeg)
           else
             !============================= 
@@ -56,7 +57,7 @@ subroutine calcselfc_freqconv(ikp,iq,mdim)
             ia = corind(icg,2)
             ic = corind(icg,3)
             ias = idxas(ia,is)
-            enk = evalcr(ic,ias)-efermi
+            enk = evalcr(ic,ias) - efermi
             xnm(1:freq%nomeg) = mwm(ie1,ie2,1:freq%nomeg)
           end if ! val/cor
 

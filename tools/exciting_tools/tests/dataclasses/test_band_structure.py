@@ -47,9 +47,9 @@ def band_data():
 
     band_data = BandData(ref_bands, ref_k_points, ref_e_fermi, ref_flattened_k_points, ref_vertices)
 
-    assert (
-        band_data.n_k_points == band_data.bands.shape[0]
-    ), "First dim of bands array equals the number of k-sampling points in the band structure"
+    assert band_data.n_k_points == band_data.bands.shape[0], (
+        "First dim of bands array equals the number of k-sampling points in the band structure"
+    )
     assert band_data.n_k_points == 6, "sampling points per band"
     assert band_data.n_bands == 2, "band_structure_xml contains two bands"
     assert np.allclose(band_data.k_points, ref_k_points, atol=1.0e-8)
@@ -76,8 +76,11 @@ def test_get_band_edges(band_data):
     assert i_cbm == 1
 
     band_data.e_fermi = 1.0
-    with pytest.raises(ValueError, match="Fermi level 1.0 larger than highest band energy 0.59664939"):
-        band_data.get_band_edges(), "ValueError is returned in case of erroneously large Fermi level"
+    with pytest.warns(
+        UserWarning,
+        match="Fermi level 1.0 larger than highest band energy 0.59664939. Band gap methods will return incorrect values.",
+    ):
+        band_data.get_band_edges(), "UserWarning is returned in case of erroneously large Fermi level"
 
 
 def test_get_valence_band_maximum(band_data):

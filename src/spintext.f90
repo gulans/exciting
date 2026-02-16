@@ -13,6 +13,8 @@ module spintexture
   Use modmpi
   Use FoX_wxml, only: xmlf_t, xml_OpenFile, xml_NewElement, xml_AddAttribute, xml_EndElement, xml_Close
   use constants, only : zzero
+  use secular_equation, only: seceqn
+  use mod_gen_lo, only: genlofr
 
   character(256), parameter :: fname = "spintext.xml"
   contains

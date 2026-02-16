@@ -12,6 +12,9 @@ Subroutine wfplot(dostm)
     Use modinput
     use modplotlabels
     use modmpi, only : rank
+    use mod_rhoir, only: genrhoir
+    use mod_rhovalk, only: rhovalk
+    use mod_gen_lo, only: genlofr
     Implicit None
     Logical, Intent(in) :: dostm
     ! local variables
@@ -163,8 +166,8 @@ Subroutine wfplot(dostm)
         ! get the eigenvectors from file
         Call getevecfv (vkl(:, ik), vgkl(:, :, :, ik), evecfv)
         Call getevecsv (vkl(:, ik), evecsv)
-        Call rhovalk (ik, evecfv, evecsv)
-        Call genrhoir (ik, evecfv, evecsv)
+        Call rhovalk (ik, evecfv, occsv(:, ik), rhomt, magmt, evecsv)
+        Call genrhoir (ik, evecfv, occsv(:, ik), rhoir, magir, evecsv)
     End Do
     ! symmetrise the density for the STM plot
     If (dostm) Then

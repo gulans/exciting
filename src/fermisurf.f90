@@ -4,6 +4,8 @@ subroutine fermisurf
   use modmain
   use modmpi
   use constants, only : zzero
+  use secular_equation, only: seceqn
+  use mod_gen_lo, only: genlofr
   implicit none
 
 ! local variables

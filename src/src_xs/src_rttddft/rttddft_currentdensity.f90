@@ -1,3 +1,4 @@
+
 ! This file is distributed under the terms of the GNU General Public License.
 ! See the file COPYING for license details.
 ! Copyright (C) Exciting Code, SOL group. 2020
@@ -9,106 +10,119 @@
 
 !> Module that deals with the Current Density in RT-TDDFT calculations
 module rttddft_CurrentDensity
+  use exciting_mpi, only: mpiinfo, xmpi_allreduce
+  use mod_lattice, only: Omega
+  use physical_constants, only: c
+  use precision, only: dp
+  use rttddft_VectorField, only: Uniform_Vector_Field
+  use rttddft_VectorPotential, only: Vector_Potential_Field
+  use xlapack, only: dot_multiply, hermitian_matrix_multiply
+  use rttddft_Wavefunction, only: wavefunction_set
+
   implicit none
 
   private
 
-  public :: UpdateCurrentDensity
+  !> Type to store any component of current density as a vector with `x`, `y`, and `z` components
+  type, public, extends(Uniform_Vector_Field) :: Current_Density_Field
+  end type
+
+  !> Current density stored as a vector with the components along `x`, `y`, and `z`
+  type, public :: Current_Density
+    !> diagmagnetic part of the current density
+    !> \(\mathbf{J}_{dia} = -\frac{N}{c\Omega}\mathbf{A}\)
+    type(Current_Density_Field) :: diamagnetic
+    !> paramagnetic part of the current density
+    type(Current_Density_Field) :: paramagnetic
+  contains
+    procedure, public :: total, total_components
+    procedure, public :: evaluate_paramagnetic
+    procedure, public :: evaluate_diamagnetic
+  end type
 
 contains
+  !> Total current density = paramagnetic + diamagnetic
+  !> Result is an object of type `Current_Density_Field`
+  pure function total( this ) result( r )
+    class(Current_Density), intent(in) :: this
+    type(Current_Density_Field) :: r
 
-  !> Here, we calculate the paramagnetic part of the current density at time 
-  !> \( t \). It is calculated as:
+    r%components = this%paramagnetic%components + this%diamagnetic%components
+  end function
+
+  !> Total current density = paramagnetic + diamagnetic
+  !> Result is an array with the components
+  pure function total_components( this ) result( r )
+    class(Current_Density), intent(in) :: this
+    real(dp) :: r(3)
+
+    r = this%paramagnetic%components + this%diamagnetic%components
+  end function
+
+  !> Evaluate the diamagnetic current density as
+  !> \[ \mathbf{J}_{ind}(t) = - \frac{N_{val} \mathbf{A}_{tot}(t)}{\Omega c} \]
+  !> \(N_{val}\) is the number of valence electrons, \(c\) is the light speed, and
+  !> \(\Omega\) is the unit cell volume
+  pure subroutine evaluate_diamagnetic( this, Nel_per_volume, a_tot )
+    class(Current_Density), intent(inout) :: this
+    !> Number of valence electrons per volume
+    real(dp), intent(in) :: Nel_per_volume
+    !> Vector potential
+    class(Vector_Potential_Field), intent(in) :: a_tot
+
+    this%diamagnetic%components = ( -Nel_per_volume / c )*a_tot%components 
+  end subroutine
+
+  !> Calculate the paramagnetic part of the current density at time \( t \) as:
   !> \[
   !>    \mathbf{J}(t) = \frac{\mathrm{i}}{\Omega} \sum_{j\mathbf{k}}
   !>      w_{\mathbf{k}}f_{j\mathbf{k}} \left\langle \psi_{j\mathbf{k}}(t) \big|
   !>      \nabla \big|\psi_{j\mathbf{k}}(t)\right\rangle
   !>  \]
-  !>  where \( N \) is the number of valence electrons in the unit cell with
-  !>  volume \( \Omega \), \( w_{\mathbf{k}} \) is the weight of the considered
-  !>  k-point, and \( f_{j\mathbf{k}} \) is the occupation number of the
-  !>  corresponding KS state.
-  subroutine UpdateCurrentDensity( first_kpt, last_kpt, evec, jpara )
-    use precision, only: dp
-    use constants, only: zzero, zone
-    use modinput, only: input
-    use modmpi
-    use mod_lattice, only: omega
-    use mod_eigenvalue_occupancy, only: occsv, nstfv
-    use mod_eigensystem, only: nmat, nmatmax
-    use rttddft_GlobalVariables, only: pmat
+  !> where \( \Omega \) is the unit cell volume , \( w_{\mathbf{k}} \) is the 
+  !> k-point weight and \( f_{j\mathbf{k}} \) is the occupation number of the
+  !> corresponding KS state.
+  subroutine evaluate_paramagnetic( this, psi, p_mat, occupation, kpt_weight, mpi_env )
+    class(Current_Density), intent(inout) :: this
+    !> Basis-expansion coefficients of the KS-wavefunctions at time \( t \)
+    class(wavefunction_set), intent(in) :: psi
+    !> Momentum matrix elements
+    complex(dp), intent(in) :: p_mat(:, :, :, :)
+    !> Occupation of each KS state
+    real(dp), intent(in) :: occupation(:, :)
+    !> Integration weight of each k-point
+    real(dp), intent(in) :: kpt_weight(:)
+    !> MPI environment
+    type(mpiinfo), intent(in) :: mpi_env
 
-    implicit none
+    integer :: ik, ist, j, n_states, n_basis, first_active
+    real(dp) :: aux(3)
+    real(dp), allocatable :: acc(:)
+    complex(dp), allocatable :: draft(:, :)
+    real(dp), parameter :: tol_default = 1e-6_dp
 
-    !> index of the first `k-point` to be considered in the sum
-    integer,intent(in)        :: first_kpt
-    !> index of the last `k-point` considered
-    integer,intent(in)        :: last_kpt
-    !> Basis-expansion coefficients of the KS-wavefunctions at time \( t \).
-    !> Dimensions: `nmatmax`, `nstfv`, `first_kpt:last_kpt`
-    complex(dp), intent(in)   :: evec(:, :, first_kpt:)
-    !> `x`, `y` and `z` components of the parametic current density
-    real(8), intent(out)      :: jpara(3)
+    first_active = psi%first_active()
+    n_states = psi%n_active()
+    n_basis = psi%n_basis()
+    allocate( draft(n_basis, n_states), acc(n_states) )
+    aux = 0._dp
 
-    integer                   :: ik, ist, j
-
-    real(dp)                  :: weight
-    real(dp)                  :: acc(nstfv)
-    real(dp)                  :: aux2(3)
-    real(dp), allocatable     :: aux(:,:)
-    complex(dp), allocatable  :: scratch(:,:)
-    ! Blas subroutines
-    real(dp)                  :: ddot
-    complex(dp)               :: zdotc
-
-    allocate( scratch(nmatmax,nstfv) )
-    allocate( aux(3,first_kpt:last_kpt) )
-
-    aux(:,:) = 0._dp
-
-    ! Summation weight of each kpoint
-    ! TODO(Ronaldo): consider symmetries in the k-grid
-    weight = 1._dp/dble(product(input%groundstate%ngridk))
-
-    ! For the x, y, and z components ...
-    do j = 1,3
-#ifdef USEOMP
-!$OMP PARALLEL DEFAULT(NONE), &
-!$OMP& PRIVATE(ik,ist,scratch,acc), &
-!$OMP& SHARED(j,first_kpt,last_kpt,aux,nmatmax,nstfv,pmat), &
-!$OMP& SHARED(evec,occsv,nmat,input)
-!$OMP DO
-#endif
-      do ik = first_kpt, last_kpt
-        ! C := alpha*A*B + beta*C, A hermitian
-        ! ZHEMM(SIDE,UPLO,M,N,ALPHA,A,LDA,B,LDB,BETA,C,LDC)
-        call ZHEMM('L','U',nmat(1,ik),nstfv, zone,pmat(:,:,j,ik),nmatmax, &
-          & evec(:,:,ik),nmatmax, zzero,scratch(:,:),nmatmax)
-        do ist = 1, nstfv
-          ! If the occupation of a certain state is small, we can consider
-          ! that all the others above it will have occsv(ist,ik) zero
-          if ( occsv(ist, ik)  <= input%groundstate%epsocc ) exit
-          acc(ist) = dble(zdotc(nmat(1,ik),evec(:,ist,ik),1,scratch(:,ist),1))
+    !$OMP PARALLEL DO DEFAULT(NONE), PRIVATE(ik, j, ist, draft, acc), REDUCTION(+:aux), &
+    !$OMP& SHARED(n_states, psi, p_mat, occupation, kpt_weight, first_active)
+    do ik = 1, psi%n_kpts()
+      ! For the x, y, and z components ...
+      do j = 1, 3
+        call hermitian_matrix_multiply( p_mat(:, :, j, ik), psi%active(:, :, ik), draft, 'U', 'L', tol_default )
+        do ist = 1, n_states
+          acc(ist) = real( dot_multiply( psi%active(:, ist, ik), draft(:, ist), conjg_a=.true. ), dp )
         end do
-        aux(j,ik) = -ddot(ist-1,occsv(:,ik),1,acc(:),1)
-      end do ! do ik = first_kpt, last_kpt
-#ifdef USEOMP
-!$OMP END DO NOWAIT
-!$OMP END PARALLEL
-#endif
-    end do !do j = 1,3
-
-    do j = 1, 3
-      aux2(j) = sum( aux(j, first_kpt:last_kpt) )
+        aux(j) = aux(j) - dot_multiply( occupation(first_active: first_active + n_states - 1, ik), acc )*kpt_weight(ik)
+      end do
     end do
-#ifdef MPI
-    call MPI_ALLREDUCE(aux2, jpara, 3, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr)
-    jpara = jpara*weight/omega
-#else
-    jpara = aux2*weight/omega
-#endif
-    deallocate( scratch, aux )
-
-  end subroutine UpdateCurrentDensity
+    !$OMP END PARALLEL DO
+    
+    this%paramagnetic%components = aux / Omega
+    call xmpi_allreduce( this%paramagnetic%components, mpi_env )
+  end subroutine  
 
 end module rttddft_CurrentDensity

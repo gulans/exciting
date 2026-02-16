@@ -10,6 +10,7 @@ Subroutine hybrids
     Use modmpi
     Use scl_xml_out_Module
     Use mod_hybrids
+    use mod_gen_lo, only: genlofr
 !
 ! !DESCRIPTION:
 !   Main routine for Hartree-Fock based hybrid functionals.
@@ -185,7 +186,7 @@ Subroutine hybrids
         call gencore()          ! generate the core wavefunctions and densities
         call linengy()          ! find the new linearization energies
         call genapwfr()         ! generate the APW radial functions
-        call genlofr(.false.)   ! generate the local-orbital radial functions
+        call genlofr()          ! generate the local-orbital radial functions
         call olprad()           ! compute the overlap radial integrals
         call energykncr()       ! core kinetic energy
         !
@@ -396,7 +397,7 @@ Subroutine hybrids
     end if
     call timesec(ts1)
     timeio=ts1-ts0+timeio
-
+    
 ! TIME - End of fifth IO segment
     Call timesec(tsg1)
     If ((rank .Eq. 0).and.(input%groundstate%outputlevelnumber>1)) then
@@ -456,7 +457,7 @@ Subroutine hybrids
     call exit_hybrids
     nullify(input%gw)
     call rereadinput
-
+    call readspeciesxml() ! only for CDFT
     Return
 End Subroutine
 !EOC

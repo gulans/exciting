@@ -4,6 +4,7 @@ subroutine init_gw()
     use modinput
     use modmain
     use modgw
+    use mod_bands, only: evalfv
     use mod_gaunt_coefficients
     use modmpi
     use modxs, only: isreadstate0
@@ -11,9 +12,11 @@ subroutine init_gw()
     use m_filedel
     use mod_hdf5
     use gw_scf, only: set_gs_solver_threads, thread_consistent_scf
+    use exciting_idiel_interface, only: init_idiel_handler
+#include "offload.fpp"
 
     implicit none
-    logical :: reducek, is_task_group, is_task_epsilon
+    logical :: reducek, is_task_group, is_task_epsilon, is_task_invertEpsilon, is_task_sigmac
     integer :: lmax, ik
     real(8) :: t0, t1, tstart, tend
 
@@ -70,9 +73,6 @@ subroutine init_gw()
 
         if (rank == 0) then
           ! safely remove unnecessary files
-          call filedel('EIGVAL'//trim(filext))
-          call filedel('LINENGY'//trim(filext))
-          call filedel('EVALCORE'//trim(filext))
           call filedel('OCCSV'//trim(filext))
           call filedel('EFERMI'//trim(filext))
           call filedel('BROYDEN.OUT')
@@ -118,13 +118,17 @@ subroutine init_gw()
     is_task_group = input%gw%taskname=='taskGroup' 
     if( is_task_group .and. associated( input%gw%taskGroup ) ) then
       is_task_epsilon = associated( input%gw%taskGroup%epsilon )
+      is_task_invertEpsilon = associated( input%gw%taskGroup%invertEpsilon )
+      is_task_sigmac = associated( input%gw%taskGroup%sigmac )
     else 
       is_task_epsilon = .false.
+      is_task_invertEpsilon = .false.
+      is_task_sigmac = .false.
     end if
 
     if (input%gw%taskname=='g0w0' .or. &
         input%gw%taskname=='emac' .or. &
-        is_task_epsilon ) then
+        is_task_epsilon .or. is_task_invertEpsilon .or. is_task_sigmac ) then
       call generate_freqgrid(freq, &
       &                      input%gw%freqgrid%fgrid, &
       &                      input%gw%freqgrid%fconv, &
@@ -157,6 +161,12 @@ subroutine init_gw()
     call init_dft_eigenvalues()
     call timesec(t1)
     time_initeval = time_initeval+t1-t0
+
+    ! Initialize if compiled with the IDieL library handler
+    call init_idiel_handler()
+    
+    ! Upload GS globals to the devices
+    OMP_OFFLOAD target enter data map(always, to: idxas, idxlo, idxlm, lorbl, apword, nlorb, corind, evalcr, evalfv)
 
     ! timing
     call timesec(tend)

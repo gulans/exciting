@@ -13,6 +13,9 @@ Subroutine hartfock
 ! !USES:
       Use modmain
       Use modinput
+      use total_energy, only: energy
+      use mod_rhovalk, only: rhovalk
+      use mod_gen_lo, only: genlofr
 ! !DESCRIPTION:
 !  Computes the self-consistent Hartree Fock ground state.
 !
@@ -23,7 +26,7 @@ Subroutine hartfock
       Implicit None
 ! local variables
       Logical :: exist
-      Integer :: ik, is, ia, idm, Recl
+      Integer :: ik, idm, Recl
       Real(8) :: etp, de
       character*(77) :: string
 ! allocatable arrays
@@ -56,7 +59,7 @@ Subroutine hartfock
 ! read the charge density and potentials from file
       Call readstate
 ! compute the effective potential
-      Call poteff
+      Call poteff( .true. )
 ! Fourier transform effective potential to G-space
       Call genveffig
       Call genmeffig
@@ -137,7 +140,7 @@ Subroutine hartfock
             Call getevecfv (vkl(:, ik), vgkl(:, :, :, ik), evecfv)
             Call getevecsv (vkl(:, ik), evecsv)
 ! add to the density and magnetisation
-            Call rhovalk (ik, evecfv, evecsv)
+            Call rhovalk (ik, evecfv, occsv(:, ik), rhomt, magmt, evecsv)
             Deallocate (evecfv, evecsv)
          End Do
 !$OMP END DO

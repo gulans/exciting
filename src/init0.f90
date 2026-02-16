@@ -33,6 +33,7 @@ Subroutine init0
       Use errors_warnings, only: terminate_if_false
       Use vx_enums, only: HYB_PBE0, HYB_HSE
       Use APW_basis_size, only: determine_rgkmax, determine_APWprecision
+      Use mgga_init, only: xctype_mgga, xcdescr_mgga, set_mgga_potential
       ! TODO(ALEX) Once everyone has done their refactor
       ! initialisation routines should be moved from tmp_mod_init0
       ! and tmp_mod_init0 should be deleted.
@@ -43,6 +44,8 @@ Subroutine init0
       use sirius_init, only: sirius_options
       use sirius_api, only: setup_sirius, get_mpi_comm_sirius, gengvec_sirius, warn_array_sizes_sirius,&
                             set_periodic_function_ptr_sirius
+      Use modsym, only: spainvsym, inv_sym_no_translation
+      Use mod_secular_equation_inversion_symmetry,only: check_usage_of_inversion_symmetry_solver
 
       Implicit None
 
@@ -168,8 +171,9 @@ Subroutine init0
       If ((task .Eq. 5) .Or. (task .Eq. 6) .Or. (task .Eq. 300)) &
      & input%groundstate%tevecsv = .True.
 
-     call initialise_xc_mixing_coefficients(input%groundstate, xctype, xcdescr, xcspin, xcgrad, ex_coef, ec_coef)
-      
+     if ( associated(input%groundstate%mgga) ) call set_mgga_potential()
+     call initialise_xc_mixing_coefficients(input%groundstate, xctype, xcdescr, xcspin, xcgrad, ex_coef, ec_coef, xctype_mgga, xcdescr_mgga)
+
 ! reset input%groundstate%Hybrid%excoeff to ex_coef
 ! in case of libxc: overwritten by ex_coef as defined by libxc
       If (associated(input%groundstate%Hybrid)) input%groundstate%Hybrid%excoeff = ex_coef
@@ -274,10 +278,12 @@ Subroutine init0
      & symlat, lsplsymc, vtlsymc, isymlat, scimap)
 ! generate symmetrization array for rank 2 tensors
       Call gensymt2 (maxsymcrys, nsymcrys, symlatc, lsplsymc, symt2)
+#endif
 ! calculate advanced information on symmetry group
       Call setupsym
-#endif
-
+! check if inversion symmetry is present in order to use the real solver, and if the relevant input parameter is
+! defined correctly.
+      Call check_usage_of_inversion_symmetry_solver(spainvsym, inv_sym_no_translation)
 ! automatically determine the muffin-tin radii if required
       If (input%structure%autormt .and. (idx_species_fixed_rmt .gt. 0)) then 
             Call optimal_rmt(rmt, spzn, input%structure%crystal%basevect, atposc,&
@@ -417,7 +423,7 @@ endif
       ! Check for ylmg and sfacg, which will become an issue
       ! if running sirius with many MPI instances per node,
       ! for large systems
-      call warn_array_sizes_sirius(lmmaxvr, ngvec)
+      if (associated(input%groundstate%sirius)) call warn_array_sizes_sirius(lmmaxvr, ngvec)
 
       call genylmg
 

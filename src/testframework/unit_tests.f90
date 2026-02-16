@@ -20,6 +20,7 @@ module unit_tests
       logical :: advanced = .false.
       logical :: eigensystem = .false.
       logical :: fermisurfdx = .false.
+      logical :: groundstate = .false.
       logical :: gw = .false.
       logical :: hybrids = .false.
       logical :: LDAU = .false.
@@ -29,6 +30,7 @@ module unit_tests
       logical :: phonon = .false.
       logical :: raman = .false.
       logical :: rdmft = .false.
+      logical :: rttddft = .false.
       logical :: stm = .false.
       logical :: sym = .false.
       logical :: vdw = .false.
@@ -46,6 +48,7 @@ module unit_tests
       logical :: matrix_elements = .false.
       logical :: xgrid = .false.
       logical :: xhdf5 = .false.
+      logical :: lattice_harmonics = .false.
 
    contains
       procedure :: init => set_unit_tests
@@ -115,6 +118,8 @@ contains
          run%eigensystem = .true.
       case ('fermisurfdx')
          run%fermisurfdx = .true.
+      case ('groundstate')
+         run%groundstate = .true.
       case ('gw')
          run%gw = .true.
       case ('hybrids')
@@ -133,6 +138,8 @@ contains
          run%raman = .true.
       case ('rdmft')
          run%rdmft = .true.
+      case ('rttddft')
+          run%rttddft = .true.
       case ('stm')
          run%stm = .true.
       case ('sym')
@@ -168,6 +175,8 @@ contains
          run%xgrid = .true.
       case ('xhdf5')
          run%xhdf5 = .true.
+      case ('lattice_harmonics')
+         run%lattice_harmonics = .true.
 
       case default
          call terminate_mpi_env(mpi_env, 'Unrecognised unit test name: '&
