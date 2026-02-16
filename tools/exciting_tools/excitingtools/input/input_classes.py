@@ -1,27 +1,29 @@
 """ Automatic generation of all standard input classes plus definiton of exceptions. """
-
-from pathlib import Path
-from typing import Optional, List, Callable
-from typing import Union
+from typing import List, Union, Any
 from xml.etree import ElementTree
 
 import numpy as np
 
-from excitingtools.input.base_class import AbstractExcitingInput, ExcitingXMLInput
+from excitingtools.input.base_class import AbstractExcitingInput
 from excitingtools.input.dynamic_class import generate_classes_str
-from excitingtools.input.xml_utils import xml_tree_to_pretty_str, prettify_tag_attributes
 from excitingtools.utils.dict_utils import check_valid_keys
 from excitingtools.utils.utils import list_to_str
 from excitingtools.utils.valid_attributes import valid_plan_entries
 
 # define names of classes which are meant to be available for a user or used directly elsewhere in excitingtools
-ExcitingCrystalInput: Callable
-ExcitingSpeciesInput: Callable
-ExcitingGroundStateInput: Callable
-ExcitingXSInput: Callable
-ExcitingPropertiesInput: Callable
-ExcitingPointInput: Callable
-ExcitingBandStructureInput: Callable
+# type hint as Any to not conflict with static type checkers as the input classes are generated dynamically
+ExcitingCrystalInput: Any
+ExcitingSpeciesInput: Any
+ExcitingGroundStateInput: Any
+ExcitingXSInput: Any
+ExcitingPropertiesInput: Any
+ExcitingPointInput: Any
+ExcitingBandStructureInput: Any
+ExcitingRelaxInput: Any
+ExcitingPhononsInput: Any
+ExcitingGWInput: Any
+ExcitingMDInput: Any
+ExcitingEPHInput: Any
 
 # execute dynamically generated string with all standard class defintions
 exec(generate_classes_str())
@@ -41,40 +43,13 @@ class ExcitingTitleInput(AbstractExcitingInput):
         return title_tree
 
 
-class ExcitingInputXML(ExcitingXMLInput):
-    """
-    Container for a complete input xml file.
-    """
-    name = "input"
-    _default_filename = "input.xml"
-
-    def set_title(self, title: str):
-        """ Set a new title. """
-        self.__dict__["title"].title = title
-
-    def to_xml_str(self) -> str:
-        """Compose XML ElementTrees from exciting input classes to create an input xml string.
-
-        :return: Input XML tree as a string, with pretty formatting.
-        """
-        return prettify_tag_attributes(xml_tree_to_pretty_str(self.to_xml()))
-
-    def write(self, filename: Union[str, Path] = _default_filename):
-        """Writes the xml string to file.
-
-        :param filename: name of the file.
-        """
-        with open(filename, "w") as fid:
-            fid.write(self.to_xml_str())
-
-
 class ExcitingQpointsetInput(AbstractExcitingInput):
     """
     Class for exciting Qpointset Input
     """
     name = "qpointset"
 
-    def __init__(self, qpointset: Optional[Union[np.ndarray, List[List[float]]]] = np.array([0.0, 0.0, 0.0])):
+    def __init__(self, qpointset: Union[np.ndarray, List[List[float]]] = np.array([0.0, 0.0, 0.0])):
         """
         Qpointset should be passed either as numpy array or as a list of lists, so either
         np.array([[0., 0., 0.], [0.0, 0.0, 0.01], ...])
@@ -115,30 +90,25 @@ class ExcitingPlanInput(AbstractExcitingInput):
         return plan
 
 
-class ExcitingPathInput(ExcitingXMLInput):
+class ExcitingKstlistInput(AbstractExcitingInput):
     """
-    Class for exciting path input.
-    
-    Note: Not to be confused by the class name, it is NOT directly a band path. Defining what is in the
-    exciting input file under the subtree called 'path'.
+    Class for exciting Kstlist Input
     """
-    name = "path"
+    name = "kstlist"
 
-    def __init__(self,
-                 points: List[Union[dict, ExcitingPointInput]],
-                 **kwargs):
-        """Generate an object of ExcitingXMLInput for the path attributes."""
-        super().__init__(**kwargs)
-        self.__dict__["points"] = [self._initialise_subelement_attribute(ExcitingPointInput, point) for point in points]
-
-    def to_xml(self) -> ElementTree:
-        """Put class attributes into an XML tree, with the element given by self.name.
-        :return ElementTree.Element sub_tree: sub_tree element tree, with class attributes inserted.
+    def __init__(self, kstlist: Union[np.ndarray, List[List[int]]]):
         """
-        attributes = {key: str(value) for key, value in vars(self).items() if key != "points"}
-        xml_tree = ElementTree.Element(self.name, **attributes)
+        Kstlist should be passed either as numpy array or as a list of lists, so either
+        np.array([[1, 2], [3, 4], ...])
+        or
+        [[1, 2], [3, 4], ...]
+        """
+        self.kstlist = kstlist
 
-        for point in self.points:
-            xml_tree.append(point.to_xml())
+    def to_xml(self) -> ElementTree.Element:
+        """ Special implementation of to_xml for the kstlist element. """
+        kstlist = ElementTree.Element(self.name)
+        for pointstatepair in self.kstlist:
+            ElementTree.SubElement(kstlist, 'pointstatepair').text = list_to_str(pointstatepair)
 
-        return xml_tree
+        return kstlist

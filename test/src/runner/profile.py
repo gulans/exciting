@@ -3,8 +3,8 @@ Build profile and exciting methods
 """
 import enum
 import re
-from typing import List, Union
 import sys
+from typing import List, Union
 
 
 class Compiler(enum.Enum):
@@ -59,6 +59,7 @@ class ExcitingCalculation(enum.Enum):
     tddft = enum.auto()
     rt_tddft = enum.auto()
     bse = enum.auto()
+    bse_hdf5 = enum.auto()
     hybrid = enum.auto()
     phonon = enum.auto()
     band_structure = enum.auto()
@@ -70,6 +71,7 @@ class ExcitingCalculation(enum.Enum):
     electric_properties = enum.auto()
     core_properties = enum.auto()
     spin_properties = enum.auto()
+    fastBSE = enum.auto()
 
 
 def get_calculation_types(input_calcs: List[str]) -> List[ExcitingCalculation]:
@@ -80,7 +82,7 @@ def get_calculation_types(input_calcs: List[str]) -> List[ExcitingCalculation]:
     :param List[str] input_calcs: Input strings for calculation names
     :return  List[Calculation] List of Calculation enums
     """
-    all_calculations_str = "\n".join(calc for calc in ExcitingCalculation._member_names_)
+    all_calculations_str = "\n".join(calc for calc in ExcitingCalculation._member_names_)  # pylint: disable=no-member
 
     matched_calculations = []
     for calc in input_calcs:
@@ -90,7 +92,8 @@ def get_calculation_types(input_calcs: List[str]) -> List[ExcitingCalculation]:
         unmatched_calcs = set(input_calcs) - set(matched_calculations)
         print("Some calculation inputs did not match any valid method choices: ", unmatched_calcs)
         print("Here is a complete list of valid method strings (substring matches are also valid):")
-        all_calculations_pretty_str = "\n".join(" * " + calc for calc in ExcitingCalculation._member_names_)
+        all_calculations_pretty_str = "\n".join(" * " + calc for calc in
+                                                ExcitingCalculation._member_names_)  # pylint: disable=no-member
         print(all_calculations_pretty_str)
         sys.exit()
 

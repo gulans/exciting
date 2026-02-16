@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -18,23 +19,21 @@ class RunnerCode(enum.Enum):
     """ Runner codes.
      By default, the initial value starts at 1.
     """
-    time_out = enum.auto
+    time_out = enum.auto()
 
 
+@dataclass
 class SubprocessRunResults:
     """ Results returned from subprocess.run()
     """
 
-    def __init__(self,
-                 stdout,
-                 stderr,
-                 return_code: Union[int, RunnerCode],
-                 process_time: Optional[float] = None):
-        self.stdout = stdout
-        self.stderr = stderr
-        self.return_code = return_code
-        self.success = return_code == 0
-        self.process_time = process_time
+    stdout: str
+    stderr: str
+    return_code: int | RunnerCode
+    process_time: Optional[float] = None
+
+    def __post_init__(self):
+        self.success = self.return_code == 0
 
 
 class BinaryRunner:
@@ -140,19 +139,21 @@ class BinaryRunner:
 
         time_start: float = time.time()
         try:
-            result = subprocess.run(execution_list,
-                                    env=my_env,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    timeout=self.time_out,
-                                    cwd=self.directory)
+            result = subprocess.run(
+                execution_list,
+                cwd=self.directory,
+                env=my_env,
+                capture_output=True,
+                encoding="utf-8",
+                timeout=self.time_out,
+            )
             total_time = time.time() - time_start
             return SubprocessRunResults(result.stdout, result.stderr,
                                         result.returncode, total_time)
 
         except subprocess.TimeoutExpired as timed_out:
+            output = timed_out.output.decode("uft-8") if timed_out.output else ""
             error = 'BinaryRunner: Job timed out. \n\n'
             if timed_out.stderr:
                 error += timed_out.stderr.decode("utf-8")
-            return SubprocessRunResults(timed_out.output, error,
-                                        RunnerCode.time_out, self.time_out)
+            return SubprocessRunResults(output, error, RunnerCode.time_out, self.time_out)

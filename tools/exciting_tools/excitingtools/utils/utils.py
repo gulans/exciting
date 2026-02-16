@@ -2,7 +2,7 @@
 """
 import pathlib
 import re
-from typing import Union, List, Optional, Callable
+from typing import Union, List, Optional, Callable, Iterator
 
 
 def get_excitingtools_root() -> pathlib.Path:
@@ -76,18 +76,14 @@ def list_to_str(mylist: list, modifier: Optional[Callable] = None) -> str:
     return "".join(modifier(str(xyz)) + ' ' for xyz in mylist).strip()
 
 
-def string_to_bool(string: str) -> bool:
-    """ Convert string representation of true/false to True/False.
+def flatten_list(input_list: list) -> Iterator:
+    """ Flatten a list of lists and other elements.
 
-    :param string: String
-    :return bool
+    :param input_list: input list
+    :return: an iterator for the flattened list
     """
-    if string.lower() == 'true':
-        return True
-    elif string.lower() == 'false':
-        return False
-    else:
-        raise ValueError()
-
-
-
+    for x in input_list:
+        if isinstance(x, list):
+            yield from flatten_list(x)
+        else:
+            yield x

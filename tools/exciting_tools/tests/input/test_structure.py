@@ -220,7 +220,7 @@ def test_optional_species_attributes_xml(lattice_and_atoms_CdS):
     cubic_lattice, arbitrary_atoms = lattice_and_atoms_CdS
     species_attributes = {'Cd': {'rmt': 3.0, "LDAplusU": {"J": 1.5, "U": 2.4, "l": 2}},
                           'S': {'rmt': 4.0, "dfthalfparam": {"ampl": 1.2, "cut": 1.9, "exponent": 5,
-                                                             "shell": {"ionization": 0.8, "number": 1}}}}
+                                                             "shell": [{"ionization": 0.8, "number": 1}]}}}
 
     structure = ExcitingStructure(
         arbitrary_atoms, cubic_lattice, './', species_properties=species_attributes
@@ -404,6 +404,13 @@ def test_get_full_lattice(lattice_and_atoms_CdS):
                                   crystal_properties={'scale': 1.50, 'stretch': [2.00, 1.00, 3.00]})
     ref_lattice = np.array([[3, 0, 0], [0, 1.5, 0], [0, 0, 4.5]])
     assert np.allclose(structure.get_lattice(), ref_lattice)
+
+
+def test_structure_input_with_integers(tmp_path):
+    atoms = [{"species": "C", "position": [0, 0, 0]}]
+    structure = ExcitingStructure(atoms, [[1, 0, 0], [0, 1, 0], [0, 0, 1]], "./")
+    ref_lattice = np.array([[0.52917721, 0., 0.], [0., 0.52917721, 0.], [0., 0., 0.52917721]])
+    assert np.allclose(structure.get_lattice(convert_to_angstrom=True), ref_lattice)
 
 
 def test_get_bandstructure_input_from_exciting_structure(lattice_and_atoms_H20):

@@ -64,6 +64,7 @@ SOURCEDIRS=	\
   ../../src/wfplot \
   ../../src/xhdf5 \
   ../../src/xhdf5/hdf5_wrappers \
+	../../src/xhdf5/utilities \
   ../../src/svlo \
   ../../src/xfftw \
   ../../src/isdf \
@@ -200,7 +201,6 @@ libmsec.a::
 	../../src/src_mixing/lib/ \
 	&& $(MAKE) -f Makefile.libmsec libmsec.a 
 
-
 # --------------------------------
 # Process XML Schema
 # --------------------------------
@@ -229,6 +229,3 @@ cleanlibs:
 	-cd ../../external/FoX && make clean
 	-cd ../../external/leblaiklib && make clean
 	-cd ../../external/Lbfgsb.3.0 && make clean
-
-
-getthisdir:

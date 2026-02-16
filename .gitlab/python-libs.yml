@@ -9,15 +9,16 @@ python:excitingtools-python-3.7:
     - docker
   before_script:
     - python3 -m pip install -U pip setuptools
-    - python3 -m pip install --upgrade --force pylint coverage xmlschema ase
+    - python3 -m pip install --upgrade --force pylint coverage
   script:
-    - cd tools/exciting_tools && python3 -m pip install -e .
+    - cd tools/exciting_tools && python3 -m pip install -e .[schemaparsing,h5_parsing,dev]
     # Run excitingtools unit tests and collect test coverage
     - coverage run -m pytest
     - coverage xml -o excitingtools_testcov.xml
-  after_script:
+    # go back to root
+    - cd ../..
     # Run pylint on all modified python files
-    - sh .gitlab/run_pylint.sh $CI_BUILD_REF_NAME
+    - sh .gitlab/run_pylint.sh $CI_COMMIT_BRANCH
     # Run the schema parsing to detect changes
     - sh .gitlab/run_schema_parsing.sh
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
@@ -37,6 +38,7 @@ python:regressionframework-python-3.7:
    # - python3.7 -m pip install --upgrade --force coverage
     - python3 -m pip install -U pip setuptools
     - python3 -m pip install coverage
+    - python3 -m pip install h5py
     - python3 -m pip install tools/exciting_tools
   script:
     - cd test/ && coverage run -m pytest test_functions/
@@ -57,13 +59,13 @@ deploy:excitingtools-pypi:
   script:
     - cd tools/exciting_tools
     - >
-      if [[ -n $(git diff origin/development HEAD -- pyproject.toml | grep '+version') ]]; then
+      if [[ -n $(git diff HEAD^ HEAD -- pyproject.toml | grep '+version') ]]; then
         echo "excitingtools version has been bumped. Pushing to pypi"
         pip3 install -U pip build twine
         python3 -m build
         twine upload --skip-existing --non-interactive --username __token__ --password $PYPI_TOKEN dist/*
       else
-        echo "pyproject.toml has changed but the version number has not, so do not push to pypi"
+        echo "pyproject.toml may have changed but the version number has not, so do not push to pypi"
       fi
   rules:
     # Only deploy when a feature is merged, not each time the pipeline passes
