@@ -35,6 +35,8 @@ module m_device_world_t
         integer, private :: ndevices = -1
         !> Device queue for MAGMA
         type(c_ptr), private  :: queue = c_null_ptr
+        !> Solver handler
+        type(c_ptr), private  :: solver_handler
         !> The number of teams in the device
         integer, private :: num_teams = 1
         !> The maximum number of threads per team
@@ -43,7 +45,7 @@ module m_device_world_t
         logical, private :: cpu_backend = .true.
     contains
         procedure, public :: init, finish, is_queue_set, get_queue, synchronize, get_device, get_num_teams, using_cpu_backend, &
-                             get_num_threads, simd_size, get_stream
+                             get_num_threads, simd_size, get_stream, get_blas_handler, get_solver_handler
     end type device_world_t
 
 contains
@@ -130,5 +132,21 @@ contains
         class(device_world_t), intent(in) :: this
         get_stream = c_null_ptr
     end function get_stream
+
+    !> Returns the underlying linear algebra handler (BLAS/LAPACK)
+    !> for Intel returns the pointer of the queue, which can be used for
+    !> depend constructs
+    type(c_ptr) function get_blas_handler(this)
+        class(device_world_t), intent(in) :: this
+        get_blas_handler = c_null_ptr
+    end function get_blas_handler
+
+    !> Returns the underlying linear algebra handler (Solver)
+    !> for Intel returns the pointer of the queue, which can be used for
+    !> depend constructs
+    type(c_ptr) function get_solver_handler(this)
+        class(device_world_t), intent(in) :: this
+        get_solver_handler = c_null_ptr
+    end function get_solver_handler
 
 end module m_device_world_t

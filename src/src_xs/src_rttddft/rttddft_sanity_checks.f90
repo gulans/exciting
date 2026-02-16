@@ -1,13 +1,18 @@
 !> This module handles checks of the user-provided input for the RT module. The calculations are 
 !> terminated, if the input is inconsistent or incompatible with the current version of the code.
 module rttddft_sanity_checks
+  use asserts, only: assert
   use constants, only: real_zero
+  use exciting_mpi, only: xmpi_allgatherv
+  use general_find_vbm_cbm, only: find_vbm_cbm
+  use mod_mpi_env, only: mpiinfo
   use modinput, only: input_type
-  use modmpi, only: terminate_if_false
+  use modmpi, only: terminate, terminate_if_false
   use physical_constants, only: c
   use precision, only: dp, i32, sp
   use rttddft_electric_field, only: Electric_Field
   use rttddft_VectorPotential, only: Vector_Potential
+  use rttddft_Wavefunction, only: wavefunction_set
   use to_char_conversion, only: to_char
   use vector_multiplication, only: norm
 
@@ -17,9 +22,14 @@ module rttddft_sanity_checks
   public :: check_rttddft_input, check_rttddft_setup
 
   integer(i32), parameter :: n_cartesian_directions = 3
-  real(dp), parameter :: e_field_squared_au_to_intensity_wcm2 = 3.50941e16_dp, &
-    intensity_extremely_high = 1.e18_dp, eps_kick_width = 1.e-14_dp, t_step_scale = 0.2_dp, &
-    eps_energy_gap = 1.e-5_dp, eps_e_field = 1.e-12_dp, &
+  real(dp), parameter :: &
+    e_field_squared_au_to_intensity_wcm2 = 3.50941e16_dp, &
+    intensity_extremely_high = 1.e18_dp, &
+    eps_kick_width = 1.e-14_dp, &
+    t_step_scale = 0.2_dp, &
+    eps_energy_gap = 1.e-5_dp, &
+    eps_e_field = 1.e-12_dp, &
+    eps_scissor = 1.e-10_dp, &
     e_field_extremely_high = sqrt( intensity_extremely_high / e_field_squared_au_to_intensity_wcm2 )
   
 contains
@@ -30,13 +40,18 @@ contains
     type(input_type), intent(in) :: inp
 
     integer(i32) :: i
+    character(len=*), parameter :: procedure_name = "check_rttddft_input"
+    character(len=*), parameter :: warning_header = "Warning(" // procedure_name // "): "
     
     call terminate_if_false( .not. inp%groundstate%solver%packedmatrixstorage, &
-      & 'Error: RT-TDDFT does not work with matrices stored in a packed form.' )
+      & 'RT-TDDFT does not work with matrices stored in a packed form.' )
 
     ! Consistency check: check if no spin polarized calculations are requested.
     call terminate_if_false( .not. inp%groundstate%tevecsv, &
-      & 'Error: only spin unpolarised calculations are possible with RT-TDDFT now.' )
+      & 'Only spin unpolarised calculations are possible with RT-TDDFT now.' )
+    ! iora*
+    if( trim(inp%groundstate%ValenceRelativity) == "iora*" ) call terminate( &
+      & 'RT-TDDFT not implemented for ValenceRelativity="iora*"'   )
 
     ! Consistency check: laser has been defined?
     call terminate_if_false( associated( inp%xs%realTimeTDDFT%laser ), &
@@ -60,11 +75,11 @@ contains
       call terminate_if_false( trim( inp%xs%realTimeTDDFT%laser%fieldType ) == "total", &
         "Berry-phase coupling is currently available only with total field given" )
     else
+      call terminate_if_false( inp%xs%scissor < eps_scissor, "Scissor correction is not implemented for velocity gauge field coupling" )
       call terminate_if_false( associated( inp%xs%realTimeTDDFT%pmat ), &
       & 'Element <pmat> in <realTimeTDDFT> not found' )
     end if
 
-    ! No restart currently possible for MD calculations
     if( associated( inp%MD ) ) then
       if( trim( inp%xs%realTimeTDDFT%do ) /= "fromscratch" ) then 
         call terminate_if_false( trim( inp%xs%realTimeTDDFT%propagator ) == "SE" .or. trim( inp%xs%realTimeTDDFT%propagator ) == "EH", &
@@ -72,11 +87,12 @@ contains
         call terminate_if_false( inp%xs%realTimeTDDFT%timeStep == inp%MD%timeStep, &
           "Restart for Ehrenfest MD is currently only implemented when the RT-TDDFT and MD timesteps are the same")
       end if
-
       call terminate_if_false( inp%xs%realTimeTDDFT%numberOfFrozenStates == 0, &
         "No state freezing currently possible for MD calculations" )
       call terminate_if_false( trim( inp%xs%realTimeTDDFT%basis ) == "LAPWlo", &
         "Usage of the KS basis set is currently unavailable for MD calculations" )
+      call terminate_if_false( abs( inp%xs%scissor ) < eps_scissor, &
+        "Scissor correction is currently unavailable for MD calculations" )
     end if
 
     if ( inp%xs%realTimeTDDFT%calculateTotalEnergy ) then
@@ -89,17 +105,24 @@ contains
       associate( kick_array => inp%xs%realTimeTDDFT%laser%kickarray )
         do i = 1, size( kick_array )
           if ( abs( kick_array(i)%kick%width ) < eps_kick_width ) &
-            call warning( 'Warning: electric field is ill-defined at time ' // &
+            call warning( warning_header // 'electric field is ill-defined at time ' // &
             to_char( real( kick_array(i)%kick%t0, sp) ) // ' for the kick number ' // to_char( i ) )
         end do
       end associate
     end if
 
+    if ( inp%xs%realTimeTDDFT%numberOfFrozenStates > 0 .and. trim( inp%xs%realTimeTDDFT%fieldCoupling ) == "velocityGauge"  ) then
+      if ( .not. inp%xs%realTimeTDDFT%subtractJ0 ) call warning( warning_header // &
+        'it is recommended to set subtractJ0="true" with velocity gauge if frozen states are present.'  )
+    end if
+
   end subroutine
 
   ! Check if input variables make sense after the RT module initialization
-  subroutine check_rttddft_setup( time_step, initial_ks_energies, use_berry_phase, &
-    vec_pot, t_start, t_end, lattice_vectors, k_grid_dimensions, energy_gap )
+  subroutine check_rttddft_setup( mpi_env, time_step, initial_ks_energies, use_berry_phase, &
+    vec_pot, t_start, t_end, lattice_vectors, psi, scissor )
+    !> MPI environment
+    type(mpiinfo), intent(inout) :: mpi_env
     !> Time evolution step
     real(dp), intent(in) :: time_step
     !> Initial KS energies array (n_ks_states, n_kpt_current_rank)
@@ -114,16 +137,22 @@ contains
     real(dp), intent(in) :: t_end
     !> Array containing the lattice vectors
     real(dp), intent(in) :: lattice_vectors(:, :)
-    !> Dimensions of the k points grid (3)
-    integer(i32), intent(in) :: k_grid_dimensions(:)
-    !> Energy gap
-    real(dp), intent(in) :: energy_gap
+    !> Set of KS states
+    class(wavefunction_set), intent(in) :: psi
+    !> Requested value of a scissor correction
+    real(dp), intent(in) :: scissor
 
-    real(dp) :: t_step_critical, e_field_critical(n_cartesian_directions), &
+    real(dp) :: energy_gap, t_step_critical, e_field_critical(n_cartesian_directions), &
       e_field_max_lattice(n_cartesian_directions), lattice_vector_norm(n_cartesian_directions), &
       e_field_max_magnitude
     type(Electric_Field) :: e_aux
     integer(i32) :: i, j
+    character(len=*), parameter :: procedure_name = "check_rttddft_setup"
+    character(len=*), parameter :: warning_header = "Warning(" // procedure_name // "): "
+
+    call get_energy_gap( mpi_env, initial_ks_energies, psi%occupations, energy_gap )
+    if ( scissor > eps_scissor ) call terminate_if_false( energy_gap > eps_energy_gap, &
+      "Scissor correction requested for a non-insulating material." )
 
     do i = 1, n_cartesian_directions
       lattice_vector_norm(i) = norm( lattice_vectors(:, i) )
@@ -140,37 +169,66 @@ contains
       end do
     end do
 
-    if ( all( e_field_max_lattice < eps_e_field ) ) call warning( "Warning(check_rttddft_setup): &
-      external field amplitude is zero." )
+    if ( all( e_field_max_lattice < eps_e_field ) ) call warning( warning_header // &
+      "external field amplitude is zero." )
 
     if ( use_berry_phase ) then
       call terminate_if_false( energy_gap > eps_energy_gap, " &
         Berry-phase field coupling is only defined for an insulator." )
       do i = 1, n_cartesian_directions
-        if ( e_field_max_lattice(i) > eps_e_field ) call terminate_if_false( k_grid_dimensions(i) > 2, &
+        if ( e_field_max_lattice(i) > eps_e_field ) call terminate_if_false( psi%kset%ngridk(i) > 2, &
           "At least 3 k-points in lattice direction " // to_char(i) // " are needed for the &
           Berry-phase coupling operator construction." )
 
-        e_field_critical(i) = energy_gap / ( real( k_grid_dimensions(i), dp ) * &
+        e_field_critical(i) = energy_gap / ( real( psi%kset%ngridk(i), dp ) * &
           sqrt( dot_product( lattice_vectors(:, i), lattice_vectors(:, i) ) ) )
-        if ( e_field_max_lattice(i) > e_field_critical(i) ) call warning( 'Warning(check_rttddft_setup): &
-          field strength ' // to_char( real( e_field_max_lattice(i), sp) ) // ' in lattice direction ' &
+        if ( e_field_max_lattice(i) > e_field_critical(i) ) call warning( warning_header // &
+          'field strength ' // to_char( real( e_field_max_lattice(i), sp) ) // ' in lattice direction ' &
           // to_char(i) // ' exceeds the estimated largest reasonable value of ' &
           // to_char( real( e_field_critical(i), sp) ) // ', see Zener &
           tunneling discussion in [PRL 89, 117602 (2002), PRB 69, 085106 (2004)].' )
       end do
     end if
     
-    if ( e_field_max_magnitude > e_field_extremely_high ) call warning( 'Warning(check_rttddft_setup): &
-      field strength magnitude corresponds to extremely high laser intensity of ' &
+    if ( e_field_max_magnitude > e_field_extremely_high ) call warning( warning_header //  &
+      'field strength magnitude corresponds to extremely high laser intensity of ' &
       // to_char( real( e_field_squared_au_to_intensity_wcm2 * e_field_max_magnitude**2, sp) ) // ' W/cm^2.' )
 
     t_step_critical = t_step_scale / &
     ( maxval( initial_ks_energies ) - minval( initial_ks_energies ) )
-    if ( time_step > t_step_critical ) call warning( 'Warning(check_rttddft_setup): &
-      time step ' // to_char( real( time_step, sp ) ) // ' exceeds the roughly-estimated &
+    if ( time_step > t_step_critical ) call warning( warning_header // &
+      'time step ' // to_char( real( time_step, sp ) ) // ' exceeds the roughly-estimated &
       largest reasonable value of ' // to_char( real( t_step_critical, sp) ) // '.' )
 
+  end subroutine
+
+  !> (private) Get the energy gap using the KS energies and occupations array
+  subroutine get_energy_gap( mpi_env, ks_energies, occupations, energy_gap )
+    !> MPI environment
+    type(mpiinfo), intent(inout) :: mpi_env
+    !> Initial KS energies array (n_ks_states, n_kpt_this_proc)
+    real(dp), contiguous, intent(in) :: ks_energies(:, :)
+    !> State occupations array (n_ks_states, n_kpt_this_proc)
+    real(dp), contiguous, intent(in) :: occupations(:, :)
+    !> Energy gap value 
+    real(dp), intent(out) :: energy_gap
+
+    real(dp), allocatable :: cb_min_all_ranks(:), vb_max_all_ranks(:)
+    integer(i32) :: vbm_band_ind, cbm_band_ind, vbm_kpt_ind, cbm_kpt_ind, gap_min_kpt_ind
+    
+    call assert( all( shape( ks_energies ) == shape( occupations ) ), "Incompatible energies &
+      and occupations arrays provided to get_energy_gap." )
+    
+    call find_vbm_cbm( 1, size( ks_energies, 1 ), size( ks_energies, 2 ), occupations, &
+      ks_energies, vbm_band_ind, cbm_band_ind, vbm_kpt_ind, cbm_kpt_ind, gap_min_kpt_ind )
+    allocate(cb_min_all_ranks(mpi_env%procs))
+    allocate(vb_max_all_ranks(mpi_env%procs))
+    cb_min_all_ranks(mpi_env%rank + 1) = ks_energies(cbm_band_ind, cbm_kpt_ind)
+    vb_max_all_ranks(mpi_env%rank + 1) = ks_energies(vbm_band_ind, vbm_kpt_ind)
+
+    call xmpi_allgatherv( mpi_env, cb_min_all_ranks, 1 )
+    call xmpi_allgatherv( mpi_env, vb_max_all_ranks, 1 )
+    energy_gap = max( 0._dp, minval( cb_min_all_ranks ) - maxval( vb_max_all_ranks ) )
   end subroutine
 
 end module

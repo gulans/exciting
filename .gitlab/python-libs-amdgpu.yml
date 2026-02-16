@@ -1,0 +1,39 @@
+# Python frameworks on which exciting depends for the solPC06 runner
+# * excitingtools
+# * Regression testing framework
+
+variables:
+  VENV_PATH: "/tmp/venv-pipeline-$CI_PIPELINE_ID"
+
+python:excitingtools-and-regression-amd:
+  stage: python
+  tags:
+    - amd:gpu
+  before_script:
+    - python3 -m venv excitngenv
+    - source excitngenv/bin/activate
+    - python3 -m pip install -U pip setuptools
+    - python3 -m pip install --upgrade --force pylint coverage numpy contourpy matplotlib pytest pyyaml termcolor
+  script:
+    # Install excitingtools
+    - cd tools/exciting_tools
+    - python3 -m pip install -e .[dev,schemaparsing,h5_parsing,serialisation]
+    - ruff check
+    - ruff format --diff
+    - coverage run -m pytest
+    - coverage xml -o excitingtools_testcov.xml
+    - cd ../..
+    - sh .gitlab/run_pylint.sh $CI_COMMIT_BRANCH
+    - sh .gitlab/run_schema_parsing.sh
+
+    # Run regression tests
+    - cd test/
+    - coverage run -m pytest test_functions/
+    - coverage report > testframework_testcov.txt
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    paths:
+      - test/testframework_testcov.txt
+      - tools/exciting_tools/excitingtools_testcov.xml
+    expire_in: 48 hrs
+

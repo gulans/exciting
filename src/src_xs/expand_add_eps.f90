@@ -355,15 +355,14 @@ contains
 ! telling the compiler not to optimize this procedure.
 !DIR$ OPTIMIZE(-O0)
 #endif
-        use grid_utils, only: index_column_vector_in_array
+        use grid_utils, only: column_index
         use constants, only: zzero
         use math_utils, only: identity_complex_dp
-        use modmpi, only: mpiglobal, distribute_loop, &
-                          mpi_allgatherv_ifc, terminate_if_false
+        use modmpi, only: mpiglobal, distribute_loop, terminate_if_false
         use mod_kpointset, only: Gk_set, k_set
         use diel_mat_type, only: dielectric_matrix_type
         use grid_utils, only: indices_zero_vectors
-        use exciting_mpi, only: xmpi_bcast
+        use exciting_mpi, only: xmpi_allgatherv, xmpi_bcast
 
         !> (G+q)-vectors of the unit cell in cartesian coordinates
         type(Gk_set), intent(inout)  :: gq_set_uc
@@ -428,7 +427,7 @@ contains
             
             ! Super-cell wings can only have contributions from unit-cell wings
             do igq_uc = 1, gq_set_uc%ngk(ispin, id_gamma_uc)
-                igq_sc = index_column_vector_in_array( &
+                igq_sc = column_index( &
                          gq_set_uc%vgkc(:, igq_uc, ispin, id_gamma_uc), &
                          gq_set_sc%vgkc(:, :, ispin, 1), tol=1e-6_dp)
                 call terminate_if_false(igq_sc > 0, &
@@ -458,14 +457,14 @@ contains
 
                         ! Find index of super-cell (G+q)-vector
                         ! corresponding to (G+q)-vector from the unit cell
-                        igq_sc = index_column_vector_in_array( &
+                        igq_sc = column_index( &
                                  gq_set_uc%vgkc(:, igq_uc, ispin, iq_uc), &
                                  gq_set_sc%vgkc(:, :, ispin, iq_sc), &
                                  tol=1e-6_dp)
 
                         ! Find index of super-cell (G'+q)-vector
                         ! corresponding to (G'+q)-vector from the unit cell
-                        jgq_sc = index_column_vector_in_array( &
+                        jgq_sc = column_index( &
                                 &   gq_set_uc%vgkc(:, jgq_uc, ispin, iq_uc), &
                                     gq_set_sc%vgkc(:, :, ispin, iq_sc), &
                                     tol=1e-6_dp)
@@ -480,13 +479,8 @@ contains
                 end do
             end do
         end do
-
         ! Gather body on all processes
-        call mpi_allgatherv_ifc(set=q_set_sc%nkpt, &
-                                rlen=size(eps_sc%body, dim=1)**2, &
-                                zbuf=eps_sc%body, inplace=.true., &
-                                comm=mpiglobal)
-
+        call xmpi_allgatherv( mpiglobal, eps_sc%body, size( eps_sc%body, dim=1 )**2 * (iq_end - iq_start + 1) )
     end subroutine
 
 end module

@@ -10,17 +10,17 @@
 !> Module that manages what concerns charge density in RT-TDDFT calculations
 module rttddft_Density
   use asserts, only: assert
-  use precision, only: dp, i32
-  use modmpi, only: mpi_env_k
-  use rttddft_timings, only: Print_Timings, Timing_RTTDDFT_density, timesec_RTTDDFT
   use constants, only: zzero, real_zero
-  use mod_convergence, only : iscl
-  use mod_potential_and_density, only: rhomt, rhoir
-  use rttddft_Wavefunction, only: wavefunction_set
-  use mod_rhoir, only: genrhoir
-  use mod_rhovalk, only: rhovalk
   use general_matrix_multiplication, only: matrix_multiply
   use mod_eigensystem, only: nmat
+  use mod_potential_and_density, only: rhomt, rhoir
+  use mod_rhoir, only: genrhoir
+  use mod_rhovalk, only: rhovalk
+  use modmpi, only: mpi_env_k
+  use precision, only: dp, i32
+  use rttddft_timings, only: Print_Timings, Timing_RTTDDFT_density, timesec_RTTDDFT
+  use rttddft_Wavefunction, only: wavefunction_set
+  use to_char_conversion, only: to_char
 
   implicit none
 
@@ -40,14 +40,10 @@ contains
   !> In `update_density`, we obtain the charge density at time \(t\) 
   !> and put it in global `rho_mt` and `rho_ir` arrays. This routine 
   !> manages calls of `get_density_from_lapwlo_set` with appropriate arguments.
-  subroutine update_density( first_kpt, psi, occupations, it, normalize, l_rad_step, &
+  subroutine update_density( psi, it, normalize, l_rad_step, &
       rhomt_frozen, rhoir_frozen, ks_lapwlo_transition_matrix, printTimings, t_dens, dens_case )
-    !> The first k point
-    integer(i32), intent(in) :: first_kpt
     !> Set of KS wavefunctions
     class(wavefunction_set), intent(in) :: psi
-    !> Initial occupations array (n_states, n_kpts)
-    real(dp), intent(in) :: occupations(:, :)
     !> Number of the current iteration (employed to give possible warnings)
     integer(i32), intent(in) :: it
     !> If `.true.`, normalize the charge density
@@ -67,7 +63,7 @@ contains
     !> Enum telling which states should be used for density evaluation
     integer(kind( density_case )), optional, intent(in) :: dens_case
 
-    integer(i32) :: i, last_kpt
+    integer(i32) :: first_kpt, last_kpt
     real(dp) :: ti 
     logical :: timings_general, timings_detailed, add_frozen
     integer(kind( density_case )) :: dens_case_
@@ -101,27 +97,27 @@ contains
       call assert( psi%has_frozen(), &
         'frozen density requested with no frozen wavefunctions' )
     end if
-    call assert( psi%n_kpts() == size( occupations, 2 ), 'psi and occupations have different n_kpts' )
     if ( .not. psi%expanded_in_lapwlo() ) call assert( present( ks_lapwlo_transition_matrix ), 'ks_lapwlo_transition_matrix is needed with KS basis' )
 
     rhomt = real_zero
     rhoir = real_zero
-    last_kpt = first_kpt + psi%n_kpts() - 1
+    first_kpt = psi%first_kpt()
+    last_kpt = psi%last_kpt()
     select case ( dens_case_ )
     case( active_and_frozen )
-      allocate( occupations_slice, source = occupations(psi%first_active() : psi%n_occupied(), :) )
+      allocate( occupations_slice, source = psi%occupations(psi%first_active() : psi%n_occupied(), :) )
       if ( .not. psi%expanded_in_lapwlo() ) call from_ks_to_lapw( ks_lapwlo_transition_matrix, nmat(1, first_kpt : last_kpt), &
         psi%active, local_lapw_set, printTimings, t_dens )
     case( save_and_frozen )
-      allocate( occupations_slice, source = occupations(psi%first_active() : psi%n_occupied(), :) )
+      allocate( occupations_slice, source = psi%occupations(psi%first_active() : psi%n_occupied(), :) )
       if ( .not. psi%expanded_in_lapwlo() ) call from_ks_to_lapw( ks_lapwlo_transition_matrix, nmat(1, first_kpt : last_kpt), &
         psi%active_save, local_lapw_set, printTimings, t_dens )
     case( frozen )
-      allocate( occupations_slice, source = occupations(1 : psi%n_frozen(), :) )
+      allocate( occupations_slice, source = psi%occupations(1 : psi%n_frozen(), :) )
       if ( .not. psi%expanded_in_lapwlo() ) call from_ks_to_lapw( ks_lapwlo_transition_matrix, nmat(1, first_kpt : last_kpt), &
         psi%frozen, local_lapw_set, printTimings, t_dens )
     case( ground_state )
-      allocate( occupations_slice, source = occupations )
+      allocate( occupations_slice, source = psi%occupations )
       if ( .not. psi%expanded_in_lapwlo() ) call from_ks_to_lapw( ks_lapwlo_transition_matrix, nmat(1, first_kpt : last_kpt), &
         psi%groundstate, local_lapw_set, printTimings, t_dens )
     case default
@@ -201,14 +197,13 @@ contains
       "rhomt_frozen and rhoir_frozen should be provided to get_density_from_lapwlo_set" )
     
     ! rhovalk and rhoir have omp critical inside
-    !$OMP PARALLEL DEFAULT(NONE) PRIVATE(i) &
-    !$OMP SHARED(first_kpt, psi_lapw_coeffs, occupations, rhomt, rhoir)
-    !$OMP DO
+    !$OMP PARALLEL DO DEFAULT(NONE) SHARED(first_kpt, psi_lapw_coeffs, occupations) &
+    !$OMP REDUCTION(+:rhomt, rhoir)
     do i = 1, size( occupations, 2 )
       call rhovalk( first_kpt + i - 1, psi_lapw_coeffs(:, :, i), occupations(:, i), rhomt )
       call genrhoir( first_kpt + i - 1, psi_lapw_coeffs(:, :, i), occupations(:, i), rhoir )
     end do
-    !$OMP END PARALLEL
+    !$OMP END PARALLEL DO
 
 #ifdef MPI
     call mpisumrhoandmag( mpi_env_k )
@@ -237,8 +232,7 @@ contains
     end if
 
     ! calculate the charges
-    iscl = it
-    call charge()
+    call charge( 'real-time propagation step ' // to_char( it ) )
     if( timings_detailed ) call timesec_RTTDDFT( ti, t_dens%charge )
 
     ! normalize the density
@@ -271,7 +265,7 @@ contains
     !> Object that packs information about timings to update the electronic density
     type(Timing_RTTDDFT_density), optional, intent(inout) :: t_dens
 
-    integer :: n_states, ik, n_kpts
+    integer(i32) :: n_states, ik, n_kpts
     logical :: timings_general, timings_detailed
     real(dp) :: ti
 
@@ -302,11 +296,9 @@ contains
     !$OMP SHARED(set_in_ks_basis, set_in_lapw_basis)
     !$OMP DO
     do ik = 1, n_kpts
-
       call matrix_multiply( transition_matrix( 1 : k_dependent_basis_size(ik), :, ik), &
         set_in_ks_basis(:, :, ik), set_in_lapw_basis(1 : k_dependent_basis_size(ik), :, ik) )
-
-      end do
+    end do
     !$OMP END PARALLEL
 
     if( timings_detailed ) call timesec_RTTDDFT( ti, t_dens%basis )

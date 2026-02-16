@@ -154,6 +154,11 @@ if(NOT CPUBACKEND)
     find_package(rocfft REQUIRED)
     set(rocfftlib ${ROCFFT_LIBRARIES})
     message(STATUS "rocFFT found : ${rocfftlib}")
+    
+    # Find rocSOLVER
+    find_package(rocsolver REQUIRED)
+    set(rocsolverlib ${ROCSOLVER_LIBRARIES})
+    message(STATUS "rocSOLVER found: ${rocsolverlib}")
 
     message(STATUS "ROCM include directory: ${ROCFFT_INCLUDE_DIRS}")
     file(READ ${ROCFFT_INCLUDE_DIRS}/rocm-core/rocm_version.h FILE_CONTENT)
@@ -189,6 +194,11 @@ if(NOT CPUBACKEND)
     endif()
 
     set(ROCM_VERSION_NUM ${ROCM_VERSION_MAJOR}.${ROCM_VERSION_MINOR}${ROCM_VERSION_PATCH})
+
+    if (NOT ROCM_VERSION_NUM GREATER_EQUAL 6.20)
+        message("Fatal error: ROCm version 6.2.0 or greater is required. 
+	         Use TheRock or spack to install a more modern version.")
+    endif()
 
     if (ROCM_VERSION_NUM GREATER_EQUAL 6.22)
 	if (AMD_HIPSETVALIDDEVICE_SUPPORTED)
@@ -255,8 +265,27 @@ if(NOT CPUBACKEND)
       set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -fopenmp -h acc_model=auto_async_none:no_fast_addr:deep_copy ${USM_FLAGS}")
       set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -fPIC -fopenmp")
       set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fopenmp -h acc_model=auto_async_none:no_fast_addr:deep_copy ${USM_FLAGS}")
+      set(devacc_link_libs "${BLAS_LIBRARIES}")
+  elseif (CMAKE_Fortran_COMPILER_ID MATCHES "LLVMFlang")
+      set(OFFLOADARCH "")
+      if(AMD)
+        set(OFFLOADARCH "${AMDTARGET}")
+      elseif(NVIDIA)
+        set(OFFLOADARCH "sm_${NVIDIAARCH}")
+      else()
+        message(FATAL_ERROR "For Intel cards please use Intel compilers. Exiting.")
+      endif()
+      if (USM)
+        set(USM_FLAGS "-fopenmp-force-usm")
+      endif()
+
+      set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fPIC -fopenmp")
+      set(CMAKE_Fortran_FLAGS_DEBUG "${CMAKE_Fortran_FLAGS_DEBUG} -fopenmp --offload-arch=${OFFLOADARCH} -fopenmp-offload-mandatory ${USM_FLAGS}")
+      set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -fPIC -fopenmp")
+      set(CMAKE_Fortran_FLAGS_RELEASE "${CMAKE_Fortran_FLAGS_RELEASE} -fopenmp --offload-arch=${OFFLOADARCH} -fopenmp-offload-mandatory  ${USM_FLAGS}")
+      set(devacc_link_libs "${BLAS_LIBRARIES}")
   else()
-      message(FATAL_ERROR "Compiler is not recognized: only GNU, Intel (ifx) and Cray compilers are supported")
+      message(FATAL_ERROR "Compiler is not recognized: only GNU, Intel (ifx), Cray, Flang compilers are supported for GPU offload.")
   endif()
 else()
    if(NOT FFTW3_LIBRARIES AND NOT MKL)
@@ -281,10 +310,6 @@ if(NOT CPUBACKEND)
     #Linear algebra
     set(SRC_DEVICEACC_LINALG ${DEVICEACC_SRC_DIR}/linalg/device/linalg_device_common.f90)
     # FFT
-    if (AMD)
-        set(SRC_DEVICEACC_FFT ${DEVICEACC_SOURCE_DIR}/external/hipfort/hipfort_rocfft_enums.f90
-                              ${DEVICEACC_SOURCE_DIR}/external/hipfort/hipfort_rocfft.f90)
-    endif()
     set(SRC_DEVICEACC_FFT ${SRC_DEVICEACC_FFT} ${DEVICEACC_SRC_DIR}/fft/device/fft_device_t.f90)
     # Allocation
     set(SRC_DEVICEACC_MEMORY ${DEVICEACC_SRC_DIR}/memory/common/memory_device.f90
@@ -293,6 +318,15 @@ if(NOT CPUBACKEND)
     # Macros
     set(DEVICEACC_MACROS ${DEVICEACC_SRC_DIR}/macros/device/offload.fpp)
     include_directories(${DEVICEACC_SRC_DIR}/macros/device/)
+    # Vendor specific
+    if (AMD)
+        file(GLOB SRC_DEVICEACC_HIPFORT 
+		  "${DEVICEACC_SOURCE_DIR}/external/hipfort/*.f90"
+	          "${DEVICEACC_SOURCE_DIR}/external/hipfort/*.F90")
+    endif()
+    if (NVIDIA)
+        file(GLOB SRC_DEVICEACC_CUDA "${DEVICEACC_SOURCE_DIR}/external/cuda_fortran/*.f90")
+    endif()
 else()
     set(SRC_DEVICEACC_CONTROL ${DEVICEACC_SRC_DIR}/control/host/device_world_t.f90)
     set(SRC_DEVICEACC_LINALG  ${DEVICEACC_SRC_DIR}/linalg/host/linalg_device_common.f90)
@@ -309,14 +343,16 @@ set(SRC_DEVICEACC ${SRC_MAGMA_F90}
                   ${SRC_DEVICEACC_CONTROL}
                   ${SRC_DEVICEACC_LINALG}
                   ${SRC_DEVICEACC_FFT}
-                  ${SRC_DEVICEACC_MEMORY})
+                  ${SRC_DEVICEACC_MEMORY}
+                  ${SRC_DEVICEACC_HIPFORT}
+                  ${SRC_DEVICEACC_CUDA})
 
 if(NOT CPUBACKEND)
     # Create a link variable for the link against it and not its dependencies
     if (NVIDIA)
-        set(LINKS_DEVICEACC ${devacc_link_libs} ${MAGMA_ROOT}/lib/libmagma.so CUDA::cufft CUDA::cudart)
+        set(LINKS_DEVICEACC ${devacc_link_libs} ${MAGMA_ROOT}/lib/libmagma.so CUDA::cufft CUDA::cudart CUDA::cusolver)
     elseif(AMD)
-        set(LINKS_DEVICEACC ${devacc_link_libs} ${MAGMA_ROOT}/lib/libmagma.so ${rocfftlib})
+        set(LINKS_DEVICEACC ${devacc_link_libs} ${MAGMA_ROOT}/lib/libmagma.so ${rocfftlib} ${rocsolverlib})
     elseif(INTEL)
         set(LINKS_DEVICEACC ${devacc_link_libs})
     else()

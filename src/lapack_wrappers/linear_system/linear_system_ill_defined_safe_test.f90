@@ -23,10 +23,9 @@ subroutine linear_system_ill_defined_safe_test_driver(mpiglobal, kill_on_failure
   logical, intent(in), optional :: kill_on_failure
 
   type(unit_test_type) :: test_report
-  integer(i32), parameter :: n_assertions = 6
   character(len=*), parameter :: module_tested = "linear_system_ill_defined_safe"
 
-  call test_report%init( n_assertions, mpiglobal )
+  call test_report%init( mpiglobal )
   call test_ill_defined_safe_solve_complex_dp( test_report )
   call test_report%report( module_tested, kill_on_failure )
   call test_report%finalise()
@@ -66,7 +65,8 @@ subroutine test_ill_defined_safe_solve_complex_dp(test_report)
       call ill_defined_safe_solve(A, x)
       ! Check the solution: now x contains (A^-1)y
       call test_obj%assert( all_close(y, matmul(A, x), tol), &
-        test_identifier // ": A*x is not equal y in test number " // to_char(test_number) )
+        test_identifier // ": A*x is not equal y in test number " // to_char(test_number) // &
+        ", error: " // to_char(maxval(abs(y-matmul(A, x)))) )
     end subroutine  test_template
 end subroutine test_ill_defined_safe_solve_complex_dp
 

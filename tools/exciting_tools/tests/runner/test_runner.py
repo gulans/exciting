@@ -10,7 +10,6 @@ import pytest
 
 import excitingtools.base
 from excitingtools.runner.runner import BinaryRunner
-from excitingtools.utils.test_utils import import_error_monty
 
 mock_binary = "false_exciting_binary"
 
@@ -106,7 +105,7 @@ def test_from_dict(tmp_path: Path, runner):
 
 
 def test_runner_without_monty():
-    with mock.patch("builtins.__import__", side_effect=import_error_monty):
+    with mock.patch("importlib.util.find_spec", return_value=None):
         importlib.reload(excitingtools.base.serialisation)
         importlib.reload(excitingtools.base)  # as it comes from the __init__
         new_runner_module = importlib.reload(excitingtools.runner.runner)
@@ -147,7 +146,7 @@ def test_timeout_with_bash_command(tmp_path: Path):
 
     Test a simple sleep command to get a timeout.
     """
-    from excitingtools.runner.runner import RunnerCode  # needed as the runner was reloaded
+    from excitingtools.runner.runner import RunnerCode  # needed as the runner was reloaded  # noqa: PLC0415
     # the mocking from the other test clashes with that test here, since the runner module was reloaded and
     # the isinstance check fails. I don't fully understand how and if the original imported BinaryRunner
     # changes upon mocking that was imported at the top of the file

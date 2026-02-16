@@ -104,18 +104,18 @@ foreach(folder ${EXCITINGLIB_SRC_FOLDERS})
     list(APPEND EXCITINGLIB_SRC_FILES_FIXED ${F90_FILES_IN_FOLDER})
 endforeach()
 
+# IntelLLVM (version 2025.0.0) compiler fails for some reason to automatically set
+# fixed form for *.f files.
 if (CMAKE_Fortran_COMPILER_ID MATCHES "IntelLLVM")
-	# IntelLLVM (version 2025.0.0) compiler fails for some reason to automatically set
-        # fixed form for *.f files.
         foreach(source_file ${EXCITINGLIB_SRC_FILES_FIXED})
                 set_source_files_properties(${source_file} PROPERTIES
                         COMPILE_OPTIONS "-fixed"
                 )
         endforeach()
-        
+
 	# IntelLLVM version 2025.1.0 or higher have a bug for vectorization + OpenMP in
         # a test of HDF5 that for some reason affects the whole code
-	# producing code that provides garbage. 
+	# producing code that provides garbage.
 	# TODO(mrm): Check for version higher than 2025.2.x when available
         string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)"
            _ver "${CMAKE_Fortran_COMPILER_VERSION}")
@@ -144,6 +144,11 @@ if (CMAKE_Fortran_COMPILER_ID MATCHES "Cray")
     set(MARK_FLAGS "-hlist=a ")
     set_source_files_properties(${MARK_FILES} PROPERTIES COMPILE_FLAGS ${MARK_FLAGS})
 
+endif()
+
+# New Flang optimizer has some issues when passing over BSE files
+if (CMAKE_Fortran_COMPILER_ID MATCHES "LLVMFlang")
+    set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src_xs/angavsc0.F90" PROPERTIES COMPILE_FLAGS "-O0")
 endif()
 
 # Developers: uncomment that to check if the source files that you
@@ -180,8 +185,8 @@ target_link_libraries(FoX INTERFACE FoX_dom FoX_sax FoX_wxml FoX_common FoX_util
 #Link exciting library with other libs
 target_link_libraries(excitingLib PUBLIC leblaik lbfgsb XC GXCommon LibGXMiniMax bzint
 	                                 FoX libIDieL ${SCALAPACK_LIB} ${SIRIUS_LIB}
-                                         ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} ${HDF5_LIBS}
-                                         ${FFTW3_LIBRARIES} ${MPI_LIBS} ${LINKS_DEVICEACC})
+                                  ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} ${HDF5_LIBS}
+				  ${FFTW3_LIBRARIES} ${MPI_LIBS} ${LINKS_DEVICEACC} ${ELPA_LIBS})
 
 # Set the linker to Fortran, otherwise C++ might be used in some cases
 set_property(TARGET excitingLib PROPERTY LINKER_LANGUAGE Fortran)
@@ -196,11 +201,16 @@ add_executable(${exciting_name} "${CMAKE_CURRENT_SOURCE_DIR}/mainxml/main.f90")
 target_link_directories(${exciting_name} PUBLIC ${CMAKE_Fortran_LIB_DIRECTORY})
 target_link_libraries(${exciting_name} PUBLIC excitingLib)
 
-# Sometimes GNU do not resolve the dependency on C++
+# Link necessary libraries for Fortran offloading to AMD/NVIDIA devices
+#
+# - GNU Fortran may need explicit linking of the C++ standard library (stdc++).
+# - LLVM Flang requires linking the device runtime library (flang_rt.hostdevice).
+#
 if (CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
     target_link_libraries(${exciting_name} PRIVATE stdc++)
+elseif (CMAKE_Fortran_COMPILER_ID MATCHES "LLVMFlang" AND NOT CPUBACKEND)
+    target_link_libraries(${exciting_name} PRIVATE flang_rt.hostdevice)
 endif()
-
 
 # For Intel and GNU indicate that exciting has the objects available for LTO
 # In the rest of compilers this is done with compiler flags or for Cray it is fully deactivated

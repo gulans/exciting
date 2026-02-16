@@ -32,8 +32,17 @@ function(GetCompilerVersion outVar)
 endfunction()
 
 # Get Git information
-set(GITHASH  "sodium")
-set(GITHASH2 "alpha")
+#find_package(Git)
+#if(GIT_FOUND)
+#    execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse HEAD OUTPUT_VARIABLE GITHASH_FULL OUTPUT_STRIP_TRAILING_WHITESPACE)
+#    string(SUBSTRING ${GITHASH_FULL} 0 20 GITHASH)
+#    string(SUBSTRING ${GITHASH_FULL} 20 19 GITHASH2)
+#else()
+#    set(GITHASH  "terra incognita")
+#    set(GITHASH2 "terra australis")
+#endif()
+set(GITHASH  "sodium-23")
+set(GITHASH2 "0")
 
 # Get compiler version
 GetCompilerVersion(COMPILERVERSION)
