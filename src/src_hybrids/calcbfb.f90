@@ -7,7 +7,8 @@
 Subroutine calcbfb (ikp, vnlvv)
       Use modmain
       Use modinput
-      Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
+      Use modgw, only : kqset,Gkqset, kset, Gset
+      Use mod_bands, only : nomax, numin, ikvbm, ikcbm, ikvcm
       Use modmpi, only : rank
       Use modfvsystem
       Implicit None

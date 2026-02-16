@@ -17,6 +17,7 @@ subroutine poterfpw_sp (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,p
       use mod_hybrids, only : gmax_pw_method
       use constants, only: fourpi,zil,pi,zzero
       use mod_Gvector, only: cfunir,ngrid,ngrtot,ngvec
+      use m_zfftifc, only: zfftifc
       Implicit None
 ! arguments
       integer, Intent (In)      :: ngvec1
@@ -167,6 +168,7 @@ subroutine poterfpw (ngvec1, rhoir,rhomt,igfft,sfacgq,ylmgq,gqc, jlgqsmallr,poti
       use mod_hybrids, only : gmax_pw_method
       use constants, only: fourpi,zil,pi,zzero
       use mod_Gvector, only: cfunir,ngrid,ngrtot,ngvec
+      use m_zfftifc, only: zfftifc
       Implicit None
 ! arguments
       integer, Intent (In)      :: ngvec1

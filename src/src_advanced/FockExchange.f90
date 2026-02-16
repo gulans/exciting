@@ -10,13 +10,17 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       use modinteg
       Use modmain 
       Use modinput
-      Use modgw, only : kqset,Gkqset, kset, nomax, numin, ikvbm, ikcbm, ikvcm, Gset
+      Use modgw, only : kqset,Gkqset, kset, Gset
+      Use mod_bands, only : nomax, numin, ikvbm, ikcbm, ikvcm
       Use potentials, only: coulomb_potential2
       use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
       use mod_hybrids, only : gmax_pw_method
       USE OMP_LIB
-
+      use mod_eigenvalue_occupancy, only : nstsv
+      use mod_muffin_tin, only : lmmaxvr, nrcmtmax
       use poterf
+      use m_zfftifc, only: zfftifc
+      use general_find_vbm_cbm, only: find_vbm_cbm
 
       Implicit None
 ! arguments

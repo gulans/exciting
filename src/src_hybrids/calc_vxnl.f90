@@ -26,6 +26,9 @@ subroutine calc_vxnl()
     use general_find_vbm_cbm, only: find_vbm_cbm
     use precision, only: i32, dp
     use mod_expand_products, only: expand_products_generic, split_interval
+    use mod_gkvector, only : ngkmax
+    use mod_eigenvalue_occupancy, only : nstsv
+    use mod_muffin_tin, only : lmmaxvr, nrcmtmax
 #include "offload.fpp"
 
 !
@@ -345,7 +348,7 @@ else ! Use oepvnl
 
       allocate(evalfv(nstfv,kset%nkpt))
       evalfv(:,:) = 0.d0
-      do ik = 1, nkpt
+      do ik = 1, kset%nkpt
         call getevalfv(kset%vkl(:,ik), evalfv(:,ik))
       end do
 
@@ -358,9 +361,9 @@ else ! Use oepvnl
 
 
 #ifdef MPI
-      Do ik = firstk (rank, nkpt), lastk (rank, nkpt)
+      Do ik = firstk (rank, kset%nkpt), lastk (rank, kset%nkpt)
 #else
-      Do ik = 1, nkpt
+      Do ik = 1, kset%nkpt
 #endif
         vxpsiir=zzero
         vxpsimt=zzero
@@ -384,7 +387,7 @@ else ! Use oepvnl
       End Do
 
 #ifdef MPI
-      call MPI_ALLREDUCE(MPI_IN_PLACE, vxnl , nstsv*nstsv*nkpt, MPI_DOUBLE_COMPLEX,  MPI_SUM, MPI_COMM_WORLD, ierr)
+      call MPI_ALLREDUCE(MPI_IN_PLACE, vxnl , nstsv*nstsv*kset%nkpt, MPI_DOUBLE_COMPLEX,  MPI_SUM, MPI_COMM_WORLD, ierr)
 #endif
 
 

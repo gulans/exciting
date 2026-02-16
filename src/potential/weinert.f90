@@ -1280,6 +1280,7 @@ end subroutine
       use modrspace, only: rgrid_mt_map, rgrid_nmtpoints
       use mod_atoms, only: nspecies, natoms, natmtot,idxas
       use mod_Gvector, only: ngrtot, ngrid
+      use m_zfftifc, only: zfftifc
       implicit none
       
       integer, intent(in) :: lmax
