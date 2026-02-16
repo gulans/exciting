@@ -257,7 +257,6 @@ subroutine xsmain(plan, nxstasks)
         ! estimate disk-space, cpu-time and memory
         call xsestimate
 
-
       ! Taskname 'excitonWavefunction'
       case(710)
         ! Polt of TDA exciton wave function

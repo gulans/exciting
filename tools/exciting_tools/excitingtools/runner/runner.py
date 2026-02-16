@@ -1,5 +1,5 @@
-""" Binary runner and results classes.
-"""
+"""Binary runner and results classes."""
+
 from __future__ import annotations
 
 import copy
@@ -16,41 +16,46 @@ from excitingtools.utils.jobflow_utils import special_serialization_attrs
 
 
 class RunnerCode(enum.Enum):
-    """ Runner codes.
-     By default, the initial value starts at 1.
+    """Runner codes.
+    By default, the initial value starts at 1.
     """
+
     time_out = enum.auto()
 
 
 @dataclass
 class SubprocessRunResults:
-    """ Results returned from subprocess.run()
-    """
+    """Results returned from subprocess.run()"""
 
     stdout: str
     stderr: str
     return_code: int | RunnerCode
     process_time: Optional[float] = None
 
-    def __post_init__(self):
-        self.success = self.return_code == 0
+    @property
+    def success(self) -> bool:
+        """Determine the run success by evaluating the return code."""
+        return self.return_code == 0
 
 
 class BinaryRunner:
-    """ Class to execute a subprocess.
-    """
+    """Class to execute a subprocess."""
+
     path_type = Union[str, Path]
 
-    def __init__(self,
-                 binary: path_type,
-                 run_cmd: List[str] | str = "",
-                 omp_num_threads: int = 1,
-                 time_out: int = 60,
-                 directory: path_type = './',
-                 args: Optional[List[str]] = None):
-        """ Initialise class.
+    def __init__(
+        self,
+        binary: path_type,
+        run_cmd: List[str] | str = "",
+        omp_num_threads: int = 1,
+        time_out: int = 60,
+        directory: path_type = "./",
+        args: Optional[List[str]] = None,
+    ):
+        """Initialise class.
 
         :param str binary: Binary name prepended by full path, or just binary name (if present in $PATH).
+         No check for existence here as it could live on a remote worker (see run() doc)
         :param Union[List[str], str] run_cmd: Run commands sequentially as a list. For example:
           * For serial: []
           * For MPI:   ['mpirun', '-np', '2']
@@ -61,32 +66,17 @@ class BinaryRunner:
         :param time_out: Number of seconds before a job is defined to have timed out.
         :param args: Optional arguments for the binary.
         """
-        if args is None:
-            args = []
         self.binary = Path(binary).as_posix()
-        self.directory = directory
+        self.directory = Path(directory).as_posix()
         self.run_cmd = run_cmd
         self.omp_num_threads = omp_num_threads
         self.time_out = time_out
-        self.args = args
-
-        if not os.path.isfile(self.binary):
-            # If just the binary name, try checking the $PATH
-            self.binary = shutil.which(self.binary)
-            if not self.binary:
-                raise FileNotFoundError(
-                    f"{binary} binary is not present in the current directory nor in $PATH"
-                )
-
-        if not Path(directory).is_dir():
-            raise OSError(f"Run directory does not exist: {directory}")
+        self.args = args or []
 
         if isinstance(run_cmd, str):
             self.run_cmd = run_cmd.split()
         elif not isinstance(run_cmd, list):
-            raise ValueError(
-                "Run commands expected in a str or list. For example ['mpirun', '-np', '2']"
-            )
+            raise ValueError("Run commands expected in a str or list. For example ['mpirun', '-np', '2']")
 
         self._check_mpi_processes()
 
@@ -114,11 +104,10 @@ class BinaryRunner:
         return cls(**my_dict)
 
     def _check_mpi_processes(self):
-        """ Check whether mpi is specified and if yes that the number of MPI processes specified is valid.
-        """
+        """Check whether mpi is specified and if yes that the number of MPI processes specified is valid."""
         # Search if MPI is specified:
         try:
-            i = self.run_cmd.index('-np')
+            i = self.run_cmd.index("-np")
         except ValueError:
             # .index will return ValueError if 'np' not found. This corresponds to serial and omp calculations.
             return
@@ -133,8 +122,25 @@ class BinaryRunner:
 
     def run(self) -> SubprocessRunResults:
         """Run a binary.
+
+        First check for the binary and the run directory. Binary can be relative or absolute path to the
+        binary file. Alternatively, the binary name could exist at a different location, therefore check $PATH.
+
+        Then executes the binary with given run command and args.
+        Special handling is performed if the execution reached the time limit.
+
+        :return: the run results with output and error message, runner code and run time
         """
-        execution_list = self.run_cmd + [self.binary] + self.args
+        binary = Path(self.binary)
+        if not binary.is_file():
+            binary = shutil.which(self.binary)
+            if not binary:
+                raise FileNotFoundError(f"{self.binary} binary is not present in the current directory nor in $PATH")
+
+        if not Path(self.directory).is_dir():
+            raise OSError(f"Run directory does not exist: {self.directory}")
+
+        execution_list = self.run_cmd + [Path(binary).as_posix()] + self.args
         my_env = {**os.environ, "OMP_NUM_THREADS": str(self.omp_num_threads)}
 
         time_start: float = time.time()
@@ -146,14 +152,14 @@ class BinaryRunner:
                 capture_output=True,
                 encoding="utf-8",
                 timeout=self.time_out,
+                check=False,
             )
             total_time = time.time() - time_start
-            return SubprocessRunResults(result.stdout, result.stderr,
-                                        result.returncode, total_time)
+            return SubprocessRunResults(result.stdout, result.stderr, result.returncode, total_time)
 
         except subprocess.TimeoutExpired as timed_out:
-            output = timed_out.output.decode("uft-8") if timed_out.output else ""
-            error = 'BinaryRunner: Job timed out. \n\n'
+            output = timed_out.output.decode("utf-8") if timed_out.output else ""
+            error = "BinaryRunner: Job timed out. \n\n"
             if timed_out.stderr:
                 error += timed_out.stderr.decode("utf-8")
             return SubprocessRunResults(output, error, RunnerCode.time_out, self.time_out)

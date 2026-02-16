@@ -3,31 +3,37 @@
 !--------------------------------------------!
 
 module mod_coulomb_potential
-    use precision, only: dp, i32
+    use asserts, only: assert
     use constants, only: pi, twopi, fourpi
+    use gw_io, only: write_to_file, read_from_file, build_file_name
+    use mod_product_basis, only: mbsiz, matsiz
     use modmain, only: avec
+    use precision, only: dp, i32
+
     implicit none
+
+    character(len=*), parameter, private :: basename_barc = 'BARC_'
     
     ! The lattice summations matrix      
-    complex(8), allocatable :: sgm(:,:,:)
+    complex(dp), allocatable :: sgm(:,:,:)
     
     ! The matrix representation of the bare coulomb potential in the mixed basis            
-    complex(8), allocatable :: barc(:,:)
+    complex(dp), allocatable :: barc(:,:)
 
     ! full set of the eigenvalues of barcoul matrix
-    real(8), allocatable :: barcev(:)
+    real(dp), allocatable :: barcev(:)
       
     ! full set of eigenvectors of barcoul matrix        
-    complex(8), allocatable :: vmat(:,:)
+    complex(dp), allocatable :: vmat(:,:)
     
     ! use a truncation technique for the Coulomb potential
     logical :: vccut
     
     ! spherical integral over the Coulomb singularity
-    real(8) :: rcut
+    real(dp) :: rcut
     
     !> Singularity for 0D, 1D and 2D systems
-    real(dp) :: low_dim_singularity
+    real(dp), public, protected :: low_dim_singularity
     
 contains
  
@@ -39,20 +45,20 @@ contains
     
     subroutine vcoul_q0_0d(sing)
         implicit none
-        real(8), intent(out) :: sing
+        real(dp), intent(out) :: sing
         rcut = 0.5d0*dsqrt(dot_product(avec(:,3),avec(:,3)))
         sing = 2.d0*pi*rcut**2
     end subroutine
 
     subroutine vcoul_q0_1d(nkpt, sing)
         implicit none
-        integer(4), intent(in)  :: nkpt
-        real(8),    intent(out) :: sing
-        real(8) :: v(3), omega_xy, omega_BZ
-        real(8) :: a, b, c, a2, b2, a2b2
-        real(8) :: t1, t2, t3, rws, beta
-        real(8), parameter :: gamma = -0.5772156649d0 + log(2.d0)
-        real(8), parameter :: small = 1.d-6
+        integer(i32), intent(in)  :: nkpt
+        real(dp),    intent(out) :: sing
+        real(dp) :: v(3), omega_xy, omega_BZ
+        real(dp) :: a, b, c, a2, b2, a2b2
+        real(dp) :: t1, t2, t3, rws, beta
+        real(dp), parameter :: gamma = -0.5772156649d0 + log(2.d0)
+        real(dp), parameter :: small = 1.d-6
         !
         ! check if the unit cell orthorombic
         !
@@ -97,7 +103,6 @@ contains
                   )
         ! Final value
         sing = 2.d0*(t1 - t2)
-
     end subroutine
 
     subroutine vcoul_q0_2d(nkpt, sing)
@@ -118,16 +123,15 @@ contains
         q0_vol   = twopi / sqrt(pi*ab_plane*nkpt)
         sing     = incgam(0.d0, q0_vol*rcut) + eulergamma + log(q0_vol*rcut)
         sing     = 2.d0 * ab_plane * sing * dble(nkpt)
-
     end subroutine
 
 
     subroutine vcoul_q0_3d(nkpt, sing)
         use modmain, only: omega
         implicit none
-        integer(4), intent(in)  :: nkpt
-        real(8),    intent(out) :: sing
-        real(8) :: omega_BZ, V, beta
+        integer(i32), intent(in)  :: nkpt
+        real(dp),    intent(out) :: sing
+        real(dp) :: omega_BZ, V, beta
         !--------------------------------------------------------
         ! Spherically averaged value of the integral around q->0
         !--------------------------------------------------------
@@ -143,11 +147,11 @@ contains
         use mod_kpointset
         implicit none
         logical,      intent(in)  :: Gamma
-        integer(4),   intent(in)  :: ik
+        integer(i32),   intent(in)  :: ik
         type(Gk_set), intent(in)  :: Gkset
-        real(8),      intent(out) :: vcoul(:)
-        integer(4) :: igk, igk0
-        real(8)    :: k
+        real(dp),      intent(out) :: vcoul(:)
+        integer(i32) :: igk, igk0
+        real(dp)    :: k
         if (Gamma) then
             igk0 = 2
             vcoul(1) = 0.d0
@@ -166,20 +170,20 @@ contains
         use mod_quadrature
         implicit none
         logical,      intent(in)  :: Gamma
-        integer(4),   intent(in)  :: ik
+        integer(i32),   intent(in)  :: ik
         type(Gk_set), intent(in)  :: Gkset
-        real(8),      intent(out) :: vcoul(:)
+        real(dp),      intent(out) :: vcoul(:)
         ! local
-        integer(4) :: igk, igk0, n
-        real(8)    :: a, b, vgpk(3), intf, t1
-        real(8), parameter :: small = 1.d-6
+        integer(i32) :: igk, igk0, n
+        real(dp)    :: a, b, vgpk(3), intf, t1
+        real(dp), parameter :: small = 1.d-6
 
         ! Romberg integration
-        integer(4), parameter :: dim_num = 2
-        real(8)    :: alim(dim_num), blim(dim_num)
-        integer(4) :: sub_num(dim_num)
-        integer(4) :: it_max, ind, eval_num
-        real(8)    :: tol
+        integer(i32), parameter :: dim_num = 2
+        real(dp)    :: alim(dim_num), blim(dim_num)
+        integer(i32) :: sub_num(dim_num)
+        integer(i32) :: it_max, ind, eval_num
+        real(dp)    :: tol
 
         ! check if the unit cell orthorombic
         t1 = dot_product(avec(:,1), avec(:,2))
@@ -222,12 +226,12 @@ contains
     contains
 
         function func(dim_num, x)
-            integer(4) :: dim_num
-            real(8)    :: func
-            real(8)    :: x(dim_num)
+            integer(i32) :: dim_num
+            real(dp)    :: func
+            real(dp)    :: x(dim_num)
             ! local
-            real(8) :: arg, t1, t2
-            real(8), external :: dbesk0
+            real(dp) :: arg, t1, t2
+            real(dp), external :: dbesk0
             t1 = sqrt( x(1)*x(1) + x(2)*x(2) )
             if (t1 > small) then
                 arg  = t1 * abs(vgpk(3))
@@ -246,14 +250,14 @@ contains
     end subroutine
 
 
-    real(8) function K0cosXY(vgpk, x, y)
+    real(dp) function K0cosXY(vgpk, x, y)
             implicit none
-            real(8), intent(in) :: vgpk(3)
-            real(8), intent(in) :: x
-            real(8), intent(in) :: y
+            real(dp), intent(in) :: vgpk(3)
+            real(dp), intent(in) :: x
+            real(dp), intent(in) :: y
             ! local
-            real(8) :: arg, k0
-            real(8), external :: dbesk0
+            real(dp) :: arg, k0
+            real(dp), external :: dbesk0
             arg = abs(vgpk(3)) * sqrt(x*x+y*y)
             K0cosXY = dbesk0(arg) * cos(vgpk(1)*x + vgpk(2)*y)
     end function
@@ -263,17 +267,17 @@ contains
         use mod_kpointset
         implicit none
         logical,      intent(in)  :: Gamma
-        integer(4),   intent(in)  :: ik
+        integer(i32),   intent(in)  :: ik
         type(Gk_set), intent(in)  :: Gkset
-        real(8),      intent(out) :: vcoul(:)
+        real(dp),      intent(out) :: vcoul(:)
         ! local
-        integer(4) :: igk, igk0
-        integer(4) :: nr, ir
-        real(8)    :: k, kxy, kz, rkxy, rkz, r0
-        real(8), allocatable :: r(:)
-        real(8), allocatable :: fr(:), gr(:), cf(:,:)
-        real(8), parameter :: small = 1.d-6
-        real(8), external :: dbesk0, dbesk1, dbesj0, dbesj1
+        integer(i32) :: igk, igk0
+        integer(i32) :: nr, ir
+        real(dp)    :: k, kxy, kz, rkxy, rkz, r0
+        real(dp), allocatable :: r(:)
+        real(dp), allocatable :: fr(:), gr(:), cf(:,:)
+        real(dp), parameter :: small = 1.d-6
+        real(dp), external :: dbesk0, dbesk1, dbesj0, dbesj1
 
         ! generate grid
         nr = 128
@@ -315,11 +319,11 @@ contains
         use modgw, only : Gset, kqset, Gqset, Gqbarc
         implicit none
         logical,      intent(in)  :: Gamma
-        integer(4),   intent(in)  :: ik
+        integer(i32),   intent(in)  :: ik
         type(Gk_set), intent(in)  :: Gkset
-        real(8),      intent(out) :: vcoul(:)
-        integer(4) :: igk, igk0
-        real(8)    :: kxy, kz, g_plus_q2, g_plus_q(3)
+        real(dp),      intent(out) :: vcoul(:)
+        integer(i32) :: igk, igk0
+        real(dp)    :: kxy, kz, g_plus_q2, g_plus_q(3)
  
         igk0 = 1
         if (Gamma) then
@@ -372,24 +376,24 @@ contains
         use mod_kpointset
         implicit none
         ! input/output
-        logical(4),   intent(in)  :: Gamma
-        integer(4),   intent(in)  :: ngridk(3)
-        integer(4),   intent(in)  :: ik
+        logical,   intent(in)  :: Gamma
+        integer(i32),   intent(in)  :: ngridk(3)
+        integer(i32),   intent(in)  :: ik
         type(Gk_set), intent(in)  :: Gkset
-        real(8),      intent(out) :: vc(Gkset%ngk(1,ik))
+        real(dp),      intent(out) :: vc(Gkset%ngk(1,ik))
         ! local
-        integer(4) :: i, i1, i2, i3, nq, iq
-        integer(4) :: ngk, igk, igk0
-        integer(4) :: n(3), n0
-        real(8)    :: b(3), bmin, bmax, bvol
-        real(8)    :: vgpk(3), intf
-        real(8), parameter :: small = 1.d-6
+        integer(i32) :: i, i1, i2, i3, nq, iq
+        integer(i32) :: ngk, igk, igk0
+        integer(i32) :: n(3), n0
+        real(dp)    :: b(3), bmin, bmax, bvol
+        real(dp)    :: vgpk(3), intf
+        real(dp), parameter :: small = 1.d-6
         ! Romberg integration
-        integer(4), parameter :: dim_num = 3
-        real(8)    :: alim(dim_num), blim(dim_num)
-        integer(4) :: sub_num(dim_num)
-        integer(4) :: it_max, ind, eval_num
-        real(8)    :: tol
+        integer(i32), parameter :: dim_num = 3
+        real(dp)    :: alim(dim_num), blim(dim_num)
+        integer(i32) :: sub_num(dim_num)
+        integer(i32) :: it_max, ind, eval_num
+        real(dp)    :: tol
 
         ! Rectangular integration volume
         bvol = (2.d0*pi)**3 / omega / dble(product(ngridk))
@@ -431,16 +435,106 @@ contains
     contains
 
         function func(dim_num, x)
-            integer(4) :: dim_num
-            real(8)    :: func
-            real(8)    :: x(dim_num)
+            integer(i32) :: dim_num
+            real(dp)    :: func
+            real(dp)    :: x(dim_num)
             ! local
-            real(8) :: v(3)
+            real(dp) :: v(3)
             v(1:3) = x(1:3) + vgpk(1:3)
             func   = 1.d0 / ( v(1)*v(1) + v(2)*v(2) + v(3)*v(3) )
             return
         end function
 
+    end subroutine
+
+    !> Compute the the coefficients needed to treat the singularities of the
+    !> Coulomb potential and the self-energy
+    subroutine calculate_singularities_coeff( cutoff_type, selfenergy_singularity_treatment, &
+      & nkpt, coeff_s2_singularity )
+      !> Type of Coulomb cutoff used
+      character(len=*), intent(in) :: cutoff_type
+      !> Treatment of the singularity for the computation of the self-energy
+      character(len=*), intent(in) :: selfenergy_singularity_treatment
+      !> Number of k/q points in the BZ 
+      integer, intent(in) :: nkpt
+      !> Coefficient for the integration of the self-energy singularity
+      real(dp), intent(out) :: coeff_s2_singularity
+      
+      select case ( trim(cutoff_type) )
+        case('0d')
+          call vcoul_q0_0d( low_dim_singularity )
+    
+        case('1d')
+          call vcoul_q0_1d( nkpt, low_dim_singularity )
+    
+        case('2d')
+          call vcoul_q0_2d( nkpt, low_dim_singularity )
+        
+        case('none')
+          select case ( trim(selfenergy_singularity_treatment) )
+            case('mpb')
+              ! Auxiliary function method
+              call setsingc
+            case('crg')
+              ! Auxiliary function method
+              call calc_q0_singularities
+            case('avg')
+              ! Spherical average
+              call vcoul_q0_3d( nkpt, coeff_s2_singularity )
+            case('rim')
+              ! Spherical average
+            case default
+              call calc_q0_singularities
+          end select
+      end select
+    end subroutine
+
+    !> Matrix with the bare Coulomb potential is calculated. 
+    !> Then, it is diagonalized and finally one takes its square root.
+    !> The result is stored in the global variable `barc`
+    subroutine calculate_sqrt_bare_coulomb( iq, eigenvalue_tol )
+      integer(i32), intent(in) :: iq
+      real(dp), intent(in) :: eigenvalue_tol
+      
+      ! Get coulomb matrix im MB basis, its eigenvalues and eigenvectors
+      call calcbarcmb( iq )
+          
+      ! Set v-diagonal MB and reduce its size
+      call sqrt_coulomb_matrix( eigenvalue_tol )
+      call delete_coulomb_potential
+    end subroutine
+
+    subroutine sqrt_coulomb_matrix( eigenvalue_tol )
+      real(dp), intent(in) :: eigenvalue_tol
+    
+      call setbarcev( eigenvalue_tol )
+    end subroutine
+
+    subroutine write_barc_to_file( iq, binary_format )
+      integer(i32), intent(in) :: iq
+      logical, intent(in) :: binary_format 
+
+      integer(i32), parameter :: max_length = 30
+      character(len=max_length) :: file_name
+
+      call build_file_name( basename_barc, iq, file_name )
+
+      call write_to_file( file_name, barc, [1, 1], binary_format )
+
+    end subroutine
+
+
+    subroutine read_coulomb_potential_from_file( iq, file_format )
+      integer(i32), intent(in) :: iq
+      character(len=*), intent(in) :: file_format
+
+      integer(i32), parameter :: max_length = 30
+      character(len=max_length) :: file_name
+
+      call build_file_name( basename_barc, iq, file_name )
+      call read_from_file( file_name, barc, file_format )
+      matsiz = size( barc, 1 )
+      mbsiz = size( barc, 2 )
     end subroutine
 
 end module

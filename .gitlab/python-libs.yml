@@ -11,7 +11,10 @@ python:excitingtools-python-3.7:
     - python3 -m pip install -U pip setuptools
     - python3 -m pip install --upgrade --force pylint coverage
   script:
-    - cd tools/exciting_tools && python3 -m pip install -e .[schemaparsing,h5_parsing,dev]
+    - cd tools/exciting_tools && python3 -m pip install -e .[dev,schemaparsing,h5_parsing]
+    # run ruff and check the files (includes some pylint, see also README.MD section Code 'Checking and Formatting')
+    - ruff check
+    - ruff format --diff
     # Run excitingtools unit tests and collect test coverage
     - coverage run -m pytest
     - coverage xml -o excitingtools_testcov.xml

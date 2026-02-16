@@ -141,7 +141,7 @@
       "unit": "Bohr^-1"
     },
     "epsm": {
-      "tol": 5e-05,
+      "tol": 1e-04,
       "unit": "null"
     },
     "w": {
@@ -149,7 +149,7 @@
       "unit": "eV"
     },
     "lossfct": {
-      "tol": 1e-05,
+      "tol": 5e-05,
       "unit": "null"
     },
     "sigma": {

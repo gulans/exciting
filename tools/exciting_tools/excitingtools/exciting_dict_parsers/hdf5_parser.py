@@ -1,10 +1,10 @@
-"""Parsers for HDF5 files.
-"""
+"""Parsers for HDF5 files."""
+
 import numpy as np
 
 
 def parse_hdf5_file_as_dict(fname: str) -> dict:
-    """Parse the content of an hdf5 file as dictionary. 
+    """Parse the content of an hdf5 file as dictionary.
     Use this function only for small files.
 
     :param str fname: path to the file.
@@ -15,7 +15,6 @@ def parse_hdf5_file_as_dict(fname: str) -> dict:
         import h5py
     except ImportError:
         raise ImportError("h5py module not installed, but is required")
-
 
     def recursive_unpack(hdfobject, datadict):
         """Unpack an HDF5 data object to a dictionary recursively.
@@ -34,12 +33,11 @@ def parse_hdf5_file_as_dict(fname: str) -> dict:
         return datadict
 
     def convert_one_element_arrays(obj):
-        """Replace np.array([a]) with a.
-        """
-                
+        """Replace np.array([a]) with a."""
+
         for key, value in obj.items():
             if isinstance(value, np.ndarray) and len(value) == 1:
-                    obj.update({key: value[0]})
+                obj.update({key: value[0]})
 
             elif isinstance(value, dict):
                 convert_one_element_arrays(value)

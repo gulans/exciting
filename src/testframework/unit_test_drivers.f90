@@ -17,7 +17,9 @@ module unit_test_drivers
    use hybrids_test_drivers, only: hybrids_test_driver
    use matrix_elements_test_drivers, only: matrix_elements_test_driver
    use xgrid_test_drivers, only: xgrid_test_driver
+   use gw_test_drivers, only: gw_test_driver
    use xhdf5_test, only: xhdf5_test_driver
+   use gw_test_drivers, only: gw_test_driver
 
    implicit none
    private
@@ -80,7 +82,7 @@ contains
 
       if (run%gw .or. run%all) then
          ! Placeholder
-         !call gw_test_driver(mpiglobal, kill_on_failure)
+         call gw_test_driver(mpiglobal, kill_on_failure)
       end if
 
       if (run%xstring .or. run%all) then
