@@ -444,7 +444,7 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
 !if (.false.) then
 if (input%groundstate%hybrid%erfcapprox.eq."PW")then  
    call timesec(tc)
-   call poterfpw_sp(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir0, potmt0)
+   call poterfpw(ngvec1, prodir,prod%mtrlm(:,:,:,1),igfft,sfacgq,ylmgq,gqc,jlgqsmallr,potir0, potmt0)
    potir=potir - potir0 !Coulomb - erf
    pot%mtrlm(:,:,:,1)=-potmt0 + pot%mtrlm(:,:,:,1)
    call timesec(td)
