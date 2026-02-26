@@ -2241,7 +2241,6 @@ CONTAINS
     REAL(real64)    :: sinxy, cos2xy, sin2xy, coef1, coef2, expx2erfcxy, exp_arg_re
 
     ! FOR DEBUG
-    real(kind=real64) :: part_re, part_im
     complex(real64) :: tmp
 
     relerr = relerr_in
@@ -2337,11 +2336,6 @@ CONTAINS
       END IF
 
       IF (y < 0.0_real64) THEN
-         ! =================================================================
-         ! *** FIX FOR OVERFLOW: Guard added before calling EXP ***
-         ! Check the real part of the exponent before the call to prevent
-         ! overflow caused by a large imaginary argument in some compilers.
-         ! =================================================================
          exp_arg_re = (ya-xs)*(xs+ya)
          IF (exp_arg_re > LOG(HUGE(0.0_real64)/2.0_real64)) THEN
             ! Construct Inf if it will overflow
@@ -2480,27 +2474,21 @@ CONTAINS
                          (c*x*expx2) * sinxy * sinc(x*y, sinxy), &
                          0.0_real64, kind=real64 )
         ELSE
-          xs = REAL(z, kind=real64)        ! keep xs for any sign-sensitive needs
-          sinxy = SIN(x*y)                 ! note: x is ABS(REAL(z)) earlier
-          sin2xy = SIN(2.0_real64*x*y)
-          cos2xy = COS(2.0_real64*x*y)
+          xs = REAL(z, kind=real64)
+          sinxy = SIN(xs*y)
+          sin2xy = SIN(2.0_real64*xs*y)
+          cos2xy = COS(2.0_real64*xs*y)
 
           coef1 = expx2erfcxy - c*y*sum1
-          coef2 = c * x * expx2    ! NOTE: use x (abs), not xs
+          coef2 = c * xs * expx2
 
-          ! original Algorithm 916 partial real uses sin(x*y)*sinc(x*y)
-          part_re = coef1 * cos2xy + coef2 * sinxy * sinc(x*y, sinxy)
-
-          ! set partial imaginary to the original algorithm value (for these cases ~0)
-          part_im = 0.0_real64
-
-          ! build partial complex ret
-          ret = CMPLX(part_re, part_im, kind=real64)
+          ret = CMPLX( coef1 * cos2xy + coef2 * sinxy * sinc(xs*y, sinxy), &
+                       coef2 * sinc(2.0_real64*xs*y, sin2xy) - coef1 * sin2xy, kind=real64 )
         END IF
 
-        ! Now add the remaining contributions (this matches the C++ copysign logic)
+        ! Now add the remaining contributions (matches the C++ copysign logic)
         ret = ret + CMPLX( (0.5_real64*c)*y*(sum2 + sum3), &
-                          (-0.5_real64*c)*MERGE(ABS(sum5 - sum4), -ABS(sum5 - sum4), REAL(z) < 0.0_real64), kind=real64 )
+                           (0.5_real64*c)*SIGN(ABS(sum5 - sum4), REAL(z, kind=real64)), kind=real64 )
 
 
     ELSE ! x >= 10 (Large x: only sum3 & sum5 contribute significantly)

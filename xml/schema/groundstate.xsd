@@ -3110,6 +3110,20 @@
          </xs:simpleType>
        </xs:attribute>
 
+      <xs:attribute ex:importance="expert" ex:unit="" name="rho" type="fortrandouble" default="0.0">
+        <xs:annotation>
+           <xs:documentation>Choose the radius of the cylinder for the cylindrical cutoff
+           </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+
+      <xs:attribute ex:importance="expert" ex:unit="" name="R_z" type="fortrandouble" default="0.0">
+        <xs:annotation>
+           <xs:documentation>Choose the half-height of the cylinder for the cylindrical cutoff
+           </xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+
       <xs:attribute ex:importance="expert" ex:unit="" name="k_max_factor" type="fortrandouble"
         default="1.0d0">
         <xs:annotation>

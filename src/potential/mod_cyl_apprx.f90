@@ -4,10 +4,10 @@ module mod_cyl_apprx
   use constants, only: twopi, pi
   use omp_lib
   use mod_cyl_apprx_weights, only: alpha_arr, An_arr, w_arr, tau, num_weights_real, num_weights_complex, b_max
-  use faddeeva_interface_module, only: faddeeva_from_c, erf_real ! THIS IS FADDEEVA C++ implementation
-  use faddeeva_test_module, only: run_faddeeva_tests ! THIS IS FOR TEST
+  use faddeeva_interface_module, only: faddeeva_from_c, erf_real
   use Faddeeva_module, only: Faddeeva_w
   use modmain, only: intgv
+  use modinput, only: input
   use gvectors_analysis, only: unique_counts_real
 
   implicit none
@@ -25,12 +25,12 @@ module mod_cyl_apprx
 
 contains
 
-  subroutine init_cyl_apprx_factor(ngvec, ivgp, bvec, real_bvec, R_z, epslat)
+  subroutine init_cyl_apprx_factor(ngvec, ivgp, bvec, real_bvec, R_z_in, epslat)
     integer, intent(in) :: ngvec
     integer, intent(in) :: ivgp(:,:)
     real(dp), intent(in) :: bvec(:,:)        ! Reciprocal space vectors for factor calculation
     real(dp), intent(in) :: real_bvec(:,:)   ! Real vectors for calculating rho
-    real(dp), intent(in) :: R_z              ! Half-height of unit cell in z direction
+    real(dp), intent(in) :: R_z_in           ! Half-height of unit cell in z direction
     real(dp), intent(in) :: epslat
 
     ! Local variables
@@ -40,7 +40,7 @@ contains
     integer :: nz_min, nz_max, ngz_total                             ! for unique Gz
     integer :: nx_min, nx_max, ny_min, ny_max                        ! for unique Gp
     integer :: ngp_total                                             ! for unique Gp
-    real(dp) :: area, rho, cross_x, cross_y, cross_z, scale
+    real(dp) :: area, rho, cross_x, cross_y, cross_z, scale, R_z
     real(dp) :: Gx, Gy, Gz, Gp
     real(dp), allocatable :: Gp_arr(:), Gz_arr(:)                    ! for unique G-vector magnitudes 
     integer, allocatable :: ivgp_map(:,:)                            ! for storing G-vector integer multiples
@@ -67,17 +67,8 @@ contains
     ! 5. For final dot product
     integer :: ig_p
 
-    ! 5. Testing and time
     real(dp) :: t0, t1
-    ! Testing Gz_matrix
-    complex(dp) :: term0_c, term1_c, term0_f, term1_f
-    complex(dp) :: bracket_c, bracket_f
-    complex(dp) :: val_c, val_f
-    real(dp), allocatable :: Gz_row_c(:), Gz_row_f(:)
-    real(dp) :: abs_diff
-    real(dp) :: rel_diff
-    real(dp), parameter :: threshold = 1.0e-10_dp
-    real(dp) :: max_abs, max_rel
+
 
 
 
@@ -99,6 +90,12 @@ contains
     area = sqrt(cross_x**2 + cross_y**2 + cross_z**2)
 
     rho = sqrt(area / pi)
+    R_z = R_z_in
+
+    if (associated(input%groundstate)) then
+      if (input%groundstate%rho /= 0.0_dp) rho = input%groundstate%rho
+      if (input%groundstate%R_z /= 0.0_dp) R_z = input%groundstate%R_z
+    end if
 
     write(*,*) "Caclculation parameters: rho = ", rho, ", Rz = ", R_z
 
@@ -137,6 +134,7 @@ contains
 
     allocate( ivgp_map(nx_min : nx_max, ny_min : ny_max) )
 
+
     ig = 0 ! Initialize the 1D counter
     do ix = nx_min, nx_max
         do iy = ny_min, ny_max
@@ -152,8 +150,9 @@ contains
 
             ! Store the (ix, iy -> ig) inverse map
             ivgp_map(ix, iy) = ig
+
         end do
-    end do
+      end do
 
 
     ! get local versions of alpha and An
@@ -171,29 +170,11 @@ contains
 
     allocate(Gz_matrix(num_weights_real, nz_min:nz_max))
 
-    ! ------ FOR TEST ------
-
-    allocate(Gz_row_c(num_weights_real), Gz_row_f(num_weights_real))
-
-    max_abs = 0.0_dp
-    max_rel = 0.0_dp
-
-    write(*,'(A)') "  ig |      gz        |     max_abs    |     max_rel    "
-    write(*,'(A)') "-----+----------------+----------------+----------------"
-
-    ! ----------------------
-
-    write(*,*) "-----------------------------------------"
-    write(*,*) "Starting calculation for Gz matrix"
-    call timesec(t0)
-
-
     !$OMP PARALLEL DO &
     !$OMP PRIVATE(ia, alpha_val, An_val, sq_alpha, arg_exp, ig, gz) &
     !$OMP PRIVATE(prefactor, cmplx_outer, k0, k1, term0, term1, bracket, val) &
     !$OMP DEFAULT(SHARED)
 
-    ! Should be do ig=nz_min, nz_max
     do ig=nz_min, nz_max
       gz = Gz_arr(ig)
       ! Case when Gz=0
@@ -208,11 +189,6 @@ contains
       ! Found no relative error biger than 10^-8, absolute was 10^-6 and it started with k0 and k1 somehow and not cmplx_outer
       else
 
-        ! ------ FOR TEST ------
-        !write(*,'(A,F12.6,A,I4,A)') "--- Gz = ", gz, " (ig = ", ig, ") ---"
-        !write(*,'(A)') "  ia |      Gz_c      |      Gz_f      |    abs_diff    |    rel_diff"
-        !write(*,'(A)') "-----+----------------+----------------+----------------+----------------"
-        ! ----------------------
 
         do ia=1, num_weights_real
           alpha_val = alpha(ia)
@@ -233,83 +209,21 @@ contains
             k0 = cmplx(-cmplx_outer, -sq_alpha * R_z, kind=dp) ! argument of Faddeeva is i*k, so I just multiply the i here
             k1 = cmplx(-cmplx_outer,  sq_alpha * R_z, kind=dp)
 
-            ! ------ FOR TEST ------
-            
-            ! For C++
-            term0_c = faddeeva_from_c(k0)
-            term1_c = faddeeva_from_c(k1)
-
-            bracket_c = exp(cmplx(0.0_dp, R_z*gz, kind=dp)) * term0_c - exp(cmplx(0.0_dp, -R_z*gz, kind=dp)) * term1_c
-            val_c = prefactor * bracket_c
-
-            Gz_row_c(ia) = real(val_c, kind=dp)
-
-            ! For Fortran
-            term0_f = Faddeeva_w(k0, 0.0_dp)
-            term1_f = Faddeeva_w(k1, 0.0_dp)
-
-            bracket_f = exp(cmplx(0.0_dp, R_z*gz, kind=dp)) * term0_f - exp(cmplx(0.0_dp, -R_z*gz, kind=dp)) * term1_f
-            val_f = prefactor * bracket_f
-
-            Gz_row_f(ia) = real(val_f, kind=dp)
-
-            ! Now compare them
-            abs_diff = abs(Gz_row_c(ia) - Gz_row_f(ia))
-
-            if (Gz_row_c(ia) <= threshold) then
-              rel_diff = abs_diff
-            else 
-              rel_diff = abs_diff/ Gz_row_c(ia)
-            end if
-
-            ! Check if max and save
-            if (abs_diff > max_abs) then
-              max_abs = abs_diff
-            end if
-            if (rel_diff > max_rel) then
-              max_rel = rel_diff
-            end if 
-
-            ! Check next arg_exp, if yes then write out values
-            arg_exp = -alpha(ia+1) * R_z*R_z
-            if (arg_exp <= ASYMPTOTE_THRESHOLD) then
-              write(*,'(I4," |",ES15.8," |",ES15.8," |",ES15.8)') ig, gz, max_abs, max_rel
-              ! Reset max values
-              max_abs = 0.0_dp
-              max_rel = 0.0_dp
-            end if
-
-            ! Write out the values and differences
-            !write(*,'(I4," |",ES15.8," |",ES15.8," |",ES15.8," |",ES15.8)') ia, Gz_row_c(ia), Gz_row_f(ia), abs_diff, rel_diff
-
-            ! ----------------------
 
             !term0 = faddeeva_from_c(k0)
             !term1 = faddeeva_from_c(k1)
-            !term0 = Faddeeva_w(k0, 0.0_dp) ! There was no relative error greater than 1e-12 
-            !term1 = Faddeeva_w(k1, 0.0_dp) ! If true value was smaller than 1e-10, then I just left the absolute error 
+            term0 = Faddeeva_w(k0, 0.0_dp) ! There was no relative error greater than 1e-12 
+            term1 = Faddeeva_w(k1, 0.0_dp) ! If true value was smaller than 1e-10, then I just left the absolute error 
              
-            !bracket = exp(cmplx(0.0_dp, R_z*gz, kind=dp)) * term0 - exp(cmplx(0.0_dp, -R_z*gz, kind=dp)) * term1
-            !val = prefactor * bracket
-            !Gz_matrix(ia,ig) = real(val, kind=dp)
+            bracket = exp(cmplx(0.0_dp, R_z*gz, kind=dp)) * term0 - exp(cmplx(0.0_dp, -R_z*gz, kind=dp)) * term1
+            val = prefactor * bracket
+            Gz_matrix(ia,ig) = real(val, kind=dp)
           end if
         end do
       end if
     end do
 
     !$OMP END PARALLEL DO
-
-    ! ------ FOR TEST ------
-
-    deallocate(Gz_row_c, Gz_row_f)
-    write(*,*) "Stopping"
-    stop
-
-    ! ----------------------
-
-    call timesec(t1)
-    write(*,*) "Calculation finished, total time: ", t1 - t0, " s"
-    write(*,*) "-----------------------------------------"
 
     deallocate(An)
 
@@ -322,9 +236,6 @@ contains
     allocate(A_arr(num_weights_real), sq_A_arr(num_weights_real))
     allocate(w(num_weights_complex))
 
-    write(*,*) "-----------------------------------------"
-    write(*,*) "Starting calculation for Gp matrix"
-    call timesec(t0)
 
     A_arr = alpha * rho*rho
     sq_A_arr = sqrt(A_arr)
@@ -333,10 +244,12 @@ contains
         w(im) = w_arr(im) * exp(tau(im) * pi/b_max)
     end do
 
+
     !$OMP PARALLEL DO &
     !$OMP PRIVATE(ig, gp, B_arr, ia, A_val, sq_A, im, B_val, z0, z1) &
     !$OMP PRIVATE(w_z0, w_z1, exp_term, term0, term1, m_arr) &
     !$OMP DEFAULT(SHARED)
+
 
     do ig=1, ngp_total
       gp = Gp_arr(ig)
@@ -360,7 +273,7 @@ contains
 
           ! Check if A_val >= 10, if yes then use closed form
           if (A_val >= 10.0_dp) then
-           Gp_matrix(ia, ig) = 1 / (2 * A_val) * exp(- (gp*gp * rho*rho) / (4 * A_val))
+            Gp_matrix(ia, ig) = 1 / (2 * A_val) * exp(- (gp*gp * rho*rho) / (4 * A_val))
           !other cases
           else
             do im=1, num_weights_complex
@@ -377,8 +290,8 @@ contains
               exp_term = exp(B_val - A_val)
               term0 = (1.0_dp - exp_term) / (2.0_dp * A_val)
               term1 = B_val * sq_pi / (4.0_dp * A_val * sq_A) * (w_z0 - exp_term * w_z1)
-
               m_arr(im) = w(im) * (term0 + term1)
+
             end do
             Gp_matrix(ia,ig) = real(sum(m_arr), kind=dp)
           end if
@@ -389,19 +302,12 @@ contains
 
     !$OMP END PARALLEL DO
 
-    call timesec(t1)
-    write(*,*) "Calculation finished, total time: ", t1 - t0, " s"
-    write(*,*) "-----------------------------------------"
-
     deallocate(A_arr, sq_A_arr, alpha, w)
 
     ! ---------------------------------------------------------------------------------------------------
     ! Map Gz and Gp to full G-vectors and take dot product for those rows
 
     allocate(cyl_apprx_factor(ngvec))
-
-    write(*,*) "Mapping G-vectors and taking dot product..."
-    call timesec(t0)
 
     !$OMP PARALLEL DO &
     !$OMP PRIVATE(ig, ix, iy, iz, ig_p) &
@@ -417,47 +323,14 @@ contains
         
         ! Take the dot product between corresponding columns
         cyl_apprx_factor(ig) = twopi * rho*rho * dot_product(Gz_matrix(:,iz), Gp_matrix(:,ig_p))
+
+
     end do
     !$OMP END PARALLEL DO
-
-    call timesec(t1)
-    write(*,*) "Time of mapping and dot product: ", t1-t0, " s"
-
-    !write(*,*) "Everythings finished"
-    !write(*,*) "Stopping"
-    !stop
-
+    
     cyl_apprx_initialized = .true.
 
     deallocate(Gz_matrix, Gp_matrix)
-
-    ! -----------------------------------------------------------------------------------------------------
-    ! For Saving data to .txt
-    
-    ! --- Variables for file writing ---  
-    !integer :: debug_unit
-    !character(len=256) :: debug_filename
-
-    ! ====================================================================
-    ! 1. OPEN THE DEBUG FILE
-    ! Open a file to store the intermediate values.
-    ! This is done *before* the loop for efficiency.
-    ! ====================================================================
-    !debug_unit = 10
-    !debug_filename = "cmplx_outer.txt"
-    !open(unit=debug_unit, file=debug_filename, status='replace', action='write')
-    ! Write a header to make the file easier to understand
-    !write(debug_unit, '(A)') "# Gz matrix column"
-    
-    !write(debug_unit, '(8(ES24.15E3, 1X))') real(k0), imag(k0), real(k1), imag(k1), real(term0), imag(term0), real(term1), imag(term1)
-
-    ! ====================================================================
-    ! 3. CLOSE THE DEBUG FILE
-    ! Always close the file unit when you're done with it.
-    ! ====================================================================
-    !close(debug_unit)
-    !print *, "Debug values written to ", trim(debug_filename)
-    !stop
 
     end subroutine init_cyl_apprx_factor
 
