@@ -420,6 +420,8 @@ end subroutine coulomb_potential2
       logical, optional, intent(in) :: rpseudo_in
       complex(dp), optional, intent(in) :: rpseudomat(:,:,:)
 
+      real(dp) :: kshift(3)
+
       logical :: yukawa
       logical :: hybrid, rpseudo
       complex(dp) :: zlambda
@@ -535,8 +537,9 @@ endif
            if (.not.cyl_apprx_initialized) then
              write(*,*) 'Initializing cylinder approximate coulomb factor'
               r_c = input%structure%crystal%basevect(3, 3) * 0.5d0
+             kshift=0.0_dp
              call init_cyl_apprx_factor(ngp, ivg, bvec, input%structure%crystal%basevect, r_c, &
-                                        input%structure%epslat)
+                                        input%structure%epslat, kshift)
            endif
         endif
         

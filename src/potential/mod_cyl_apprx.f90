@@ -25,13 +25,14 @@ module mod_cyl_apprx
 
 contains
 
-  subroutine init_cyl_apprx_factor(ngvec, ivgp, bvec, real_bvec, R_z_in, epslat)
+  subroutine init_cyl_apprx_factor(ngvec, ivgp, bvec, cell_vec, R_z_in, epslat, kvec)
     integer, intent(in) :: ngvec
     integer, intent(in) :: ivgp(:,:)
     real(dp), intent(in) :: bvec(:,:)        ! Reciprocal space vectors for factor calculation
-    real(dp), intent(in) :: real_bvec(:,:)   ! Real vectors for calculating rho
+    real(dp), intent(in) :: cell_vec(:,:)   ! Real vectors for calculating rho
     real(dp), intent(in) :: R_z_in           ! Half-height of unit cell in z direction
     real(dp), intent(in) :: epslat
+    real(dp), intent(in) :: kvec(3)          ! k-vector shift of the reciprocal lattice 
 
     ! Local variables
     ! --------------------------------------------------------------------------------
@@ -84,9 +85,9 @@ contains
 
     ! ----------------------------------------------------------------------------------------------------
     ! Calculate rho by assuming it the radius of a circel of same area as the unit cell in the ab plane
-    cross_x = real_bvec(2,1) * real_bvec(3,2) - real_bvec(3,1) * real_bvec(2,2)
-    cross_y = real_bvec(3,1) * real_bvec(1,2) - real_bvec(1,1) * real_bvec(3,2)
-    cross_z = real_bvec(1,1) * real_bvec(2,2) - real_bvec(2,1) * real_bvec(1,2)
+    cross_x = cell_vec(2,1) * cell_vec(3,2) - cell_vec(3,1) * cell_vec(2,2)
+    cross_y = cell_vec(3,1) * cell_vec(1,2) - cell_vec(1,1) * cell_vec(3,2)
+    cross_z = cell_vec(1,1) * cell_vec(2,2) - cell_vec(2,1) * cell_vec(1,2)
     area = sqrt(cross_x**2 + cross_y**2 + cross_z**2)
 
     rho = sqrt(area / pi)
@@ -112,7 +113,7 @@ contains
     do iz = nz_min, nz_max
       ! Calculate Gz based only on the z-component of the basis
       ! (Assuming bvec(3,1) and bvec(3,2) are zero)
-      Gz_arr(iz) = dble(iz) * bvec(3, 3)
+      Gz_arr(iz) = dble(iz) * bvec(3, 3) + kvec(3)
       
       ! Store the corresponding integer 'iz' in the map
       !map_Gz(iz) = iz
@@ -142,8 +143,8 @@ contains
             ig = ig + 1
 
             ! Calculate the Cartesian components
-            Gx = dble(ix) * bvec(1,1) + dble(iy) * bvec(1,2)
-            Gy = dble(ix) * bvec(2,1) + dble(iy) * bvec(2,2)
+            Gx = dble(ix) * bvec(1,1) + dble(iy) * bvec(1,2) + kvec(1)
+            Gy = dble(ix) * bvec(2,1) + dble(iy) * bvec(2,2) + kvec(2)
 
             ! Store the Gp magnitude in the 1D array
             Gp_arr(ig) = sqrt(Gx*Gx + Gy*Gy)
