@@ -25,12 +25,11 @@ module mod_cyl_apprx
 
 contains
 
-  subroutine init_cyl_apprx_factor(ngvec, ivgp, bvec, cell_vec, R_z_in, epslat, kvec)
+  subroutine init_cyl_apprx_factor(ngvec, ivgp, bvec, cell_vec, epslat, kvec)
     integer, intent(in) :: ngvec
     integer, intent(in) :: ivgp(:,:)
     real(dp), intent(in) :: bvec(:,:)        ! Reciprocal space vectors for factor calculation
     real(dp), intent(in) :: cell_vec(:,:)   ! Real vectors for calculating rho
-    real(dp), intent(in) :: R_z_in           ! Half-height of unit cell in z direction
     real(dp), intent(in) :: epslat
     real(dp), intent(in) :: kvec(3)          ! k-vector shift of the reciprocal lattice 
 
@@ -91,7 +90,7 @@ contains
     area = sqrt(cross_x**2 + cross_y**2 + cross_z**2)
 
     rho = sqrt(area / pi)
-    R_z = R_z_in
+    R_z = 0.5_dp * cell_vec(3,3) !R_z_in
 
     if (associated(input%groundstate)) then
       if (input%groundstate%rho /= 0.0_dp) rho = input%groundstate%rho

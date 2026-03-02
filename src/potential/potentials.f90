@@ -536,9 +536,8 @@ endif
         if (input%groundstate%vha.eq."exciting_cyl") then
            if (.not.cyl_apprx_initialized) then
              write(*,*) 'Initializing cylinder approximate coulomb factor'
-              r_c = input%structure%crystal%basevect(3, 3) * 0.5d0
              kshift=0.0_dp
-             call init_cyl_apprx_factor(ngp, ivg, bvec, input%structure%crystal%basevect, r_c, &
+             call init_cyl_apprx_factor(ngp, ivg, bvec, input%structure%crystal%basevect, &
                                         input%structure%epslat, kshift)
            endif
         endif
