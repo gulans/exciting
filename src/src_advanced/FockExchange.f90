@@ -37,6 +37,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Logical :: solver, cutoff, handleG0, rpseudo
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x
+      Real (8) :: BvK_cell (3,3)
       Real (8) :: r_c
       Complex (8) zrho01, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr, ipt
@@ -237,8 +238,11 @@ call timesec(ta)
          if (input%groundstate%hybrid%singularity.eq."exccyl") then
              if (allocated(cyl_apprx_factor)) deallocate(cyl_apprx_factor)
              cyl_apprx_initialized=.false.
-             r_c = input%structure%crystal%basevect(3, 3) * 0.5d0
-             call init_cyl_apprx_factor(ngvec, ivg, bvec, input%structure%crystal%basevect, r_c, &
+             BvK_cell(:,1)=input%structure%crystal%basevect(:,1) * kset%ngridk(1)
+             BvK_cell(:,2)=input%structure%crystal%basevect(:,2) * kset%ngridk(2)
+             BvK_cell(:,3)=input%structure%crystal%basevect(:,3)
+             r_c = input%structure%crystal%basevect(3, 3) * 0.5d0 * kset%ngridk(3)
+             call init_cyl_apprx_factor(ngvec, ivg, bvec, BvK_cell, r_c, &
                                         input%structure%epslat, v)
          endif
 
