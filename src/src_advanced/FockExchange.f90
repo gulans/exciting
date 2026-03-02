@@ -14,6 +14,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Use potentials, only: coulomb_potential2
       use weinert, only: poisson_mt_yukawa,pseudocharge_rspace_matrix
       use mod_hybrids, only : gmax_pw_method
+      use mod_cyl_apprx, only : cyl_apprx_factor, cyl_apprx_initialized, init_cyl_apprx_factor
       USE OMP_LIB
 
       use poterf
@@ -36,6 +37,7 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Logical :: solver, cutoff, handleG0, rpseudo
 
       Real (8) :: v (3), cfq, ta,tb, t1, norm, uir, x
+      Real (8) :: r_c
       Complex (8) zrho01, ztmt,zt1,zt2,zt3,zt4, ztir
       Integer :: nr, l, m, io1, lm2, ir, if3, j, lmaxvr, ipt
 
@@ -74,7 +76,11 @@ Subroutine FockExchange (ikp, q0corr, vnlvv, vxpsiirgk, vxpsimt)
       Complex (8) zfinp, zfmtinp, zfinpir, zfinpmt
       External zfinp, zfmtinp, zfinpir, zfinpmt
       logical :: print_times
+
+
       print_times=.true.
+
+
 
 ! allocate local arrays
       Allocate (vgqc(3, ngvec))
@@ -227,6 +233,17 @@ call timesec(ta)
          Call genjlgpr (lmax, gqc, jlgqr)
          Call genjlgq0r (gqc(igq0), jlgq0r)
 
+! initialise the cutoff here
+         if (input%groundstate%hybrid%singularity.eq."exccyl") then
+             if (allocated(cyl_apprx_factor)) deallocate(cyl_apprx_factor)
+             cyl_apprx_initialized=.false.
+             r_c = input%structure%crystal%basevect(3, 3) * 0.5d0
+             call init_cyl_apprx_factor(ngvec, ivg, bvec, input%structure%crystal%basevect, r_c, &
+                                        input%structure%epslat, v)
+         endif
+
+
+
 !!!variables for the erfcapprox="PW"
       if (input%groundstate%hybrid%erfcapprox.eq."PW")then 
          !write(*,*)"shortest g+q vec",igq0
@@ -281,26 +298,35 @@ if (print_times) write(*,*) 'genWFs :',tb-ta
          
          zvclmt (:, :, :, :) = 0.d0
 
-
          if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.&
          & ((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")))then 
             cutoff=.True.
          else 
             cutoff=.False.
          endif
-         if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.&
-            & ((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")).or.&
-            & (input%groundstate%hybrid%erfcapprox.eq."Yukawa") ) then
-            handleG0=.false.
+         if (ik.eq.jk) then
+           handleG0=(input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa")
+           handleG0=(handleG0.or.((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")))
+           handleG0=(handleG0.or.((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exccyl")))
+           handleG0=(handleG0.or.(input%groundstate%hybrid%erfcapprox.eq."Yukawa"))
+           handleG0=(.not.handleG0)
          else
-            if (ik.eq.jk) then
-               handleG0=.true.
-            else
-               handleG0=.false.
-            endif
+           handleG0=.false.
          endif
 
-         !write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
+!         if ((input%groundstate%hybrid%erfcapprox.eq."truncatedYukawa").or.&
+!            & ((input%groundstate%hybrid%erfcapprox.eq."none").and.(input%groundstate%hybrid%singularity.eq."exc0d")).or.&
+!            & (input%groundstate%hybrid%erfcapprox.eq."Yukawa") ) then
+!            handleG0=.false.
+!         else
+!            if (ik.eq.jk) then
+!               handleG0=.true.
+!            else
+!               handleG0=.false.
+!            endif
+!         endif
+
+!         write(*,*)"cutoff", cutoff,"ik, jk",ik,jk,"handleG0",handleG0
 
 
          time_coul=0d0
@@ -537,6 +563,11 @@ if (print_times) then
 endif
          vxpsimt=vxpsimt+zvclmt
       End Do ! non-reduced k-point set
+
+! move it to a finalisation routine
+      if (allocated(cyl_apprx_factor)) deallocate(cyl_apprx_factor)
+      cyl_apprx_initialized=.false.
+
 !stop
 !----------------------------------------------!
 !     valence-core-valence contribution        !

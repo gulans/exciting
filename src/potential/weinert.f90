@@ -1932,6 +1932,7 @@ end subroutine
     use mod_atoms, only: nspecies, natoms, idxas,natmtot
     use mod_muffin_tin, only: rmt,nrmtmax,nrmt
     use constants, only: fourpi,y00,zil,zzero
+    use mod_cyl_apprx, only : cyl_apprx_factor
     !> maximum angular momentum \(l\)
     integer, intent(in) :: lmax
     !> total number of \({\bf G+p}\) vectors
@@ -2622,6 +2623,7 @@ enddo!is
    ! use mod_atoms, only: nspecies, natoms, idxas
    ! use mod_muffin_tin, only: rmt,nrmtmax,nrmt
     use constants, only: fourpi 
+    use mod_cyl_apprx, only : cyl_apprx_factor
 
     !> total number of \({\bf G+p}\) vectors
     integer, intent(in) :: ngvec
@@ -2659,24 +2661,32 @@ enddo!is
   endif
 
 if (.not.yukawa)then
-  If (cutoff) Then
+
+!  If (cutoff) Then
+  if (input%groundstate%hybrid%singularity.eq."exccyl") then
+    Do ig = 1, ngvec
+        zvclir (ig) = zrhoir(ig) * cyl_apprx_factor(ig) !fourpi * zrhoir (ig)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
+    End Do
+  endif
+  if (input%groundstate%hybrid%singularity.eq."exc0d") then
     Do ig = firstnonzeroG, ngvec
         zvclir (ig) = fourpi * zrhoir (ig)*(1d0-cos(gpc(ig) * r_c )) / (gpc(ig)**2)
     End Do
     if (firstnonzeroG.eq.2) then
       zvclir (1) = zrhoir(1)*(fourpi*0.5d0)*r_c**2
     endif
- Else! cutof
+  endif
+! Else! cutoff
+  if ((input%groundstate%hybrid%singularity.eq."exc").or.(input%groundstate%hybrid%singularity.eq."none")) then
     Do ig = firstnonzeroG, ngvec
       zvclir (ig) = fourpi * zrhoir (ig) / (gpc(ig)**2)
     End Do
     if (firstnonzeroG.eq.2) then
       zvclir (1) = 0.d0
     endif
-  End If !if cutoff
+  endif
+!  End If !if cutoff
 else ! if yukawa
-
-
 
   if (cutoff) then
     Do ig = firstnonzeroG, ngvec
