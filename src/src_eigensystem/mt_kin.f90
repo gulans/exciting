@@ -104,9 +104,15 @@ Subroutine mt_kin(pot,basis,mt_h)
          End Do
          Do ia = 1, natoms (is)
             ias = idxas (ia, is)
-            Do ir = 1, nr
-              rmtable (ir) = 1d0/(1d0-a*veffmt (1, ir, ias)*y00)
-            End Do
+            if (input%groundstate%ValenceRelativity.ne.'atomiczora') then
+              Do ir = 1, nr
+                rmtable (ir) = 1d0/(1d0-a*veffmt (1, ir, ias)*y00)
+              End Do
+            else
+              Do ir = 1, nr
+                rmtable (ir) = 1d0/(1d0-a*(spvr(ir,is)+0d0))
+              End Do
+            endif
 !---------------------------!
 !     APW-APW integrals     !
 !---------------------------!

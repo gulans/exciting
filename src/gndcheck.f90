@@ -18,6 +18,7 @@ Subroutine gndcheck
       Implicit None
       if ((input%groundstate%ValenceRelativity.ne.'none').and. &
           (input%groundstate%ValenceRelativity.ne.'zora').and. &
+          (input%groundstate%ValenceRelativity.ne.'atomiczora').and. &
           (input%groundstate%ValenceRelativity.ne.'iora*')) then
         write(*,*) 'ValenceRelativity=', input%groundstate%ValenceRelativity,' is not supported beyond the spherical grid calculations'
         stop
@@ -31,6 +32,10 @@ Subroutine gndcheck
         endif
       endif
 
+
+      if (input%groundstate%ValenceRelativity.eq.'atomiczora') then
+        input%groundstate%InterstitialRelativity=.false.
+      endif
 
 
       Return

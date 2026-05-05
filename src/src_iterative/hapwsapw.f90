@@ -315,13 +315,13 @@ subroutine HapwSapw(n,npw,nwf,system,fftmap,cfir,vir,mir,x,Hx,Sx)
 
          Call zfftifc (3, fftmap%ngrid,1, zfft)
 
-         if (input%groundstate%ValenceRelativity.eq."zora") then
-           do ig=1,fftmap%ngrtot
-             zfft(ig)=zfft(ig)*mir(ig)
-           enddo
-         elseif (input%groundstate%ValenceRelativity.eq."none") then
+         if ((input%groundstate%ValenceRelativity.eq."none").or.(.not.input%groundstate%InterstitialRelativity)) then
            do ig=1,fftmap%ngrtot
              zfft(ig)=zfft(ig)*cfir(ig)
+           enddo
+         elseif (input%groundstate%ValenceRelativity.eq."zora") then
+           do ig=1,fftmap%ngrtot
+             zfft(ig)=zfft(ig)*mir(ig)
            enddo
          elseif (input%groundstate%ValenceRelativity.eq."iora*") then
            write(*,*) "Davidson/hapwsapw: matrixless iora* is currently not supported"
