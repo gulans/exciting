@@ -51,6 +51,9 @@ subroutine scf_cycle(verbosity)
         call printbox(60,"+",string)
     End If
 
+! making sure that groundstate parameters are sane 
+    call gndcheck
+
 ! reset density-dependent dispersion coefficients of Tkatchenko-Scheffler method
     If (Allocated(C6ab)) Deallocate(C6ab)
     If (Allocated(R0_eff_ab)) Deallocate(R0_eff_ab)

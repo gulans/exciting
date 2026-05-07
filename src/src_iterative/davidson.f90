@@ -101,7 +101,7 @@ Subroutine davidson (system, nst, evecfv, evalfv,ik)
 ! Now the Hamiltionian
         hdiag(1:npw)= veffig(1)
 
-        if (input%groundstate%ValenceRelativity.ne."none") then
+        if ((input%groundstate%ValenceRelativity.ne."none").and.(input%groundstate%InterstitialRelativity)) then
           do i=1,npw
             hdiag(i)=hdiag(i)+0.5d0*dot_product (current_vgkc(:, i), current_vgkc(:, i))*meffig(1)
           enddo

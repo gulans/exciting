@@ -57,7 +57,7 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
       else
         a=0d0
       endif
-      applyiora=((input%groundstate%ValenceRelativity.eq.'iora*').or.(input%groundstate%ValenceRelativity.eq.'iora*'))
+      applyiora=(input%groundstate%ValenceRelativity.eq.'iora*')
       if (applyiora) then
         write(*,*) 'Direct kinetic energy calculations with IORA are not implemented yet... '
         stop
@@ -92,9 +92,17 @@ Subroutine kinetic_energy(ik,evecfv,apwalm,ngp,vgpc,igpig)
          if (mt_hscf%losize(is).ne.0) allocate(zveclo(mt_hscf%losize(is)))
          Do ia = 1, natoms (is)
            ias = idxas (ia, is)
-           Do ir = 1, nr
-             rmtable (ir) = 1d0/(1d0-a*veffmt (1, ir, ias)*y00)
-           End Do
+
+           If (input%groundstate%ValenceRelativity.ne.'atomiczora') then
+             Do ir = 1, nr
+               rmtable (ir) = 1d0/(1d0-a*veffmt (1, ir, ias)*y00)
+             End Do
+           else
+             Do ir = 1, nr
+               rmtable (ir) = 1d0/(1d0-a*spvr(ir,is))
+             End Do
+           End If
+
 !---------------------------!
 !     APW-APW integrals     !
 !---------------------------!
@@ -282,7 +290,7 @@ enddo
             zfft (ifg) = evecfv (igk, ist) *vgpc(ix, igk)
           End Do
           Call zfftifc (3, ngrid, 1, zfft)
-if  (input%groundstate%ValenceRelativity.eq.'none') then
+if  ((input%groundstate%ValenceRelativity.eq.'none').or.(.not.input%groundstate%InterstitialRelativity)) then
           Do ir = 1, ngrtot
             zfft (ir)=zfft (ir)*cfunir(ir)
           End Do
