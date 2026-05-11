@@ -82,8 +82,8 @@ use modinput
 #endif
 
       If (k .Eq. 0) Then
-         if ((relativity.eq."zora").or.(relativity.eq."none")) then
-           if (relativity.eq."zora") then
+         if ((relativity.eq."zora").or.(relativity.eq."none").or.(relativity.eq."atomiczora")) then
+           if ((relativity.eq."zora").or.(relativity.eq."atomiczora")) then
              rmfactor=1d0
            else
              rmfactor=0d0
