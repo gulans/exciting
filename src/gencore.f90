@@ -83,7 +83,12 @@ e_kin=0d0
 engy_exnl_core=0d0
 engy_exnl_core_ias=0d0
 
-zora=(input%groundstate%ValenceRelativity.eq."zora")
+
+if ((input%groundstate%ValenceRelativity.eq."zora").or.(input%groundstate%ValenceRelativity.eq."atomiczora")) then
+   zora=.true.
+else
+   zora=.false.
+endif
 
       dirac_eq=(input%groundstate%CoreRelativity.eq."dirac")
 !write(*,*)"gencore.f90 Zora:",zora, "non-local-coef",hybx_coef
@@ -242,7 +247,11 @@ l_n=0
 
 
 if (zora)then !ca be created a cese for nZORA
-        v_rel=vr(:spnr(is))
+   if (input%groundstate%ValenceRelativity.eq."zora") then
+      v_rel=vr(:spnr(is))
+   elseif (input%groundstate%ValenceRelativity.eq."atomiczora") then
+      v_rel=spvr(:spnr(is),is)
+   endif
 endif
 
 Do il = 1, lmax+1
