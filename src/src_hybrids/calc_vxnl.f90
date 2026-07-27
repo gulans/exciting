@@ -361,7 +361,8 @@ else ! Use oepvnl
 
 
 #ifdef MPI
-      Do ik = firstk (rank, kset%nkpt), lastk (rank, kset%nkpt)
+      call distribute_loop( mpi_env_k, kset%nkpt, ikfirst, iklast )
+      Do ik = ikfirst, iklast
 #else
       Do ik = 1, kset%nkpt
 #endif
